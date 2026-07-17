@@ -27,7 +27,7 @@ export default function LoginPage() {
         <div className="text-center mb-6">
           <div className="font-black text-2xl tracking-wide">
             <span className="text-accent-500">HNS</span>
-            <span className="text-brand-600"> Hồ sơ HDV</span>
+            <span className="text-brand-600"> Kế toán</span>
           </div>
           <p className="text-sm text-gray-400 mt-1">Đăng nhập kế toán</p>
         </div>

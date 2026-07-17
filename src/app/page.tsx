@@ -10,7 +10,7 @@ import { useTopbar } from '@/contexts/topbar'
 const EMPTY_FORM = { ten_doan: '', hanh_trinh: '', ngay_di: '', ngay_ve: '', sl_khach: '' }
 
 export default function DashboardPage() {
-  const { setBreadcrumb } = useTopbar()
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -34,8 +34,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Quyết toán tour</span>)
-    return () => setBreadcrumb(null)
-  }, [setBreadcrumb])
+    setOnRefresh(load)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, load])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

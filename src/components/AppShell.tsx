@@ -27,9 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-4">
           <div className="font-black text-2xl tracking-wide">
             <span style={{ color: '#ef5e2f' }}>HNS</span>
-            <span style={{ color: '#2a9ac4' }}> Hồ sơ HDV</span>
+            <span style={{ color: '#2a9ac4' }}> Kế toán</span>
           </div>
-          <p className="text-sm text-gray-400">Kế toán · Quyết toán tour</p>
+          <p className="text-sm text-gray-400">Quyết toán tour</p>
         </div>
       </div>
     )

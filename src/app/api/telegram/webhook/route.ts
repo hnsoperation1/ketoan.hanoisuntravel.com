@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { uploadHoSoImage } from '@/lib/storage'
 import { extractCccdFields } from '@/lib/ai-extract'
 import { upsertNhanSuFromExtract, createHoSo } from '@/lib/ho-so'
+import { notify } from '@/lib/notify'
 import { sendMessage, answerCallbackQuery, downloadTelegramFile, type InlineButton } from '@/lib/telegram'
 import type { AiExtractedFields } from '@/types'
 
@@ -232,6 +233,13 @@ async function handleCallback(admin: ReturnType<typeof createAdminClient>, cb: T
     session.draft_json = {}
     session.pending_image_urls = []
     await saveSession(admin, session)
+
+    const { data: doanRow } = await admin.from('doan').select('ten_doan').eq('id', doanId).maybeSingle()
+    await notify(admin, {
+      title: 'Đã thêm hồ sơ mới',
+      body: `${nhansu.ho_ten} — đoàn ${doanRow?.ten_doan ?? ''}`,
+      link: `/doan/${doanId}`,
+    })
 
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/doan/${doanId}`
     await sendMessage(

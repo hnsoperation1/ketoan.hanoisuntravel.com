@@ -1,5 +1,13 @@
 export type Prefix = 'HDV' | 'MC' | 'NS'
 
+export interface AppNotification {
+  id: string
+  title: string
+  body: string | null
+  link: string | null
+  created_at: string
+}
+
 export type TrangThaiHoSo =
   | 'cho_xac_nhan_ai'
   | 'da_xac_nhan'

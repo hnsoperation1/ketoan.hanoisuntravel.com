@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
-  const { setBreadcrumb } = useTopbar()
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [doan, setDoan] = useState<Doan | null>(null)
   const [hoSo, setHoSo] = useState<HoSoWithNhanSu[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,8 +48,12 @@ export default function DoanDetailPage() {
         Quyết toán tour <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}
       </span>,
     )
-    return () => setBreadcrumb(null)
-  }, [setBreadcrumb, doan?.ten_doan])
+    setOnRefresh(load)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, doan?.ten_doan, load])
 
   async function handleCopy(kind: 'ds' | 'td') {
     if (!doan) return
