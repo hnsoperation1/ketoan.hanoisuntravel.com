@@ -2,7 +2,14 @@ import OpenAI from 'openai'
 import type { ChatCompletionContentPart } from 'openai/resources/chat/completions'
 import type { AiExtractedFields } from '@/types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Khởi tạo trễ (không phải ở top-level module) — nếu tạo ngay khi import,
+// bước "Collecting page data" của Next.js build sẽ load module này và làm
+// OpenAI SDK throw do chưa có OPENAI_API_KEY tại thời điểm build.
+let openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openai) openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return openai
+}
 
 const EXTRACT_PROMPT = `Bạn là AI hỗ trợ trích xuất thông tin từ ảnh CCCD (mặt trước/sau) và ảnh thẻ Hướng dẫn viên (HDV) của một công ty du lịch.
 
@@ -39,7 +46,7 @@ export async function extractCccdFields(images: ExtractImageInput[]): Promise<Ai
   }))
   userContent.push({ type: 'text', text: EXTRACT_PROMPT })
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4o',
     max_tokens: 1024,
     response_format: { type: 'json_object' },
