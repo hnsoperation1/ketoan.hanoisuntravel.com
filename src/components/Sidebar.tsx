@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { FileSpreadsheet, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -84,7 +84,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       </div>
 
       <nav className={clsx('flex-1 py-4 space-y-0.5 overflow-y-auto', collapsed ? 'px-1.5' : 'md:px-3 px-4')}>
-        <div className="pt-1">
+        <NavLink
+          href="/"
+          label="Tổng quan"
+          icon={LayoutDashboard}
+          exact
+          pathname={pathname}
+          collapsed={collapsed}
+          onClick={onMobileClose}
+        />
+
+        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
           {!collapsed && (
             <p
               className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
@@ -94,10 +104,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </p>
           )}
           <NavLink
-            href="/"
+            href="/doan"
             label="Quyết toán tour"
             icon={FileSpreadsheet}
-            exact
             pathname={pathname}
             collapsed={collapsed}
             onClick={onMobileClose}

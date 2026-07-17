@@ -46,7 +46,7 @@ export default function DoanDetailPage() {
   useEffect(() => {
     setBreadcrumb(
       <span className="text-sm font-semibold text-gray-700 flex items-center">
-        <Link href="/" className="text-gray-400 hover:text-brand-600 transition-colors">
+        <Link href="/doan" className="text-gray-400 hover:text-brand-600 transition-colors">
           Quyết toán tour
         </Link>
         <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}

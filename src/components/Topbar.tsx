@@ -25,7 +25,7 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
         <Menu size={22} />
       </button>
       <div className="whitespace-nowrap overflow-hidden">
-        {breadcrumb ?? <span className="text-sm font-semibold text-gray-700 truncate block">Quyết toán tour</span>}
+        {breadcrumb ?? <span className="text-sm font-semibold text-gray-700 truncate block">Tổng quan</span>}
       </div>
 
       <div className="flex-1" />
