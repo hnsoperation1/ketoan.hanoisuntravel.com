@@ -1,16 +1,19 @@
 'use client'
 
-import { useEffect } from 'react'
-import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { LogOut } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
+import { TopbarProvider } from '@/contexts/topbar'
+import Sidebar from './Sidebar'
+import Topbar from './Topbar'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, logout } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const isLoginPage = pathname === '/login'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     if (loading) return
@@ -21,9 +24,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || (!user && !isLoginPage)) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="font-black text-xl tracking-wide">
-          <span className="text-accent-500">HNS</span>
-          <span className="text-brand-600"> Hồ sơ HDV</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="font-black text-2xl tracking-wide">
+            <span style={{ color: '#ef5e2f' }}>HNS</span>
+            <span style={{ color: '#2a9ac4' }}> Hồ sơ HDV</span>
+          </div>
+          <p className="text-sm text-gray-400">Kế toán · Quyết toán tour</p>
         </div>
       </div>
     )
@@ -32,23 +38,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isLoginPage) return <>{children}</>
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white">
-        <Link href="/" className="font-black text-lg tracking-wide">
-          <span className="text-accent-500">HNS</span>
-          <span className="text-brand-600"> Hồ sơ HDV</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{user?.email}</span>
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <LogOut size={15} /> Đăng xuất
-          </button>
+    <TopbarProvider>
+      <div className="flex h-screen overflow-hidden">
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)} />
+        )}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((c) => !c)}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Topbar onMobileSidebarToggle={() => setMobileOpen((o) => !o)} />
+          <main className="flex-1 overflow-y-auto relative">{children}</main>
         </div>
-      </header>
-      <main>{children}</main>
-    </div>
+      </div>
+    </TopbarProvider>
   )
 }

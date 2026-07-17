@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { Plus, Loader2, X, MapPin, Users, CalendarDays } from 'lucide-react'
 import type { Doan } from '@/types'
 import { formatDateVN } from '@/lib/format'
+import { useTopbar } from '@/contexts/topbar'
 
 const EMPTY_FORM = { ten_doan: '', hanh_trinh: '', ngay_di: '', ngay_ve: '', sl_khach: '' }
 
 export default function DashboardPage() {
+  const { setBreadcrumb } = useTopbar()
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -29,6 +31,11 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách đoàn khi mount, pattern chuẩn cho fetch-on-mount
     void load()
   }, [load])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Quyết toán tour</span>)
+    return () => setBreadcrumb(null)
+  }, [setBreadcrumb])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -60,7 +67,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn</h1>
+        <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn tour</h1>
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm"

@@ -7,6 +7,7 @@ import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
+import { useTopbar } from '@/contexts/topbar'
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   cho_xac_nhan_ai: 'bg-amber-50 text-amber-700',
@@ -19,6 +20,7 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
+  const { setBreadcrumb } = useTopbar()
   const [doan, setDoan] = useState<Doan | null>(null)
   const [hoSo, setHoSo] = useState<HoSoWithNhanSu[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,6 +41,15 @@ export default function DoanDetailPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải chi tiết đoàn khi mount, pattern chuẩn cho fetch-on-mount
     void load()
   }, [load])
+
+  useEffect(() => {
+    setBreadcrumb(
+      <span className="text-sm font-semibold text-gray-700">
+        Quyết toán tour <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}
+      </span>,
+    )
+    return () => setBreadcrumb(null)
+  }, [setBreadcrumb, doan?.ten_doan])
 
   async function handleCopy(kind: 'ds' | 'td') {
     if (!doan) return
