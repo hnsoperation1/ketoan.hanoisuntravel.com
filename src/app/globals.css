@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Bảng màu thương hiệu HNS — khớp với hns-crm để đồng bộ hệ sinh thái nội bộ */
+  --color-brand-50: #ebf6fb;
+  --color-brand-100: #d3ecf7;
+  --color-brand-200: #9dd5ec;
+  --color-brand-300: #5cb5da;
+  --color-brand-400: #2a9ac4;
+  --color-brand-500: #127faf;
+  --color-brand-600: #0e6a95;
+  --color-brand-700: #0b567a;
+  --color-brand-800: #08425e;
+  --color-brand-900: #052f43;
+  --color-brand-950: #031c29;
+
+  --color-accent-50: #fef2ed;
+  --color-accent-100: #fde0d2;
+  --color-accent-200: #f9b49a;
+  --color-accent-300: #f58965;
+  --color-accent-400: #f2703e;
+  --color-accent-500: #ef5e2f;
+  --color-accent-600: #d44d22;
+  --color-accent-700: #b03d18;
+  --color-accent-800: #8d2e11;
+  --color-accent-900: #6a210c;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
