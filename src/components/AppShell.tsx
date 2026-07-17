@@ -29,7 +29,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span style={{ color: '#ef5e2f' }}>HNS</span>
             <span style={{ color: '#2a9ac4' }}> Kế toán</span>
           </div>
-          <p className="text-sm text-gray-400">Quyết toán tour</p>
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{ background: '#2a9ac4', animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Loader2, Copy, Check, X, Pencil } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
@@ -44,8 +45,11 @@ export default function DoanDetailPage() {
 
   useEffect(() => {
     setBreadcrumb(
-      <span className="text-sm font-semibold text-gray-700">
-        Quyết toán tour <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}
+      <span className="text-sm font-semibold text-gray-700 flex items-center">
+        <Link href="/" className="text-gray-400 hover:text-brand-600 transition-colors">
+          Quyết toán tour
+        </Link>
+        <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}
       </span>,
     )
     setOnRefresh(load)
