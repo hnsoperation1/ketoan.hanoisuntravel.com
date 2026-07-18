@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import clsx from 'clsx'
@@ -22,6 +22,11 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 type Tab = 'hdv' | 'files'
 
+const PANEL_WIDTH_KEY = 'hns-ketoan-doan-panel-width'
+const DEFAULT_PANEL_WIDTH = 288
+const MIN_PANEL_WIDTH = 220
+const MAX_PANEL_WIDTH = 420
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -31,8 +36,42 @@ export default function DoanDetailPage() {
   const [editing, setEditing] = useState<HoSoWithNhanSu | null>(null)
   const [editingDoan, setEditingDoan] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
+  const [panelWidth, setPanelWidth] = useState(() =>
+    typeof window !== 'undefined' ? Number(localStorage.getItem(PANEL_WIDTH_KEY)) || DEFAULT_PANEL_WIDTH : DEFAULT_PANEL_WIDTH,
+  )
+  const [dragging, setDragging] = useState(false)
+  const panelOpenRef = useRef(panelOpen)
+  panelOpenRef.current = panelOpen
+  const panelWidthRef = useRef(panelWidth)
+  panelWidthRef.current = panelWidth
   const [tab, setTab] = useState<Tab>('hdv')
   const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
+
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(true)
+    const x0 = e.clientX
+    const w0 = panelOpenRef.current ? panelWidthRef.current : 0
+
+    function onMove(ev: MouseEvent) {
+      const raw = w0 + (ev.clientX - x0)
+      if (raw < 40) {
+        if (panelOpenRef.current) setPanelOpen(false)
+        return
+      }
+      if (!panelOpenRef.current) setPanelOpen(true)
+      setPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, raw)))
+    }
+    function onUp() {
+      setDragging(false)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      localStorage.setItem(PANEL_WIDTH_KEY, String(panelWidthRef.current))
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [])
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/doan/${params.id}`)
@@ -105,33 +144,37 @@ export default function DoanDetailPage() {
 
       <div className="flex flex-col lg:flex-row flex-1 min-h-0">
         <aside
-          className={clsx(
-            'shrink-0 overflow-hidden border-gray-200 bg-white transition-all duration-200 ease-in-out',
-            panelOpen
-              ? 'w-full lg:w-72 border-b lg:border-b-0 lg:border-r p-5'
-              : 'w-full lg:w-0 h-0 lg:h-auto border-0 p-0',
-          )}
+          className="w-full shrink-0 overflow-hidden border-b lg:border-b-0 border-gray-200 bg-white lg:w-(--panel-w)"
+          style={
+            {
+              '--panel-w': `${panelOpen ? panelWidth : 0}px`,
+              transition: dragging ? 'none' : 'width 200ms ease-in-out',
+            } as React.CSSProperties
+          }
         >
-          <div className="w-full lg:w-64">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 whitespace-nowrap">Thông tin chung</p>
-            <div className="space-y-4">
-              <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
-              <InfoField
-                label="Ngày"
-                value={`${formatDateVN(doan.ngay_di)}${doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}`}
-              />
-              <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
-            </div>
+          {/* width cố định = panelWidth (không đổi theo panelOpen) để nội dung giữ nguyên hình dạng,
+              chỉ bị cha (aside) clip dần theo width khi đóng — tạo hiệu ứng trượt. Mobile: full width tự nhiên. */}
+          <div className="p-5 lg:w-(--panel-content-w)" style={{ '--panel-content-w': `${panelWidth}px` } as React.CSSProperties}>
+            <PanelContent doan={doan} />
           </div>
         </aside>
 
-        <div className="hidden lg:flex items-start pt-4 shrink-0">
+        <div
+          className="hidden lg:flex relative items-stretch w-3 shrink-0 cursor-col-resize group"
+          onMouseDown={startResize}
+          title="Kéo để chỉnh độ rộng, bấm để ẩn/hiện"
+        >
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-gray-200 group-hover:bg-brand-300 transition-colors" />
           <button
-            onClick={() => setPanelOpen((o) => !o)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setPanelOpen((o) => !o)
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
             title={panelOpen ? 'Ẩn thông tin chung' : 'Hiện thông tin chung'}
-            className="w-5 h-5 -ml-2.5 z-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-400 hover:text-brand-600 hover:border-brand-300 transition-colors"
+            className="absolute top-4 left-1/2 -translate-x-1/2 w-6 h-6 z-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-400 hover:text-brand-600 hover:border-brand-300 transition-colors cursor-pointer"
           >
-            {panelOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+            {panelOpen ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
           </button>
         </div>
 
@@ -258,6 +301,22 @@ export default function DoanDetailPage() {
         />
       )}
     </div>
+  )
+}
+
+function PanelContent({ doan }: { doan: Doan }) {
+  return (
+    <>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 whitespace-nowrap">Thông tin chung</p>
+      <div className="space-y-4">
+        <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
+        <InfoField
+          label="Ngày"
+          value={`${formatDateVN(doan.ngay_di)}${doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}`}
+        />
+        <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+      </div>
+    </>
   )
 }
 
