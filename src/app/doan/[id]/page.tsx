@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import clsx from 'clsx'
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Copy, Check, X, Pencil, FileText } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
@@ -103,9 +104,16 @@ export default function DoanDetailPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-        {panelOpen && (
-          <aside className="w-full lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Thông tin chung</p>
+        <aside
+          className={clsx(
+            'shrink-0 overflow-hidden border-gray-200 bg-white transition-all duration-200 ease-in-out',
+            panelOpen
+              ? 'w-full lg:w-72 border-b lg:border-b-0 lg:border-r p-5'
+              : 'w-full lg:w-0 h-0 lg:h-auto border-0 p-0',
+          )}
+        >
+          <div className="w-full lg:w-64">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 whitespace-nowrap">Thông tin chung</p>
             <div className="space-y-4">
               <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
               <InfoField
@@ -114,8 +122,8 @@ export default function DoanDetailPage() {
               />
               <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
             </div>
-          </aside>
-        )}
+          </div>
+        </aside>
 
         <div className="hidden lg:flex items-start pt-4 shrink-0">
           <button
