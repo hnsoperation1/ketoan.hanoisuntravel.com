@@ -3,13 +3,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
+import ImageViewer from '@/components/ImageViewer'
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   cho_xac_nhan_ai: 'bg-amber-50 text-amber-700',
@@ -424,6 +425,7 @@ function HoSoDetailModal({
   const [editing, setEditing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [viewerImage, setViewerImage] = useState<{ url: string; label: string } | null>(null)
 
   async function handleExport() {
     if (exporting) return
@@ -443,7 +445,7 @@ function HoSoDetailModal({
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
             <div>
               <h2 className="text-lg font-bold text-gray-900">{n.ho_ten}</h2>
@@ -474,119 +476,165 @@ function HoSoDetailModal({
               }}
             />
           ) : (
-            <div className="p-6 space-y-6">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Ảnh hồ sơ</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {DETAIL_IMAGE_FIELDS.map((f) => (
-                    <ImageThumb key={f.key} url={hoSo[f.key]} label={f.label} />
-                  ))}
-                </div>
-              </div>
+            <div className="grid md:grid-cols-[260px_1fr] gap-6 p-6">
+              <ImagePanel hoSo={hoSo} onUploaded={onSaved} onView={(url, label) => setViewerImage({ url, label })} />
 
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-6 min-w-0">
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
+                    <div className="space-y-3">
+                      <ViewField label="Số CCCD" value={n.so_cccd} mono />
+                      <ViewField label="Ngày sinh" value={formatDateVN(n.ngay_sinh)} />
+                      <ViewField label="Ngày cấp" value={formatDateVN(n.ngay_cap)} />
+                      <ViewField label="Nơi cấp" value={n.noi_cap} />
+                      <ViewField label="Địa chỉ" value={n.dia_chi} />
+                      <ViewField label="MS thuế TNCN" value={n.ma_so_thue_tncn} />
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
+                      <div className="space-y-3">
+                        <ViewField label="Số thẻ" value={n.so_the_hdv} />
+                        <ViewField label="Loại thẻ" value={n.loai_the_hdv} />
+                        <ViewField label="Hạn thẻ" value={formatDateVN(n.han_the_hdv)} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ &amp; ngân hàng</p>
+                      <div className="space-y-3">
+                        <ViewField label="SĐT" value={n.sdt} />
+                        <ViewField label="Email" value={n.email} />
+                        <ViewField label="STK" value={n.stk} />
+                        <ViewField label="Ngân hàng" value={n.ten_ngan_hang} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
-                  <div className="space-y-3">
-                    <ViewField label="Số CCCD" value={n.so_cccd} mono />
-                    <ViewField label="Ngày sinh" value={formatDateVN(n.ngay_sinh)} />
-                    <ViewField label="Ngày cấp" value={formatDateVN(n.ngay_cap)} />
-                    <ViewField label="Nơi cấp" value={n.noi_cap} />
-                    <ViewField label="Địa chỉ" value={n.dia_chi} />
-                    <ViewField label="MS thuế TNCN" value={n.ma_so_thue_tncn} />
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
-                    <div className="space-y-3">
-                      <ViewField label="Số thẻ" value={n.so_the_hdv} />
-                      <ViewField label="Loại thẻ" value={n.loai_the_hdv} />
-                      <ViewField label="Hạn thẻ" value={formatDateVN(n.han_the_hdv)} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ &amp; ngân hàng</p>
-                    <div className="space-y-3">
-                      <ViewField label="SĐT" value={n.sdt} />
-                      <ViewField label="Email" value={n.email} />
-                      <ViewField label="STK" value={n.stk} />
-                      <ViewField label="Ngân hàng" value={n.ten_ngan_hang} />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <ViewField label="Số hợp đồng" value={hoSo.so_hop_dong} />
+                    <ViewField label="Ngày dịch vụ" value={formatDateVN(hoSo.ngay_dich_vu)} />
+                    <ViewField label="Số ngày công tác" value={hoSo.so_ngay_cong_tac?.toString() ?? null} />
+                    <ViewField label="Đơn giá/ngày" value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null} />
+                    <ViewField label="Số tiền chi trả" value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null} />
+                    <ViewField label="Thuế nộp" value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null} />
+                    <ViewField label="Chi trả" value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null} />
+                    <ViewField label="Loại hợp đồng" value={hoSo.loai_hop_dong} />
+                    <ViewField label="Tình trạng thanh toán" value={hoSo.tinh_trang_thanh_toan} />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[hoSo.trang_thai]}`}>
+                        {TRANG_THAI_LABELS[hoSo.trang_thai]}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <ViewField label="Số hợp đồng" value={hoSo.so_hop_dong} />
-                  <ViewField label="Ngày dịch vụ" value={formatDateVN(hoSo.ngay_dich_vu)} />
-                  <ViewField label="Số ngày công tác" value={hoSo.so_ngay_cong_tac?.toString() ?? null} />
-                  <ViewField label="Đơn giá/ngày" value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null} />
-                  <ViewField label="Số tiền chi trả" value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null} />
-                  <ViewField label="Thuế nộp" value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null} />
-                  <ViewField label="Chi trả" value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null} />
-                  <ViewField label="Loại hợp đồng" value={hoSo.loai_hop_dong} />
-                  <ViewField label="Tình trạng thanh toán" value={hoSo.tinh_trang_thanh_toan} />
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[hoSo.trang_thai]}`}>
-                      {TRANG_THAI_LABELS[hoSo.trang_thai]}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-100 pt-5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">File hợp đồng</p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  {hoSo.file_hop_dong_url && (
-                    <a
-                      href={hoSo.file_hop_dong_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                <div className="border-t border-gray-100 pt-5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">File hợp đồng</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {hoSo.file_hop_dong_url && (
+                      <a
+                        href={hoSo.file_hop_dong_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                      >
+                        <FileText size={13} /> Xem file hiện có
+                      </a>
+                    )}
+                    <button
+                      onClick={handleExport}
+                      disabled={exporting}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
                     >
-                      <FileText size={13} /> Xem file hiện có
-                    </a>
-                  )}
-                  <button
-                    onClick={handleExport}
-                    disabled={exporting}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
-                  >
-                    {exporting && <Loader2 size={13} className="animate-spin" />}
-                    {hoSo.file_hop_dong_url ? 'Xuất lại hợp đồng (.docx)' : 'Xuất hợp đồng (.docx)'}
-                  </button>
+                      {exporting && <Loader2 size={13} className="animate-spin" />}
+                      {hoSo.file_hop_dong_url ? 'Xuất lại hợp đồng (.docx)' : 'Xuất hợp đồng (.docx)'}
+                    </button>
+                  </div>
+                  {exportError && <p className="text-xs text-red-500 mt-2">{exportError}</p>}
                 </div>
-                {exportError && <p className="text-xs text-red-500 mt-2">{exportError}</p>}
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {viewerImage && (
+        <ImageViewer url={viewerImage.url} label={viewerImage.label} onClose={() => setViewerImage(null)} />
+      )}
     </>
   )
 }
 
-function ImageThumb({ url, label }: { url: string | null; label: string }) {
-  if (!url) {
-    return (
-      <div className="aspect-4/3 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300">
-        <FileText size={20} />
-        <span className="text-[11px]">{label}</span>
-      </div>
-    )
+function ImagePanel({
+  hoSo,
+  onUploaded,
+  onView,
+}: {
+  hoSo: HoSoWithNhanSu
+  onUploaded: (updated: HoSoWithNhanSu) => void
+  onView: (url: string, label: string) => void
+}) {
+  const [uploadingField, setUploadingField] = useState<string | null>(null)
+
+  async function handleUpload(field: string, file: File) {
+    setUploadingField(field)
+    const formData = new FormData()
+    formData.append('field', field)
+    formData.append('file', file)
+    const res = await fetch(`/api/ho-so/${hoSo.id}/anh`, { method: 'POST', body: formData })
+    setUploadingField(null)
+    if (res.ok) {
+      const data = await res.json()
+      onUploaded(data.ho_so)
+    }
   }
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- ảnh từ Supabase Storage (signed URL động), không phù hợp next/image
-    <a href={url} target="_blank" rel="noopener noreferrer" className="group block">
-      <div className="aspect-4/3 rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-        <img src={url} alt={label} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
-      </div>
-      <p className="text-[11px] text-gray-500 mt-1 text-center">{label}</p>
-    </a>
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ảnh hồ sơ</p>
+      {DETAIL_IMAGE_FIELDS.map((f) => {
+        const url = hoSo[f.key]
+        const uploading = uploadingField === f.key
+        return (
+          <div key={f.key} className="relative group">
+            {url ? (
+              <button
+                onClick={() => onView(url, f.label)}
+                className="w-full aspect-4/3 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- ảnh từ Supabase Storage (signed URL động), không phù hợp next/image */}
+                <img src={url} alt={f.label} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+              </button>
+            ) : (
+              <div className="w-full aspect-4/3 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300">
+                <FileText size={20} />
+              </div>
+            )}
+            <label className="absolute bottom-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-lg bg-white/90 border border-gray-200 text-gray-500 hover:text-brand-600 hover:border-brand-300 shadow-sm transition-colors cursor-pointer">
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(f.key, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <p className="text-[11px] text-gray-500 mt-1 text-center">{f.label}</p>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
