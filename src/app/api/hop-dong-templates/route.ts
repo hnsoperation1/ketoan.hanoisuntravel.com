@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { uploadTemplateFile } from '@/lib/storage'
+import { slugifyFileName } from '@/lib/format'
 
 export async function GET() {
   const { unauthorized } = await requireUser()
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer())
-  const path = `${Date.now()}-${file.name}`
+  const path = `${Date.now()}-${slugifyFileName(file.name)}`
 
   try {
     const fileUrl = await uploadTemplateFile(
