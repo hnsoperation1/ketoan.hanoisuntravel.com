@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload } from 'lucide-react'
-import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
+import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
@@ -426,6 +426,20 @@ function HoSoDetailModal({
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
   const [viewerImage, setViewerImage] = useState<{ url: string; label: string } | null>(null)
+  const [files, setFiles] = useState<HoSoHopDongFile[]>([])
+
+  const loadFiles = useCallback(async () => {
+    const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files`)
+    if (res.ok) {
+      const data = await res.json()
+      setFiles(data.files)
+    }
+  }, [hoSo.id])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải lịch sử file khi mở modal, pattern chuẩn cho fetch-on-mount
+    void loadFiles()
+  }, [loadFiles])
 
   async function handleExport() {
     if (exporting) return
@@ -439,6 +453,7 @@ function HoSoDetailModal({
       return
     }
     onExported(data.ho_so)
+    loadFiles()
   }
 
   return (
@@ -535,28 +550,44 @@ function HoSoDetailModal({
                 </div>
 
                 <div className="border-t border-gray-100 pt-5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">File hợp đồng</p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {hoSo.file_hop_dong_url && (
-                      <a
-                        href={hoSo.file_hop_dong_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
-                      >
-                        <FileText size={13} /> Xem file hiện có
-                      </a>
-                    )}
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">File hợp đồng</p>
                     <button
                       onClick={handleExport}
                       disabled={exporting}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
                     >
                       {exporting && <Loader2 size={13} className="animate-spin" />}
-                      {hoSo.file_hop_dong_url ? 'Xuất lại hợp đồng (.docx)' : 'Xuất hợp đồng (.docx)'}
+                      Xuất hợp đồng (.docx)
                     </button>
                   </div>
-                  {exportError && <p className="text-xs text-red-500 mt-2">{exportError}</p>}
+                  {exportError && <p className="text-xs text-red-500 mb-2">{exportError}</p>}
+                  {files.length === 0 ? (
+                    <p className="text-xs text-gray-400">Chưa có file nào được xuất.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {files.map((f) => (
+                        <a
+                          key={f.id}
+                          href={`/api/ho-so/${hoSo.id}/hop-dong-files/${f.id}/download`}
+                          className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="flex items-center gap-1.5 text-brand-600 font-medium truncate">
+                            <FileText size={13} className="shrink-0" /> {f.file_name ?? 'Xem file'}
+                          </span>
+                          <span className="text-gray-400">
+                            {new Date(f.created_at).toLocaleString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -659,6 +690,15 @@ function HoSoEditForm({
   onSaved: (updated: HoSoWithNhanSu) => void
 }) {
   const [nhansu, setNhansu] = useState({
+    so_cccd: hoSo.nhansu.so_cccd ?? '',
+    ngay_sinh: hoSo.nhansu.ngay_sinh ?? '',
+    ngay_cap: hoSo.nhansu.ngay_cap ?? '',
+    noi_cap: hoSo.nhansu.noi_cap ?? '',
+    dia_chi: hoSo.nhansu.dia_chi ?? '',
+    ma_so_thue_tncn: hoSo.nhansu.ma_so_thue_tncn ?? '',
+    so_the_hdv: hoSo.nhansu.so_the_hdv ?? '',
+    loai_the_hdv: hoSo.nhansu.loai_the_hdv ?? '',
+    han_the_hdv: hoSo.nhansu.han_the_hdv ?? '',
     sdt: hoSo.nhansu.sdt ?? '',
     email: hoSo.nhansu.email ?? '',
     stk: hoSo.nhansu.stk ?? '',
@@ -684,7 +724,21 @@ function HoSoEditForm({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nhansu,
+        nhansu: {
+          so_cccd: nhansu.so_cccd || null,
+          ngay_sinh: nhansu.ngay_sinh || null,
+          ngay_cap: nhansu.ngay_cap || null,
+          noi_cap: nhansu.noi_cap || null,
+          dia_chi: nhansu.dia_chi || null,
+          ma_so_thue_tncn: nhansu.ma_so_thue_tncn || null,
+          so_the_hdv: nhansu.so_the_hdv || null,
+          loai_the_hdv: nhansu.loai_the_hdv || null,
+          han_the_hdv: nhansu.han_the_hdv || null,
+          sdt: nhansu.sdt || null,
+          email: nhansu.email || null,
+          stk: nhansu.stk || null,
+          ten_ngan_hang: nhansu.ten_ngan_hang || null,
+        },
         ho_so: {
           so_hop_dong: hs.so_hop_dong || null,
           ngay_dich_vu: hs.ngay_dich_vu || null,
@@ -704,7 +758,66 @@ function HoSoEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Bổ sung thông tin cá nhân</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">CCCD</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Số CCCD">
+                <input
+                  value={nhansu.so_cccd}
+                  onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="MS thuế TNCN">
+                <input
+                  value={nhansu.ma_so_thue_tncn}
+                  onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Ngày sinh">
+                <DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
+              </Field>
+              <Field label="Ngày cấp">
+                <DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
+              </Field>
+              <Field label="Nơi cấp">
+                <input
+                  value={nhansu.noi_cap}
+                  onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Địa chỉ">
+                <input
+                  value={nhansu.dia_chi}
+                  onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Thẻ HDV</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Số thẻ">
+                <input
+                  value={nhansu.so_the_hdv}
+                  onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Loại thẻ">
+                <input
+                  value={nhansu.loai_the_hdv}
+                  onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Hạn thẻ">
+                <DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
+              </Field>
+            </div>
+
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Liên hệ &amp; ngân hàng</p>
             <div className="grid grid-cols-2 gap-3">
               <Field label="SĐT">
                 <input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />

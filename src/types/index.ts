@@ -18,6 +18,14 @@ export interface HopDongTemplate {
   created_at: string
 }
 
+export interface HoSoHopDongFile {
+  id: string
+  ho_so_id: string
+  file_url: string
+  file_name: string | null
+  created_at: string
+}
+
 export type TrangThaiHoSo =
   | 'cho_xac_nhan_ai'
   | 'da_xac_nhan'

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
-import { buildMergeData, mergeDocxTemplate } from '@/lib/docx-merge'
+import { buildMergeData, mergeDocxTemplate, buildContractFileName } from '@/lib/docx-merge'
 import { uploadGeneratedContract } from '@/lib/storage'
 import type { Doan, HoSoWithNhanSu, HopDongTemplate } from '@/types'
 
@@ -62,6 +62,9 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
       .select('*, nhansu:nhansu_id(*)')
       .single()
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+    const fileName = buildContractFileName(doan as Doan, hoSo as HoSoWithNhanSu)
+    await supabase.from('ho_so_hop_dong_files').insert({ ho_so_id: id, file_url: fileUrl, file_name: fileName })
 
     return NextResponse.json({ ho_so: updated })
   } catch (e) {
