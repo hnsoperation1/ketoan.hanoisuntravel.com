@@ -86,7 +86,7 @@ export default function DoanDetailPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white shrink-0">
+      <div className="h-12 md:h-10 flex items-center gap-3 px-6 border-b border-gray-200 bg-white shrink-0">
         <Link href="/doan" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <ArrowLeft size={18} />
         </Link>
@@ -104,7 +104,7 @@ export default function DoanDetailPage() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="flex gap-6 px-6 border-b border-gray-200 bg-white">
+        <div className="h-11 md:h-9 flex items-stretch gap-6 px-6 border-b border-gray-200 bg-white">
           <TabButton active={tab === 'info'} onClick={() => setTab('info')}>
             Thông tin đoàn
           </TabButton>
@@ -351,7 +351,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`py-3 text-sm font-semibold border-b-2 transition-colors ${
+      className={`flex items-center text-sm font-semibold border-b-2 transition-colors ${
         active ? 'border-accent-500 text-accent-600' : 'border-transparent text-gray-400 hover:text-gray-600'
       }`}
     >
