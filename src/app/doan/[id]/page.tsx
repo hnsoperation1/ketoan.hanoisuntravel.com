@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Copy, Check, X, Pencil, FileText } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
@@ -29,6 +29,7 @@ export default function DoanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<HoSoWithNhanSu | null>(null)
   const [editingDoan, setEditingDoan] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
   const [tab, setTab] = useState<Tab>('hdv')
   const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
 
@@ -102,17 +103,29 @@ export default function DoanDetailPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-        <aside className="w-full lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Thông tin chung</p>
-          <div className="space-y-4">
-            <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
-            <InfoField
-              label="Ngày"
-              value={`${formatDateVN(doan.ngay_di)}${doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}`}
-            />
-            <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
-          </div>
-        </aside>
+        {panelOpen && (
+          <aside className="w-full lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Thông tin chung</p>
+            <div className="space-y-4">
+              <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
+              <InfoField
+                label="Ngày"
+                value={`${formatDateVN(doan.ngay_di)}${doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}`}
+              />
+              <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+            </div>
+          </aside>
+        )}
+
+        <div className="hidden lg:flex items-start pt-4 shrink-0">
+          <button
+            onClick={() => setPanelOpen((o) => !o)}
+            title={panelOpen ? 'Ẩn thông tin chung' : 'Hiện thông tin chung'}
+            className="w-5 h-5 -ml-2.5 z-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-400 hover:text-brand-600 hover:border-brand-300 transition-colors"
+          >
+            {panelOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+          </button>
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex gap-6 px-6 border-b border-gray-200 bg-white">
