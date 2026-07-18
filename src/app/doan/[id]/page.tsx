@@ -708,13 +708,24 @@ function HoSoEditForm({
     so_hop_dong: hoSo.so_hop_dong ?? '',
     ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
-    don_gia_ngay: hoSo.don_gia_ngay?.toString() ?? '',
-    so_tien_chi_tra: hoSo.so_tien_chi_tra?.toString() ?? '',
+    ctp_ngay_thuc_nhan:
+      hoSo.chi_tra != null && hoSo.so_ngay_cong_tac
+        ? String(Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac))
+        : '',
     loai_hop_dong: hoSo.loai_hop_dong ?? '',
     tinh_trang_thanh_toan: hoSo.tinh_trang_thanh_toan ?? '',
     trang_thai: hoSo.trang_thai,
   })
   const [submitting, setSubmitting] = useState(false)
+
+  // Kế toán chỉ gõ công tác phí thực nhận/ngày (a1, vd 800k) — các cột còn lại
+  // tự tính ra để khớp đúng công thức thuế 10%/90% đã áp dụng ở server.
+  const soNgay = Number(hs.so_ngay_cong_tac) || 0
+  const ctpNgayThucNhan = Number(hs.ctp_ngay_thuc_nhan) || 0
+  const chiTra = ctpNgayThucNhan * soNgay
+  const soTienChiTra = chiTra > 0 ? Math.round(chiTra / 0.9) : 0
+  const thueNop = soTienChiTra - chiTra
+  const donGiaNgay = soNgay > 0 ? Math.round(soTienChiTra / soNgay) : 0
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -743,8 +754,8 @@ function HoSoEditForm({
           so_hop_dong: hs.so_hop_dong || null,
           ngay_dich_vu: hs.ngay_dich_vu || null,
           so_ngay_cong_tac: hs.so_ngay_cong_tac ? Number(hs.so_ngay_cong_tac) : null,
-          don_gia_ngay: hs.don_gia_ngay ? Number(hs.don_gia_ngay) : null,
-          so_tien_chi_tra: hs.so_tien_chi_tra ? Number(hs.so_tien_chi_tra) : null,
+          don_gia_ngay: soTienChiTra > 0 ? donGiaNgay : null,
+          so_tien_chi_tra: soTienChiTra > 0 ? soTienChiTra : null,
           loai_hop_dong: hs.loai_hop_dong || null,
           tinh_trang_thanh_toan: hs.tinh_trang_thanh_toan || null,
           trang_thai: hs.trang_thai,
@@ -858,21 +869,26 @@ function HoSoEditForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Đơn giá/ngày">
+              <Field label="CTP thực nhận/ngày">
                 <input
                   type="number"
-                  value={hs.don_gia_ngay}
-                  onChange={(e) => setHs((f) => ({ ...f, don_gia_ngay: e.target.value }))}
+                  placeholder="VD: 800000"
+                  value={hs.ctp_ngay_thuc_nhan}
+                  onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value }))}
                   className={inputCls}
                 />
               </Field>
+              <Field label="Đơn giá/ngày">
+                <input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
+              </Field>
               <Field label="Số tiền chi trả">
-                <input
-                  type="number"
-                  value={hs.so_tien_chi_tra}
-                  onChange={(e) => setHs((f) => ({ ...f, so_tien_chi_tra: e.target.value }))}
-                  className={inputCls}
-                />
+                <input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
+              </Field>
+              <Field label="Thuế nộp">
+                <input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
+              </Field>
+              <Field label="Chi trả">
+                <input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
               </Field>
             </div>
             <Field label="Loại hợp đồng">
@@ -928,6 +944,8 @@ function HoSoEditForm({
 
 const inputCls =
   'w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400'
+
+const readOnlyInputCls = 'w-full text-sm border border-gray-200 bg-gray-50 text-gray-500 rounded-xl px-3 py-2 cursor-not-allowed'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
