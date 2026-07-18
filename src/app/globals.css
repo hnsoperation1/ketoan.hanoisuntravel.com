@@ -44,6 +44,14 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tailwind v4 reset để cursor của button về "default" (mũi tên) — ép lại thành
+   "pointer" (bàn tay) cho mọi phần tử bấm được, đồng bộ toàn app. */
+button:not(:disabled),
+a,
+[role="button"] {
+  cursor: pointer;
+}
+
 @keyframes bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
   40%            { transform: translateY(-8px); opacity: 1; }
