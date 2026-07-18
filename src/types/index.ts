@@ -8,6 +8,16 @@ export interface AppNotification {
   created_at: string
 }
 
+export interface HopDongTemplate {
+  id: string
+  ten: string
+  loai: string | null
+  file_url: string
+  file_name: string
+  is_active: boolean
+  created_at: string
+}
+
 export type TrangThaiHoSo =
   | 'cho_xac_nhan_ai'
   | 'da_xac_nhan'

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -115,6 +115,25 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             href="/doan"
             label="Quyết toán tour"
             icon={FileSpreadsheet}
+            pathname={pathname}
+            collapsed={collapsed}
+            onClick={onMobileClose}
+          />
+        </div>
+
+        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+          {!collapsed && (
+            <p
+              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
+              style={{ color: '#0069a0' }}
+            >
+              Cài đặt
+            </p>
+          )}
+          <NavLink
+            href="/cai-dat/bieu-mau-hop-dong"
+            label="Biểu mẫu hợp đồng"
+            icon={FileStack}
             pathname={pathname}
             collapsed={collapsed}
             onClick={onMobileClose}

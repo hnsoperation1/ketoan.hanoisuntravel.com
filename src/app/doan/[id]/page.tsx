@@ -223,6 +223,10 @@ export default function DoanDetailPage() {
             setEditing(viewing)
             setViewing(null)
           }}
+          onExported={(updated) => {
+            setHoSo((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+            setViewing(updated)
+          }}
         />
       )}
 
@@ -368,48 +372,45 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   )
 }
 
-const FILE_FIELDS = [
-  { key: 'anh_cccd_truoc_url', label: 'CCCD mặt trước' },
-  { key: 'anh_cccd_sau_url', label: 'CCCD mặt sau' },
-  { key: 'anh_the_hdv_url', label: 'Thẻ HDV' },
-  { key: 'anh_xac_nhan_url', label: 'Xác nhận' },
-] as const
-
 function FilesTab({ hoSo }: { hoSo: HoSoWithNhanSu[] }) {
-  if (hoSo.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-14">Chưa có hồ sơ nào.</p>
+  const withFile = hoSo.filter((r) => r.file_hop_dong_url)
+
+  if (withFile.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-14">Chưa có hợp đồng nào được tạo.</p>
   }
 
   return (
-    <div className="space-y-3">
-      {hoSo.map((r) => (
-        <div key={r.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="font-semibold text-gray-900 mb-3">{r.nhansu.ho_ten}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {FILE_FIELDS.map((f) => {
-              const url = r[f.key]
-              return url ? (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            {['Người', 'Số hợp đồng', 'Ngày ký', ''].map((h) => (
+              <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {withFile.map((r) => (
+            <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
+              <td className="px-4 py-3 font-semibold text-gray-900">{r.nhansu.ho_ten}</td>
+              <td className="px-4 py-3 text-gray-600">{r.so_hop_dong || '—'}</td>
+              <td className="px-4 py-3 text-gray-600">{formatDateVN(r.ngay_ky)}</td>
+              <td className="px-4 py-3">
                 <a
-                  key={f.key}
-                  href={url}
+                  href={r.file_hop_dong_url!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
                 >
-                  <FileText size={13} className="shrink-0" /> {f.label}
+                  <FileText size={13} /> Xem file
                 </a>
-              ) : (
-                <div
-                  key={f.key}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-300"
-                >
-                  <FileText size={13} className="shrink-0" /> {f.label}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -425,12 +426,31 @@ function HoSoDetailModal({
   hoSo,
   onClose,
   onEdit,
+  onExported,
 }: {
   hoSo: HoSoWithNhanSu
   onClose: () => void
   onEdit: () => void
+  onExported: (updated: HoSoWithNhanSu) => void
 }) {
   const n = hoSo.nhansu
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
+
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    setExportError('')
+    const res = await fetch(`/api/ho-so/${hoSo.id}/xuat-hop-dong`, { method: 'POST' })
+    const data = await res.json()
+    setExporting(false)
+    if (!res.ok) {
+      setExportError(data.error ?? 'Có lỗi xảy ra')
+      return
+    }
+    onExported(data.ho_so)
+  }
+
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
@@ -500,6 +520,7 @@ function HoSoDetailModal({
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
               <div className="grid sm:grid-cols-3 gap-4">
+                <ViewField label="Số hợp đồng" value={hoSo.so_hop_dong} />
                 <ViewField label="Ngày dịch vụ" value={formatDateVN(hoSo.ngay_dich_vu)} />
                 <ViewField label="Số ngày công tác" value={hoSo.so_ngay_cong_tac?.toString() ?? null} />
                 <ViewField label="Đơn giá/ngày" value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null} />
@@ -515,6 +536,31 @@ function HoSoDetailModal({
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">File hợp đồng</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                {hoSo.file_hop_dong_url && (
+                  <a
+                    href={hoSo.file_hop_dong_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                  >
+                    <FileText size={13} /> Xem file hiện có
+                  </a>
+                )}
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                >
+                  {exporting && <Loader2 size={13} className="animate-spin" />}
+                  {hoSo.file_hop_dong_url ? 'Xuất lại hợp đồng (.docx)' : 'Xuất hợp đồng (.docx)'}
+                </button>
+              </div>
+              {exportError && <p className="text-xs text-red-500 mt-2">{exportError}</p>}
             </div>
           </div>
         </div>
@@ -570,6 +616,7 @@ function EditHoSoModal({
     ten_ngan_hang: hoSo.nhansu.ten_ngan_hang ?? '',
   })
   const [hs, setHs] = useState({
+    so_hop_dong: hoSo.so_hop_dong ?? '',
     ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
     don_gia_ngay: hoSo.don_gia_ngay?.toString() ?? '',
@@ -590,6 +637,7 @@ function EditHoSoModal({
       body: JSON.stringify({
         nhansu,
         ho_so: {
+          so_hop_dong: hs.so_hop_dong || null,
           ngay_dich_vu: hs.ngay_dich_vu || null,
           so_ngay_cong_tac: hs.so_ngay_cong_tac ? Number(hs.so_ngay_cong_tac) : null,
           don_gia_ngay: hs.don_gia_ngay ? Number(hs.don_gia_ngay) : null,
@@ -637,6 +685,14 @@ function EditHoSoModal({
             </div>
 
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Hợp đồng</p>
+            <Field label="Số hợp đồng">
+              <input
+                placeholder="VD: 015/2026/HĐHDV"
+                value={hs.so_hop_dong}
+                onChange={(e) => setHs((f) => ({ ...f, so_hop_dong: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Ngày dịch vụ">
                 <DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />
