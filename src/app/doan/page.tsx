@@ -96,20 +96,26 @@ export default function QuyetToanTourPage() {
               href={`/doan/${d.id}`}
               className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-brand-300 transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">{d.ten_doan}</div>
-              <div className="space-y-1 text-xs text-gray-500">
+              <div className="font-semibold text-gray-900 mb-2">
+                <span className="text-gray-400 font-semibold">Đoàn: </span>
+                {d.ten_doan}
+              </div>
+              <div className="space-y-1.5 text-sm text-gray-900">
                 {d.hanh_trinh && (
                   <div className="flex items-center gap-1.5">
-                    <MapPin size={12} /> {d.hanh_trinh}
+                    <MapPin size={13} className="text-gray-400 shrink-0" />
+                    <span className="text-gray-400">Tuyến du lịch:</span> {d.hanh_trinh}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <CalendarDays size={12} /> {formatDateVN(d.ngay_di)}
+                  <CalendarDays size={13} className="text-gray-400 shrink-0" />
+                  <span className="text-gray-400">Ngày:</span> {formatDateVN(d.ngay_di)}
                   {d.ngay_ve ? ` – ${formatDateVN(d.ngay_ve)}` : ''}
                 </div>
                 {d.sl_khach != null && (
                   <div className="flex items-center gap-1.5">
-                    <Users size={12} /> {d.sl_khach} khách
+                    <Users size={13} className="text-gray-400 shrink-0" />
+                    <span className="text-gray-400">Số lượng khách dự kiến:</span> {d.sl_khach}
                   </div>
                 )}
               </div>
