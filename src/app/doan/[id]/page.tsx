@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Loader2, Copy, Check, X, Pencil } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
@@ -19,6 +19,8 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   da_ky_xong: 'bg-emerald-50 text-emerald-700',
 }
 
+type Tab = 'hdv' | 'files'
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -26,6 +28,8 @@ export default function DoanDetailPage() {
   const [hoSo, setHoSo] = useState<HoSoWithNhanSu[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<HoSoWithNhanSu | null>(null)
+  const [editingDoan, setEditingDoan] = useState(false)
+  const [tab, setTab] = useState<Tab>('hdv')
   const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
 
   const load = useCallback(async () => {
@@ -80,94 +84,135 @@ export default function DoanDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-gray-900">
-          <span className="text-gray-400 font-semibold">ĐOÀN: </span>
-          {doan.ten_doan}
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white shrink-0">
+        <Link href="/doan" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+          <ArrowLeft size={18} />
+        </Link>
+        <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2 min-w-0">
+          <span className="text-gray-400 font-semibold shrink-0">ĐOÀN:</span>
+          <span className="truncate">{doan.ten_doan}</span>
+          <button
+            onClick={() => setEditingDoan(true)}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-brand-500 transition-colors shrink-0"
+          >
+            <Pencil size={14} />
+          </button>
         </h1>
-        <p className="text-sm text-gray-500">
-          {doan.hanh_trinh ? `${doan.hanh_trinh} · ` : ''}
-          {formatDateVN(doan.ngay_di)}
-          {doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}
-          {doan.sl_khach != null ? ` · ${doan.sl_khach} khách` : ''}
-        </p>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => handleCopy('ds')}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          {copied === 'ds' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-          Copy DS HDV (29 cột)
-        </button>
-        <button
-          onClick={() => handleCopy('td')}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          {copied === 'td' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-          Copy Theo dõi HĐ (4 cột)
-        </button>
-      </div>
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+        <aside className="w-full lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Thông tin chung</p>
+          <div className="space-y-4">
+            <InfoField label="Tuyến du lịch" value={doan.hanh_trinh} />
+            <InfoField
+              label="Ngày"
+              value={`${formatDateVN(doan.ngay_di)}${doan.ngay_ve ? ` – ${formatDateVN(doan.ngay_ve)}` : ''}`}
+            />
+            <InfoField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+          </div>
+        </aside>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              {['Người', 'SĐT', 'CCCD', 'Ngân hàng', 'Số tiền chi trả', 'Trạng thái', ''].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {hoSo.map((r) => (
-              <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="font-semibold text-gray-900">{r.nhansu.ho_ten}</div>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{r.nhansu.prefix}</span>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{r.nhansu.sdt ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600 font-mono text-xs">{r.nhansu.so_cccd ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600 text-xs">
-                  {r.nhansu.stk ? (
-                    <>
-                      <div>{r.nhansu.stk}</div>
-                      <div className="text-gray-400">{r.nhansu.ten_ngan_hang}</div>
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-                <td className="px-4 py-3 text-gray-600">
-                  {r.so_tien_chi_tra != null ? r.so_tien_chi_tra.toLocaleString('vi-VN') : '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
-                    {TRANG_THAI_LABELS[r.trang_thai]}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex gap-6 px-6 border-b border-gray-200 bg-white">
+            <TabButton active={tab === 'hdv'} onClick={() => setTab('hdv')}>
+              Hướng dẫn viên
+            </TabButton>
+            <TabButton active={tab === 'files'} onClick={() => setTab('files')}>
+              File hợp đồng
+            </TabButton>
+          </div>
+
+          <div className="p-6">
+            {tab === 'hdv' && (
+              <>
+                <div className="flex gap-2 mb-4">
                   <button
-                    onClick={() => setEditing(r)}
-                    className="p-1.5 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
+                    onClick={() => handleCopy('ds')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    <Pencil size={15} />
+                    {copied === 'ds' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                    Copy DS HDV (29 cột)
                   </button>
-                </td>
-              </tr>
-            ))}
-            {hoSo.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-14 text-center text-gray-400">
-                  Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
-                </td>
-              </tr>
+                  <button
+                    onClick={() => handleCopy('td')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    {copied === 'td' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                    Copy Theo dõi HĐ (4 cột)
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        {['Người', 'SĐT', 'CCCD', 'Ngân hàng', 'Số tiền chi trả', 'Trạng thái', ''].map((h) => (
+                          <th
+                            key={h}
+                            className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {hoSo.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-gray-900">{r.nhansu.ho_ten}</div>
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                              {r.nhansu.prefix}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">{r.nhansu.sdt ?? '—'}</td>
+                          <td className="px-4 py-3 text-gray-600 font-mono text-xs">{r.nhansu.so_cccd ?? '—'}</td>
+                          <td className="px-4 py-3 text-gray-600 text-xs">
+                            {r.nhansu.stk ? (
+                              <>
+                                <div>{r.nhansu.stk}</div>
+                                <div className="text-gray-400">{r.nhansu.ten_ngan_hang}</div>
+                              </>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {r.so_tien_chi_tra != null ? r.so_tien_chi_tra.toLocaleString('vi-VN') : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
+                              {TRANG_THAI_LABELS[r.trang_thai]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setEditing(r)}
+                              className="p-1.5 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {hoSo.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-14 text-center text-gray-400">
+                            Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-          </tbody>
-        </table>
+
+            {tab === 'files' && <FilesTab hoSo={hoSo} />}
+          </div>
+        </div>
       </div>
 
       {editing && (
@@ -180,7 +225,194 @@ export default function DoanDetailPage() {
           }}
         />
       )}
+
+      {editingDoan && (
+        <EditDoanModal
+          doan={doan}
+          onClose={() => setEditingDoan(false)}
+          onSaved={() => {
+            setEditingDoan(false)
+            load()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function InfoField({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+      <p className="text-sm font-medium text-gray-900">{value || <span className="text-gray-300 font-normal">—</span>}</p>
+    </div>
+  )
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`py-3 text-sm font-semibold border-b-2 transition-colors ${
+        active ? 'border-accent-500 text-accent-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+const FILE_FIELDS = [
+  { key: 'anh_cccd_truoc_url', label: 'CCCD mặt trước' },
+  { key: 'anh_cccd_sau_url', label: 'CCCD mặt sau' },
+  { key: 'anh_the_hdv_url', label: 'Thẻ HDV' },
+  { key: 'anh_xac_nhan_url', label: 'Xác nhận' },
+] as const
+
+function FilesTab({ hoSo }: { hoSo: HoSoWithNhanSu[] }) {
+  if (hoSo.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-14">Chưa có hồ sơ nào.</p>
+  }
+
+  return (
+    <div className="space-y-3">
+      {hoSo.map((r) => (
+        <div key={r.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <div className="font-semibold text-gray-900 mb-3">{r.nhansu.ho_ten}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {FILE_FIELDS.map((f) => {
+              const url = r[f.key]
+              return url ? (
+                <a
+                  key={f.key}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                >
+                  <FileText size={13} className="shrink-0" /> {f.label}
+                </a>
+              ) : (
+                <div
+                  key={f.key}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-300"
+                >
+                  <FileText size={13} className="shrink-0" /> {f.label}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EditDoanModal({ doan, onClose, onSaved }: { doan: Doan; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    ten_doan: doan.ten_doan,
+    hanh_trinh: doan.hanh_trinh ?? '',
+    ngay_di: doan.ngay_di,
+    ngay_ve: doan.ngay_ve ?? '',
+    sl_khach: doan.sl_khach?.toString() ?? '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (submitting) return
+    setSubmitting(true)
+    await fetch(`/api/doan/${doan.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ten_doan: form.ten_doan.trim(),
+        hanh_trinh: form.hanh_trinh.trim() || null,
+        ngay_di: form.ngay_di,
+        ngay_ve: form.ngay_ve || null,
+        sl_khach: form.sl_khach ? Number(form.sl_khach) : null,
+      }),
+    })
+    setSubmitting(false)
+    onSaved()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-bold text-gray-900">Sửa thông tin đoàn</h2>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+              <X size={18} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <Field label="Tên đoàn">
+              <input
+                required
+                value={form.ten_doan}
+                onChange={(e) => setForm((f) => ({ ...f, ten_doan: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Tuyến du lịch">
+              <input
+                value={form.hanh_trinh}
+                onChange={(e) => setForm((f) => ({ ...f, hanh_trinh: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Ngày đi">
+                <input
+                  type="date"
+                  required
+                  value={form.ngay_di}
+                  onChange={(e) => setForm((f) => ({ ...f, ngay_di: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Ngày về">
+                <input
+                  type="date"
+                  value={form.ngay_ve}
+                  onChange={(e) => setForm((f) => ({ ...f, ngay_ve: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+            <Field label="Số khách dự kiến">
+              <input
+                type="number"
+                min={0}
+                value={form.sl_khach}
+                onChange={(e) => setForm((f) => ({ ...f, sl_khach: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                Lưu
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                Huỷ
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   )
 }
 

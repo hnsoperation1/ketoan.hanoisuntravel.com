@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { FileSpreadsheet, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import clsx from 'clsx'
@@ -62,7 +63,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         style={{ background: '#f0f9ff', borderBottom: '1px solid rgba(0,61,92,0.08)' }}
       >
         <Link href="/" className={clsx('flex items-center', collapsed ? 'md:hidden' : 'flex-1')}>
-          <img src="/hanoisuntravel_logo_transparent.png" alt="HNS" className="h-10 md:h-full w-auto md:max-h-20 md:py-2" />
+          <Image
+            src="/hanoisuntravel_logo_transparent.png"
+            alt="HNS"
+            width={1009}
+            height={409}
+            priority
+            className="h-10 md:h-full w-auto md:max-h-20 md:py-2"
+          />
         </Link>
 
         <button
