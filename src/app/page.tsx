@@ -27,7 +27,6 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-gray-900">Hợp đồng HDV</div>
-            <div className="text-xs text-gray-400 mt-0.5">Quyết toán tour theo từng đoàn</div>
           </div>
           <ChevronRight size={16} className="text-gray-300 group-hover:text-brand-500 transition-colors flex-shrink-0" />
         </Link>

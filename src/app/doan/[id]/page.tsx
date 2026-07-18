@@ -82,7 +82,10 @@ export default function DoanDetailPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-gray-900">{doan.ten_doan}</h1>
+        <h1 className="text-xl font-bold text-gray-900">
+          <span className="text-gray-400 font-semibold">ĐOÀN: </span>
+          {doan.ten_doan}
+        </h1>
         <p className="text-sm text-gray-500">
           {doan.hanh_trinh ? `${doan.hanh_trinh} · ` : ''}
           {formatDateVN(doan.ngay_di)}
