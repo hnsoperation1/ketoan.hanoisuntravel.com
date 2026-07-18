@@ -9,6 +9,7 @@ import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
+import DateInput from '@/components/DateInput'
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   cho_xac_nhan_ai: 'bg-amber-50 text-amber-700',
@@ -241,6 +242,34 @@ export default function DoanDetailPage() {
 }
 
 function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+
+  if (!editing) {
+    return (
+      <div className="max-w-xl">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+          <ViewField label="Tên đoàn" value={doan.ten_doan} />
+          <ViewField label="Tuyến du lịch" value={doan.hanh_trinh} />
+          <div className="grid grid-cols-2 gap-4">
+            <ViewField label="Ngày đi" value={formatDateVN(doan.ngay_di)} />
+            <ViewField label="Ngày về" value={formatDateVN(doan.ngay_ve)} />
+          </div>
+          <ViewField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+        </div>
+        <button
+          onClick={() => setEditing(true)}
+          className="flex items-center gap-1.5 mt-4 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          <Pencil size={14} /> Sửa
+        </button>
+      </div>
+    )
+  }
+
+  return <DoanInfoForm doan={doan} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onSaved() }} />
+}
+
+function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
     ten_doan: doan.ten_doan,
     hanh_trinh: doan.hanh_trinh ?? '',
@@ -249,7 +278,6 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
     sl_khach: doan.sl_khach?.toString() ?? '',
   })
   const [submitting, setSubmitting] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -267,8 +295,6 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
       }),
     })
     setSubmitting(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 1500)
     onSaved()
   }
 
@@ -292,21 +318,10 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ngày đi">
-            <input
-              type="date"
-              required
-              value={form.ngay_di}
-              onChange={(e) => setForm((f) => ({ ...f, ngay_di: e.target.value }))}
-              className={inputCls}
-            />
+            <DateInput value={form.ngay_di} onChange={(v) => setForm((f) => ({ ...f, ngay_di: v }))} className="w-full" />
           </Field>
           <Field label="Ngày về">
-            <input
-              type="date"
-              value={form.ngay_ve}
-              onChange={(e) => setForm((f) => ({ ...f, ngay_ve: e.target.value }))}
-              className={inputCls}
-            />
+            <DateInput value={form.ngay_ve} onChange={(v) => setForm((f) => ({ ...f, ngay_ve: v }))} className="w-full" />
           </Field>
         </div>
         <Field label="Số khách dự kiến">
@@ -328,7 +343,13 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
           {submitting && <Loader2 size={14} className="animate-spin" />}
           Lưu thay đổi
         </button>
-        {saved && <span className="text-xs text-emerald-600 font-medium">Đã lưu</span>}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+        >
+          Huỷ
+        </button>
       </div>
     </form>
   )
@@ -618,12 +639,7 @@ function EditHoSoModal({
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Hợp đồng</p>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Ngày dịch vụ">
-                <input
-                  type="date"
-                  value={hs.ngay_dich_vu}
-                  onChange={(e) => setHs((f) => ({ ...f, ngay_dich_vu: e.target.value }))}
-                  className={inputCls}
-                />
+                <DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />
               </Field>
               <Field label="Số ngày công tác">
                 <input

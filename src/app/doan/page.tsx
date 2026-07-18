@@ -6,6 +6,7 @@ import { Plus, Loader2, X, MapPin, Users, CalendarDays } from 'lucide-react'
 import type { Doan } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
+import DateInput from '@/components/DateInput'
 
 const EMPTY_FORM = { ten_doan: '', hanh_trinh: '', ngay_di: '', ngay_ve: '', sl_khach: '' }
 
@@ -157,21 +158,10 @@ export default function QuyetToanTourPage() {
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Ngày đi" required>
-                    <input
-                      type="date"
-                      required
-                      value={form.ngay_di}
-                      onChange={(e) => setForm((f) => ({ ...f, ngay_di: e.target.value }))}
-                      className={inputCls}
-                    />
+                    <DateInput value={form.ngay_di} onChange={(v) => setForm((f) => ({ ...f, ngay_di: v }))} className="w-full" />
                   </Field>
                   <Field label="Ngày về">
-                    <input
-                      type="date"
-                      value={form.ngay_ve}
-                      onChange={(e) => setForm((f) => ({ ...f, ngay_ve: e.target.value }))}
-                      className={inputCls}
-                    />
+                    <DateInput value={form.ngay_ve} onChange={(v) => setForm((f) => ({ ...f, ngay_ve: v }))} className="w-full" />
                   </Field>
                 </div>
                 <Field label="Số khách dự kiến">
