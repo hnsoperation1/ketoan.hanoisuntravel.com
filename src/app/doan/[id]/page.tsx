@@ -264,7 +264,9 @@ export default function DoanDetailPage() {
                         {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái', ''].map((h) => (
                           <th
                             key={h}
-                            className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                            className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${
+                              h === 'CTP (thực nhận)' || h === 'CTP' ? 'text-right' : 'text-left'
+                            }`}
                           >
                             {h}
                           </th>
@@ -401,11 +403,11 @@ function HoSoRow({
         <div className="mt-1">Hạn thẻ: {formatDateVN(n.han_the_hdv) || '-'}</div>
       </td>
       <td className="px-4 py-3 min-w-42.5">
-        <div className="flex items-start justify-between gap-1">
-          <div className="text-xs text-gray-900">
+        <div className="flex items-start justify-end gap-1">
+          <div className="text-xs text-gray-900 font-bold text-right">
             <div>Số ngày: {soNgayNum > 0 ? soNgayNum : '-'}</div>
             <div className="mt-1">CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '-'}</div>
-            <div className="text-red-600 font-bold mt-1">
+            <div className="text-red-600 mt-1">
               Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '-'}
             </div>
           </div>
@@ -418,7 +420,7 @@ function HoSoRow({
           </button>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-900">
+      <td className="px-4 py-3 text-xs text-gray-900 font-bold text-right">
         <div>Thuế TNCN: {soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '-'}</div>
         <div className="mt-1">CTP/ngày: {soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '-'}</div>
         <div className="mt-1">Tổng: {soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '-'}</div>
