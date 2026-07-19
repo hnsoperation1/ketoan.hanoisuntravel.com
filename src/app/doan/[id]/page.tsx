@@ -273,7 +273,7 @@ export default function DoanDetailPage() {
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                   >
                     {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                    Copy DS HDV (23 cột)
+                    Copy danh sách
                   </button>
                 </div>
 
@@ -1484,7 +1484,7 @@ function HoSoDetailModal({
             </div>
           </div>
 
-          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-2 flex-1 min-h-0">
+          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-[40%_1fr] flex-1 min-h-0">
             <div className="overflow-y-auto p-6 border-r border-gray-100">
               <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
             </div>
@@ -1522,20 +1522,18 @@ function HoSoDetailModal({
                         input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InfoField
-                        editing={editing}
-                        label="Địa chỉ"
-                        value={n.dia_chi}
-                        input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
-                      />
-                      <InfoField
-                        editing={editing}
-                        label="Tỉnh/TP"
-                        value={n.tinh_tp}
-                        input={<input value={nhansu.tinh_tp} onChange={(e) => setNhansu((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />}
-                      />
-                    </div>
+                    <InfoField
+                      editing={editing}
+                      label="Địa chỉ"
+                      value={n.dia_chi}
+                      input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Tỉnh/TP"
+                      value={n.tinh_tp}
+                      input={<input value={nhansu.tinh_tp} onChange={(e) => setNhansu((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />}
+                    />
                   </div>
                 </div>
                 <div>
