@@ -1470,7 +1470,7 @@ function HoSoDetailModal({
             </div>
           </div>
 
-          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-[260px_1fr] gap-6 p-6">
+          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6 p-6">
             <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
 
             <div className="space-y-6 min-w-0">
@@ -1620,6 +1620,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="CTP/ngày (thực nhận)"
                     value={hoSo.chi_tra != null && hoSo.so_ngay_cong_tac ? Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac).toLocaleString('vi-VN') : null}
                     input={
@@ -1633,6 +1634,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="Số ngày công tác"
                     value={hoSo.so_ngay_cong_tac?.toString() ?? null}
                     input={
@@ -1645,6 +1647,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="Tổng thực nhận"
                     value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
                     emphasize
@@ -1659,6 +1662,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="CTP/ngày"
                     value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
@@ -1666,6 +1670,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="Thuế TNCN"
                     value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
@@ -1673,6 +1678,7 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
+                    right
                     label="Tổng CTP"
                     value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
@@ -1852,18 +1858,20 @@ function ViewField({
   value,
   mono,
   emphasize,
+  right,
 }: {
   label: string
   value?: string | null
   mono?: boolean
   emphasize?: boolean
   stacked?: boolean
+  right?: boolean
 }) {
   return (
     <div>
-      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
+      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'} ${right ? 'text-right' : ''}`}>{label}</p>
       <div
-        className={`min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
+        className={`min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${right ? 'text-right' : ''} ${
           emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
         }`}
       >
@@ -1880,6 +1888,7 @@ function InfoField({
   mono,
   emphasize,
   stacked,
+  right,
   input,
 }: {
   editing: boolean
@@ -1888,14 +1897,15 @@ function InfoField({
   mono?: boolean
   emphasize?: boolean
   stacked?: boolean
+  right?: boolean
   input: React.ReactNode
 }) {
   return editing ? (
-    <Field label={label} emphasize={emphasize}>
+    <Field label={label} emphasize={emphasize} right={right}>
       {input}
     </Field>
   ) : (
-    <ViewField label={label} value={value} mono={mono} emphasize={emphasize} stacked={stacked} />
+    <ViewField label={label} value={value} mono={mono} emphasize={emphasize} stacked={stacked} right={right} />
   )
 }
 
@@ -1908,15 +1918,19 @@ function Field({
   label,
   children,
   emphasize,
+  right,
 }: {
   label: string
   children: React.ReactNode
   emphasize?: boolean
+  right?: boolean
 }) {
   return (
     <div>
-      <label className={`block text-xs font-semibold mb-1 ${emphasize ? 'text-red-500' : 'text-gray-500'}`}>{label}</label>
-      {children}
+      <label className={`block text-xs font-semibold mb-1 ${emphasize ? 'text-red-500' : 'text-gray-500'} ${right ? 'text-right' : ''}`}>
+        {label}
+      </label>
+      <div className={right ? '[&_input]:text-right' : undefined}>{children}</div>
     </div>
   )
 }
