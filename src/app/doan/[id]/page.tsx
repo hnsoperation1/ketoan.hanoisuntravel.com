@@ -350,6 +350,7 @@ export default function DoanDetailPage() {
       {addingNhanSu && doan && (
         <AddNhanSuModal
           doanId={doan.id}
+          existingHoSo={hoSo}
           onClose={() => setAddingNhanSu(false)}
           onAdded={(created) => {
             setHoSo((prev) => [...prev, created])
@@ -447,7 +448,7 @@ function HoSoRow({
           >
             <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
           </button>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex flex-col items-center gap-0.5 shrink-0">
             <button
               type="button"
               title="Xem"
@@ -741,10 +742,12 @@ function emptyAiFields(): Record<keyof AiExtractedFields, string> {
  *  khỏi nhầm ảnh của ai với ai). */
 function AddNhanSuModal({
   doanId,
+  existingHoSo,
   onClose,
   onAdded,
 }: {
   doanId: string
+  existingHoSo: HoSoWithNhanSu[]
   onClose: () => void
   onAdded: (created: HoSoWithNhanSu) => void
 }) {
@@ -759,6 +762,12 @@ function AddNhanSuModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [addedCount, setAddedCount] = useState(0)
+
+  // Trùng CCCD với người đã có sẵn trong CHÍNH đoàn này (không phải toàn hệ thống)
+  // — kiểm tra ngay khi biết CCCD, không đợi đến lúc bấm Lưu mới báo.
+  const duplicateInDoan = fields.so_cccd
+    ? existingHoSo.find((r) => r.nhansu.so_cccd === fields.so_cccd)
+    : undefined
 
   function addFiles(newFiles: File[]) {
     const imgFiles = newFiles.filter((f) => f.type.startsWith('image/'))
@@ -837,7 +846,7 @@ function AddNhanSuModal({
   }
 
   async function saveNhanSu(): Promise<HoSoWithNhanSu | null> {
-    if (!fields.ho_ten || saving) return null
+    if (!fields.ho_ten || saving || duplicateInDoan) return null
     setSaving(true)
     setError('')
     const byKind = (k: ImageKind) => images.find((img) => img.kind === k)?.url ?? null
@@ -882,9 +891,9 @@ function AddNhanSuModal({
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
         <div
-          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${phase === 'review' ? 'max-w-5xl' : 'max-w-lg'}`}
+          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col ${phase === 'review' ? 'max-w-5xl' : 'max-w-lg'}`}
         >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Thêm nhân sự</h2>
               {addedCount > 0 && <p className="text-xs text-emerald-600 font-medium">Đã thêm {addedCount} người</p>}
@@ -894,9 +903,8 @@ function AddNhanSuModal({
             </button>
           </div>
 
-          <div className="p-6">
-            {phase === 'pick' ? (
-              <>
+          {phase === 'pick' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto p-6">
                 <div
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
@@ -961,10 +969,10 @@ function AddNhanSuModal({
                   {extracting && <Loader2 size={14} className="animate-spin" />}
                   {extracting ? 'Đang đọc ảnh...' : 'Trích xuất thông tin'}
                 </button>
-              </>
-            ) : (
-              <div className="grid md:grid-cols-[380px_1fr] gap-6">
-                <div className="space-y-2">
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-[380px_1fr] flex-1 min-h-0">
+              <div className="space-y-2 overflow-y-auto p-6 border-r border-gray-100">
                   {images[selectedImg] && (
                     <InlineImageViewer
                       url={images[selectedImg].url}
@@ -989,7 +997,14 @@ function AddNhanSuModal({
                   </div>
                 </div>
 
-                <div className="min-w-0 space-y-3">
+                <div className="min-w-0 space-y-3 overflow-y-auto p-6">
+                  {duplicateInDoan && (
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl px-3 py-2.5">
+                      <span>
+                        <strong>{duplicateInDoan.nhansu.ho_ten}</strong> (CCCD {fields.so_cccd}) đã có trong đoàn này rồi — không thể thêm trùng. Đóng lại và sửa trực tiếp hồ sơ đã có thay vì tạo mới.
+                      </span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-3">
                     <Field label="Loại">
                       <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
@@ -1069,7 +1084,7 @@ function AddNhanSuModal({
                     <button
                       type="button"
                       onClick={handleSaveAndContinue}
-                      disabled={!fields.ho_ten || saving}
+                      disabled={!fields.ho_ten || saving || !!duplicateInDoan}
                       className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
                     >
                       {saving && <Loader2 size={14} className="animate-spin" />}
@@ -1078,7 +1093,7 @@ function AddNhanSuModal({
                     <button
                       type="button"
                       onClick={handleSaveAndClose}
-                      disabled={!fields.ho_ten || saving}
+                      disabled={!fields.ho_ten || saving || !!duplicateInDoan}
                       className="px-4 py-2.5 rounded-xl border border-accent-300 text-sm font-semibold text-accent-600 hover:bg-accent-50 disabled:opacity-50 transition-colors"
                     >
                       Lưu và đóng
@@ -1094,7 +1109,6 @@ function AddNhanSuModal({
                 </div>
               </div>
             )}
-          </div>
         </div>
       </div>
     </>
@@ -1429,8 +1443,8 @@ function HoSoDetailModal({
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
                 <span className="text-gray-400 font-semibold">{n.prefix || 'NS'}:</span> {n.ho_ten}
@@ -1470,10 +1484,12 @@ function HoSoDetailModal({
             </div>
           </div>
 
-          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6 p-6">
-            <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
+          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-2 flex-1 min-h-0">
+            <div className="overflow-y-auto p-6 border-r border-gray-100">
+              <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
+            </div>
 
-            <div className="space-y-6 min-w-0">
+            <div className="space-y-6 min-w-0 overflow-y-auto p-6">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
                   <div className="space-y-3">
