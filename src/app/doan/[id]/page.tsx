@@ -28,7 +28,6 @@ import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
-import ImageViewer from '@/components/ImageViewer'
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   cho_xac_nhan_ai: 'bg-amber-50 text-amber-700',
@@ -604,12 +603,14 @@ const VIEWER_MAX_ZOOM = 5
  *  ở thanh trên cho sửa lại loại ảnh nếu AI đoán sai. */
 function InlineImageViewer({
   url,
+  label,
   kind,
   onKindChange,
 }: {
   url: string
-  kind: ImageKind | null
-  onKindChange: (kind: ImageKind) => void
+  label?: string
+  kind?: ImageKind | null
+  onKindChange?: (kind: ImageKind) => void
 }) {
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -655,20 +656,24 @@ function InlineImageViewer({
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-900 overflow-hidden select-none">
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-800">
-        <select
-          value={kind ?? ''}
-          onChange={(e) => onKindChange(e.target.value as ImageKind)}
-          className="text-[11px] bg-transparent text-white/90 border border-white/20 rounded-md px-1 py-0.5"
-        >
-          <option value="" className="text-gray-900">
-            Không rõ
-          </option>
-          {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
-            <option key={k} value={k} className="text-gray-900">
-              {IMAGE_KIND_LABELS[k]}
+        {onKindChange ? (
+          <select
+            value={kind ?? ''}
+            onChange={(e) => onKindChange(e.target.value as ImageKind)}
+            className="text-[11px] bg-transparent text-white/90 border border-white/20 rounded-md px-1 py-0.5"
+          >
+            <option value="" className="text-gray-900">
+              Không rõ
             </option>
-          ))}
-        </select>
+            {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
+              <option key={k} value={k} className="text-gray-900">
+                {IMAGE_KIND_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-[11px] text-white/70 truncate px-0.5">{label}</span>
+        )}
         <div className="flex items-center gap-0.5">
           <button type="button" title="Thu nhỏ" onClick={() => setZoom((z) => clampZoom(z - 0.25))} className="p-1 rounded text-white/70 hover:text-white hover:bg-white/10">
             <ZoomOut size={13} />
@@ -1327,7 +1332,6 @@ function HoSoDetailModal({
   const [editing, setEditing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
-  const [viewerImage, setViewerImage] = useState<{ url: string; label: string } | null>(null)
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
 
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
@@ -1467,7 +1471,7 @@ function HoSoDetailModal({
           </div>
 
           <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-[260px_1fr] gap-6 p-6">
-            <ImagePanel hoSo={hoSo} onUploaded={onSaved} onView={(url, label) => setViewerImage({ url, label })} />
+            <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
 
             <div className="space-y-6 min-w-0">
                 <div>
@@ -1741,10 +1745,6 @@ function HoSoDetailModal({
           </form>
         </div>
       </div>
-
-      {viewerImage && (
-        <ImageViewer url={viewerImage.url} label={viewerImage.label} onClose={() => setViewerImage(null)} />
-      )}
     </>
   )
 }
@@ -1752,13 +1752,15 @@ function HoSoDetailModal({
 function ImagePanel({
   hoSo,
   onUploaded,
-  onView,
 }: {
   hoSo: HoSoWithNhanSu
   onUploaded: (updated: HoSoWithNhanSu) => void
-  onView: (url: string, label: string) => void
 }) {
   const [uploadingField, setUploadingField] = useState<string | null>(null)
+  const [selectedIdx, setSelectedIdx] = useState(() => {
+    const idx = DETAIL_IMAGE_FIELDS.findIndex((f) => hoSo[f.key])
+    return idx >= 0 ? idx : 0
+  })
 
   async function handleUpload(field: string, file: File) {
     setUploadingField(field)
@@ -1773,46 +1775,74 @@ function ImagePanel({
     }
   }
 
+  const selected = DETAIL_IMAGE_FIELDS[selectedIdx]
+  const selectedUrl = hoSo[selected.key]
+  const selectedUploading = uploadingField === selected.key
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ảnh hồ sơ</p>
-      {DETAIL_IMAGE_FIELDS.map((f) => {
-        const url = hoSo[f.key]
-        const uploading = uploadingField === f.key
-        return (
-          <div key={f.key} className="relative group">
-            {url ? (
+
+      {selectedUrl ? (
+        <InlineImageViewer url={selectedUrl} label={selected.label} />
+      ) : (
+        <div className="h-72 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300">
+          <FileText size={24} />
+          <label className="text-xs text-brand-600 font-semibold cursor-pointer hover:underline">
+            {selectedUploading ? 'Đang tải...' : `Tải ${selected.label}`}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={selectedUploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleUpload(selected.key, file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="grid grid-cols-4 gap-2">
+        {DETAIL_IMAGE_FIELDS.map((f, i) => {
+          const url = hoSo[f.key]
+          const uploading = uploadingField === f.key
+          return (
+            <div key={f.key} className="relative group">
               <button
                 type="button"
-                onClick={() => onView(url, f.label)}
-                className="w-full aspect-4/3 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
+                onClick={() => setSelectedIdx(i)}
+                className={`w-full aspect-square rounded-lg overflow-hidden border-2 flex items-center justify-center transition-colors ${
+                  i === selectedIdx ? 'border-brand-500' : 'border-transparent hover:border-gray-300'
+                } ${url ? 'bg-gray-50' : 'border-dashed border-gray-200 bg-gray-50'}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- ảnh từ Supabase Storage (signed URL động), không phù hợp next/image */}
-                <img src={url} alt={f.label} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+                {url ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- thumbnail ảnh Supabase Storage (signed URL động)
+                  <img src={url} alt={f.label} className="w-full h-full object-cover" />
+                ) : (
+                  <FileText size={16} className="text-gray-300" />
+                )}
               </button>
-            ) : (
-              <div className="w-full aspect-4/3 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300">
-                <FileText size={20} />
-              </div>
-            )}
-            <label className="absolute bottom-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-lg bg-white/90 border border-gray-200 text-gray-500 hover:text-brand-600 hover:border-brand-300 shadow-sm transition-colors cursor-pointer">
-              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleUpload(f.key, file)
-                  e.target.value = ''
-                }}
-              />
-            </label>
-            <p className="text-[11px] text-gray-500 mt-1 text-center">{f.label}</p>
-          </div>
-        )
-      })}
+              <label className="absolute bottom-1 right-1 flex items-center justify-center w-5 h-5 rounded-md bg-white/90 border border-gray-200 text-gray-500 hover:text-brand-600 shadow-sm transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                {uploading ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleUpload(f.key, file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -1822,7 +1852,6 @@ function ViewField({
   value,
   mono,
   emphasize,
-  stacked,
 }: {
   label: string
   value?: string | null
@@ -1830,33 +1859,16 @@ function ViewField({
   emphasize?: boolean
   stacked?: boolean
 }) {
-  const box = (
-    <div
-      className={`min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
-        emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
-      } ${stacked ? '' : 'flex-1'}`}
-    >
-      {value || <span className="text-gray-300 font-normal">—</span>}
-    </div>
-  )
-
-  if (stacked) {
-    return (
-      <div>
-        <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
-        {box}
-      </div>
-    )
-  }
-
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`shrink-0 w-28 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}
+    <div>
+      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
+      <div
+        className={`min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
+          emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
+        }`}
       >
-        {label}:
-      </span>
-      {box}
+        {value || <span className="text-gray-300 font-normal">—</span>}
+      </div>
     </div>
   )
 }
@@ -1879,7 +1891,7 @@ function InfoField({
   input: React.ReactNode
 }) {
   return editing ? (
-    <Field label={label} emphasize={emphasize} inline={!stacked}>
+    <Field label={label} emphasize={emphasize}>
       {input}
     </Field>
   ) : (
@@ -1896,23 +1908,11 @@ function Field({
   label,
   children,
   emphasize,
-  inline,
 }: {
   label: string
   children: React.ReactNode
   emphasize?: boolean
-  inline?: boolean
 }) {
-  if (inline) {
-    return (
-      <div className="flex items-center gap-2">
-        <label className={`shrink-0 w-28 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>
-          {label}:
-        </label>
-        <div className="flex-1 min-w-0">{children}</div>
-      </div>
-    )
-  }
   return (
     <div>
       <label className={`block text-xs font-semibold mb-1 ${emphasize ? 'text-red-500' : 'text-gray-500'}`}>{label}</label>
