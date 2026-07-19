@@ -23,9 +23,13 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 type Tab = 'info' | 'hdv' | 'files'
 
-// 9 mức CTP/ngày hay dùng, 800k để đầu (vị trí dễ bấm nhất) + tô nổi bật
-const CTP_NGAY_CHIPS = [800000, 500000, 700000, 900000, 1000000, 2000000, 3000000, 4000000, 5000000]
-const SO_NGAY_CHIPS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+// Các mức CTP/ngày hay dùng, 800k để đầu (vị trí dễ bấm nhất) + tô nổi bật
+const CTP_NGAY_CHIPS = [800000, 500000, 700000, 900000, 1000000, 2000000, 3000000, 4000000, 5000000, 10000000]
+const SO_NGAY_CHIPS = [1, 2, 3, 4, 5, 6]
+
+function formatChipMoney(v: number) {
+  return v >= 1_000_000 ? `${v / 1_000_000} tr` : `${v / 1000}k`
+}
 
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
@@ -766,7 +770,7 @@ function HoSoDetailModal({
                                     : 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-colors'
                                 }
                               >
-                                {(v / 1000).toLocaleString('vi-VN')}k
+                                {formatChipMoney(v)}
                               </button>
                             ))}
                           </div>
@@ -1006,7 +1010,7 @@ function ViewField({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
       <p className={`text-sm ${emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'}`}>
         {value || <span className="text-gray-300 font-normal">—</span>}
       </p>
@@ -1030,7 +1034,9 @@ function InfoField({
   input: React.ReactNode
 }) {
   return editing ? (
-    <Field label={label}>{input}</Field>
+    <Field label={label} emphasize={emphasize}>
+      {input}
+    </Field>
   ) : (
     <ViewField label={label} value={value} mono={mono} emphasize={emphasize} />
   )
@@ -1041,10 +1047,18 @@ const inputCls =
 
 const readOnlyInputCls = 'w-full text-sm border border-gray-200 bg-gray-50 text-gray-500 rounded-xl px-3 py-2 cursor-not-allowed'
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  emphasize,
+}: {
+  label: string
+  children: React.ReactNode
+  emphasize?: boolean
+}) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
+      <label className={`block text-xs font-semibold mb-1 ${emphasize ? 'text-red-500' : 'text-gray-500'}`}>{label}</label>
       {children}
     </div>
   )
