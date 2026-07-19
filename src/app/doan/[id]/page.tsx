@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload } from 'lucide-react'
@@ -336,7 +337,7 @@ function HoSoRow({
   onToast: (msg: string) => void
 }) {
   const n = r.nhansu
-  const [rowEditing, setRowEditing] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [ctp, setCtp] = useState(() =>
     r.chi_tra != null && r.so_ngay_cong_tac ? String(Math.round(r.chi_tra / r.so_ngay_cong_tac)) : '',
   )
@@ -371,7 +372,13 @@ function HoSoRow({
     }
   }
 
+  function closeEdit() {
+    commit()
+    setEditOpen(false)
+  }
+
   return (
+    <>
     <tr className="hover:bg-gray-50/70 transition-colors align-top">
       <td className="px-4 py-3">
         <button
@@ -394,57 +401,22 @@ function HoSoRow({
         <div className="text-gray-400 mt-1">{formatDateVN(n.han_the_hdv) || '—'}</div>
       </td>
       <td className="px-4 py-3 min-w-42.5">
-        {rowEditing ? (
-          <div
-            className="space-y-2"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowEditing(false)
-            }}
+        <div className="flex items-start justify-between gap-1">
+          <div className="text-xs text-gray-600">
+            <div>CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '—'}</div>
+            <div className="text-gray-400 mt-1">Số ngày: {soNgayNum > 0 ? soNgayNum : '—'}</div>
+            <div className="text-red-600 font-bold mt-1">
+              Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors shrink-0"
           >
-            <div>
-              <div className="text-[10px] text-gray-400 mb-0.5">CTP/ngày</div>
-              <MoneyChipInput
-                value={ctp}
-                onChange={setCtp}
-                onCommit={commit}
-                placeholder="VD: 800.000"
-                className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
-            </div>
-            <div>
-              <div className="text-[10px] text-gray-400 mb-0.5">Số ngày</div>
-              <DayChipInput
-                value={soNgay}
-                onChange={setSoNgay}
-                onCommit={commit}
-                className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
-            </div>
-            <div>
-              <div className="text-[10px] text-gray-400 mb-0.5">Tổng</div>
-              <div className="text-sm font-bold text-red-600">
-                {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start justify-between gap-1">
-            <div className="text-xs text-gray-600">
-              <div>CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '—'}</div>
-              <div className="text-gray-400 mt-1">Số ngày: {soNgayNum > 0 ? soNgayNum : '—'}</div>
-              <div className="text-red-600 font-bold mt-1">
-                Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRowEditing(true)}
-              className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors shrink-0"
-            >
-              <Pencil size={13} />
-            </button>
-          </div>
-        )}
+            <Pencil size={13} />
+          </button>
+        </div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-600">
         <div>CTP/ngày: {soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '—'}</div>
@@ -466,6 +438,43 @@ function HoSoRow({
         </button>
       </td>
     </tr>
+
+    {editOpen &&
+      createPortal(
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={closeEdit} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-gray-900">
+                  <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+                </h3>
+                <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-[10px] text-gray-400 mb-1">CTP/ngày</div>
+                  <MoneyChipInput value={ctp} onChange={setCtp} onCommit={commit} placeholder="VD: 800.000" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-400 mb-1">Số ngày</div>
+                  <DayChipInput value={soNgay} onChange={setSoNgay} onCommit={commit} />
+                </div>
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="text-[10px] text-gray-400 mb-1">Tổng</div>
+                  <div className="text-base font-bold text-red-600">
+                    {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   )
 }
 
