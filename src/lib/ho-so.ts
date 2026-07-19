@@ -12,7 +12,7 @@ export async function upsertNhanSuFromExtract(
   fields: AiExtractedFields,
   prefix: Prefix,
 ): Promise<NhanSu> {
-  const payload = {
+  const insertPayload = {
     prefix,
     ho_ten: fields.ho_ten ?? '',
     so_cccd: fields.so_cccd ?? null,
@@ -23,19 +23,28 @@ export async function upsertNhanSuFromExtract(
     so_the_hdv: fields.so_the_hdv ?? null,
     loai_the_hdv: fields.loai_the_hdv ?? null,
     han_the_hdv: fields.han_the_hdv ?? null,
+    sdt: fields.sdt ?? null,
+    ma_so_thue_tncn: fields.ma_so_thue_tncn ?? null,
+    stk: fields.stk ?? null,
+    ten_ngan_hang: fields.ten_ngan_hang ?? null,
   }
 
-  if (payload.so_cccd) {
+  if (insertPayload.so_cccd) {
     const { data: existing } = await supabase
       .from('nhansu')
       .select('id')
-      .eq('so_cccd', payload.so_cccd)
+      .eq('so_cccd', insertPayload.so_cccd)
       .maybeSingle()
 
     if (existing) {
+      // Chỉ ghi đè field nào lần này AI/kế toán thực sự có giá trị mới — tránh
+      // trường hợp bộ ảnh lần này thiếu (vd không có ảnh xác nhận) làm mất STK/SĐT đã lưu trước đó.
+      const updatePayload = Object.fromEntries(
+        Object.entries(insertPayload).filter(([, v]) => v != null && v !== ''),
+      )
       const { data, error } = await supabase
         .from('nhansu')
-        .update(payload)
+        .update(updatePayload)
         .eq('id', existing.id)
         .select('*')
         .single()
@@ -44,7 +53,7 @@ export async function upsertNhanSuFromExtract(
     }
   }
 
-  const { data, error } = await supabase.from('nhansu').insert(payload).select('*').single()
+  const { data, error } = await supabase.from('nhansu').insert(insertPayload).select('*').single()
   if (error) throw error
   return data as NhanSu
 }

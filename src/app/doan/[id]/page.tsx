@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload } from 'lucide-react'
-import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile } from '@/types'
+import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload, UserPlus, ImagePlus } from 'lucide-react'
+import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
 import { formatDateVN } from '@/lib/format'
@@ -146,6 +146,7 @@ export default function DoanDetailPage() {
   const [tab, setTab] = useState<Tab>('info')
   const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [addingNhanSu, setAddingNhanSu] = useState(false)
 
   function showToast(msg: string) {
     setToast(msg)
@@ -242,6 +243,14 @@ export default function DoanDetailPage() {
               <>
                 <div className="flex gap-2 mb-4">
                   <button
+                    onClick={() => setAddingNhanSu(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-semibold transition-colors"
+                  >
+                    <UserPlus size={13} />
+                    Thêm nhân sự
+                  </button>
+                  <div className="flex-1" />
+                  <button
                     onClick={() => handleCopy('ds')}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                   >
@@ -312,6 +321,17 @@ export default function DoanDetailPage() {
           onExported={(updated) => {
             setHoSo((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
             setViewing(updated)
+          }}
+        />
+      )}
+
+      {addingNhanSu && doan && (
+        <AddNhanSuModal
+          doanId={doan.id}
+          onClose={() => setAddingNhanSu(false)}
+          onAdded={(created) => {
+            setHoSo((prev) => [...prev, created])
+            showToast(`Đã thêm ${created.nhansu.ho_ten}`)
           }}
         />
       )}
@@ -476,6 +496,335 @@ function HoSoRow({
         </>,
         document.body,
       )}
+    </>
+  )
+}
+
+const IMAGE_KIND_LABELS: Record<ImageKind, string> = {
+  cccd_truoc: 'CCCD trước',
+  cccd_sau: 'CCCD sau',
+  the_hdv: 'Thẻ HDV',
+  xac_nhan: 'Xác nhận',
+}
+
+function emptyAiFields(): Record<keyof AiExtractedFields, string> {
+  return {
+    ho_ten: '',
+    so_cccd: '',
+    ngay_sinh: '',
+    ngay_cap: '',
+    noi_cap: '',
+    dia_chi: '',
+    so_the_hdv: '',
+    loai_the_hdv: '',
+    han_the_hdv: '',
+    sdt: '',
+    ma_so_thue_tncn: '',
+    stk: '',
+    ten_ngan_hang: '',
+  }
+}
+
+/** Modal "Thêm nhân sự": dán/thả bộ ảnh của 1 người → AI đọc + tự phân loại ảnh →
+ *  kế toán soát/sửa field → Lưu. Lưu xong tự dọn để thêm tiếp người khác luôn,
+ *  không phải mở lại modal (paste liên tục cho nhanh, mỗi lần chỉ 1 người để AI
+ *  khỏi nhầm ảnh của ai với ai). */
+function AddNhanSuModal({
+  doanId,
+  onClose,
+  onAdded,
+}: {
+  doanId: string
+  onClose: () => void
+  onAdded: (created: HoSoWithNhanSu) => void
+}) {
+  const [phase, setPhase] = useState<'pick' | 'review'>('pick')
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
+  const [extracting, setExtracting] = useState(false)
+  const [images, setImages] = useState<{ url: string; kind: ImageKind | null }[]>([])
+  const [fields, setFields] = useState(emptyAiFields)
+  const [prefix, setPrefix] = useState<Prefix>('HDV')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [addedCount, setAddedCount] = useState(0)
+
+  function addFiles(newFiles: File[]) {
+    const imgFiles = newFiles.filter((f) => f.type.startsWith('image/'))
+    if (imgFiles.length === 0) return
+    setFiles((f) => [...f, ...imgFiles])
+    setPreviews((p) => [...p, ...imgFiles.map((f) => URL.createObjectURL(f))])
+  }
+
+  function removeFile(i: number) {
+    setFiles((f) => f.filter((_, idx) => idx !== i))
+    setPreviews((p) => p.filter((_, idx) => idx !== i))
+  }
+
+  useEffect(() => {
+    if (phase !== 'pick') return
+    function handlePaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const imgFiles: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile()
+          if (file) imgFiles.push(file)
+        }
+      }
+      if (imgFiles.length > 0) addFiles(imgFiles)
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [phase])
+
+  function resetAll() {
+    setPhase('pick')
+    setFiles([])
+    setPreviews([])
+    setImages([])
+    setFields(emptyAiFields())
+    setError('')
+  }
+
+  async function handleExtract() {
+    if (files.length === 0 || extracting) return
+    setExtracting(true)
+    setError('')
+    const formData = new FormData()
+    files.forEach((f) => formData.append('files', f))
+    const res = await fetch(`/api/doan/${doanId}/nhansu-moi/extract`, { method: 'POST', body: formData })
+    const data = await res.json()
+    setExtracting(false)
+    if (!res.ok) {
+      setError(data.error ?? 'Có lỗi khi đọc ảnh')
+      return
+    }
+    setImages(data.images)
+    const f: AiExtractedFields = data.fields ?? {}
+    setFields({
+      ho_ten: f.ho_ten ?? '',
+      so_cccd: f.so_cccd ?? '',
+      ngay_sinh: f.ngay_sinh ?? '',
+      ngay_cap: f.ngay_cap ?? '',
+      noi_cap: f.noi_cap ?? '',
+      dia_chi: f.dia_chi ?? '',
+      so_the_hdv: f.so_the_hdv ?? '',
+      loai_the_hdv: f.loai_the_hdv ?? '',
+      han_the_hdv: f.han_the_hdv ?? '',
+      sdt: f.sdt ?? '',
+      ma_so_thue_tncn: f.ma_so_thue_tncn ?? '',
+      stk: f.stk ?? '',
+      ten_ngan_hang: f.ten_ngan_hang ?? '',
+    })
+    setPhase('review')
+  }
+
+  function setImageKind(i: number, kind: ImageKind) {
+    setImages((imgs) => imgs.map((img, idx) => (idx === i ? { ...img, kind } : img)))
+  }
+
+  async function handleSave() {
+    if (!fields.ho_ten || saving) return
+    setSaving(true)
+    setError('')
+    const byKind = (k: ImageKind) => images.find((img) => img.kind === k)?.url ?? null
+    const res = await fetch(`/api/doan/${doanId}/nhansu-moi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prefix,
+        fields,
+        anh_cccd_truoc_url: byKind('cccd_truoc'),
+        anh_cccd_sau_url: byKind('cccd_sau'),
+        anh_the_hdv_url: byKind('the_hdv'),
+        anh_xac_nhan_url: byKind('xac_nhan'),
+      }),
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) {
+      setError(data.error ?? 'Có lỗi khi lưu')
+      return
+    }
+    onAdded(data.ho_so)
+    setAddedCount((c) => c + 1)
+    resetAll()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Thêm nhân sự</h2>
+              {addedCount > 0 && <p className="text-xs text-emerald-600 font-medium">Đã thêm {addedCount} người</p>}
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="p-6">
+            {phase === 'pick' ? (
+              <>
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    addFiles(Array.from(e.dataTransfer.files))
+                  }}
+                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl py-10 px-4 text-center cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-colors"
+                >
+                  <ImagePlus size={28} className="text-gray-300" />
+                  <p className="text-sm text-gray-500">
+                    Kéo thả, dán (Ctrl+V) hoặc <span className="text-brand-600 font-semibold">chọn ảnh</span>
+                  </p>
+                  <p className="text-xs text-gray-400">CCCD 2 mặt, thẻ HDV, ảnh xác nhận — của 1 người</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      addFiles(Array.from(e.target.files ?? []))
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+
+                {previews.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mt-4">
+                    {previews.map((src, i) => (
+                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 group">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- preview ảnh local (blob URL), không phù hợp next/image */}
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+
+                <button
+                  type="button"
+                  onClick={handleExtract}
+                  disabled={files.length === 0 || extracting}
+                  className="w-full flex items-center justify-center gap-2 mt-4 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+                >
+                  {extracting && <Loader2 size={14} className="animate-spin" />}
+                  {extracting ? 'Đang đọc ảnh...' : 'Trích xuất thông tin'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {images.map((img, i) => (
+                    <div key={img.url} className="space-y-1">
+                      <div className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- ảnh Supabase Storage (signed URL động) */}
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <select
+                        value={img.kind ?? ''}
+                        onChange={(e) => setImageKind(i, e.target.value as ImageKind)}
+                        className="w-full text-[10px] border border-gray-200 rounded-lg px-1 py-1"
+                      >
+                        <option value="">Không rõ</option>
+                        {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
+                          <option key={k} value={k}>
+                            {IMAGE_KIND_LABELS[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Loại">
+                    <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
+                      <option value="HDV">HDV</option>
+                      <option value="MC">MC</option>
+                      <option value="NS">NS</option>
+                    </select>
+                  </Field>
+                  <Field label="Họ tên">
+                    <input value={fields.ho_ten} onChange={(e) => setFields((f) => ({ ...f, ho_ten: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Số CCCD">
+                    <input value={fields.so_cccd} onChange={(e) => setFields((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Ngày sinh">
+                    <DateInput value={fields.ngay_sinh} onChange={(v) => setFields((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
+                  </Field>
+                  <Field label="Ngày cấp">
+                    <DateInput value={fields.ngay_cap} onChange={(v) => setFields((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
+                  </Field>
+                  <Field label="Nơi cấp">
+                    <input value={fields.noi_cap} onChange={(e) => setFields((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Địa chỉ">
+                    <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Số thẻ HDV">
+                    <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Loại thẻ">
+                    <input value={fields.loai_the_hdv} onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Hạn thẻ">
+                    <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
+                  </Field>
+                  <Field label="SĐT">
+                    <input value={fields.sdt} onChange={(e) => setFields((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="MS thuế TNCN">
+                    <input value={fields.ma_so_thue_tncn} onChange={(e) => setFields((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="STK">
+                    <input value={fields.stk} onChange={(e) => setFields((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="Ngân hàng">
+                    <input value={fields.ten_ngan_hang} onChange={(e) => setFields((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />
+                  </Field>
+                </div>
+
+                {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={!fields.ho_ten || saving}
+                    className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+                  >
+                    {saving && <Loader2 size={14} className="animate-spin" />}
+                    Lưu &amp; thêm người tiếp theo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetAll}
+                    className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Làm lại
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   )
 }

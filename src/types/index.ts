@@ -117,4 +117,12 @@ export interface AiExtractedFields {
   so_the_hdv?: string
   loai_the_hdv?: string
   han_the_hdv?: string
+  // Đọc thêm được từ ảnh xác nhận (tin nhắn Zalo gõ tay) — không có trên CCCD/thẻ.
+  sdt?: string
+  ma_so_thue_tncn?: string
+  stk?: string
+  ten_ngan_hang?: string
 }
+
+/** Loại ảnh trong 1 bộ hồ sơ — dùng khi AI tự phân loại ảnh kế toán thả vào. */
+export type ImageKind = 'cccd_truoc' | 'cccd_sau' | 'the_hdv' | 'xac_nhan'
