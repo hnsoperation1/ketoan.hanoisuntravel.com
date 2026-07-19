@@ -657,7 +657,9 @@ function AddNhanSuModal({
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div
+          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${phase === 'review' ? 'max-w-3xl' : 'max-w-lg'}`}
+        >
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Thêm nhân sự</h2>
@@ -727,18 +729,18 @@ function AddNhanSuModal({
                 </button>
               </>
             ) : (
-              <>
-                <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="grid md:grid-cols-[180px_1fr] gap-6">
+                <div className="space-y-3">
                   {images.map((img, i) => (
                     <div key={img.url} className="space-y-1">
-                      <div className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                      <div className="aspect-4/3 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                         {/* eslint-disable-next-line @next/next/no-img-element -- ảnh Supabase Storage (signed URL động) */}
                         <img src={img.url} alt="" className="w-full h-full object-cover" />
                       </div>
                       <select
                         value={img.kind ?? ''}
                         onChange={(e) => setImageKind(i, e.target.value as ImageKind)}
-                        className="w-full text-[10px] border border-gray-200 rounded-lg px-1 py-1"
+                        className="w-full text-[11px] border border-gray-200 rounded-lg px-1.5 py-1"
                       >
                         <option value="">Không rõ</option>
                         {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
@@ -751,76 +753,78 @@ function AddNhanSuModal({
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Loại">
-                    <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
-                      <option value="HDV">HDV</option>
-                      <option value="MC">MC</option>
-                      <option value="NS">NS</option>
-                    </select>
-                  </Field>
-                  <Field label="Họ tên">
-                    <input value={fields.ho_ten} onChange={(e) => setFields((f) => ({ ...f, ho_ten: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Số CCCD">
-                    <input value={fields.so_cccd} onChange={(e) => setFields((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Ngày sinh">
-                    <DateInput value={fields.ngay_sinh} onChange={(v) => setFields((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
-                  </Field>
-                  <Field label="Ngày cấp">
-                    <DateInput value={fields.ngay_cap} onChange={(v) => setFields((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
-                  </Field>
-                  <Field label="Nơi cấp">
-                    <input value={fields.noi_cap} onChange={(e) => setFields((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Địa chỉ">
-                    <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Số thẻ HDV">
-                    <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Loại thẻ">
-                    <input value={fields.loai_the_hdv} onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Hạn thẻ">
-                    <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
-                  </Field>
-                  <Field label="SĐT">
-                    <input value={fields.sdt} onChange={(e) => setFields((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="MS thuế TNCN">
-                    <input value={fields.ma_so_thue_tncn} onChange={(e) => setFields((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="STK">
-                    <input value={fields.stk} onChange={(e) => setFields((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="Ngân hàng">
-                    <input value={fields.ten_ngan_hang} onChange={(e) => setFields((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />
-                  </Field>
-                </div>
+                <div className="min-w-0">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Loại">
+                      <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
+                        <option value="HDV">HDV</option>
+                        <option value="MC">MC</option>
+                        <option value="NS">NS</option>
+                      </select>
+                    </Field>
+                    <Field label="Họ tên">
+                      <input value={fields.ho_ten} onChange={(e) => setFields((f) => ({ ...f, ho_ten: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Số CCCD">
+                      <input value={fields.so_cccd} onChange={(e) => setFields((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Ngày sinh">
+                      <DateInput value={fields.ngay_sinh} onChange={(v) => setFields((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
+                    </Field>
+                    <Field label="Ngày cấp">
+                      <DateInput value={fields.ngay_cap} onChange={(v) => setFields((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
+                    </Field>
+                    <Field label="Nơi cấp">
+                      <input value={fields.noi_cap} onChange={(e) => setFields((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Địa chỉ">
+                      <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Số thẻ HDV">
+                      <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Loại thẻ">
+                      <input value={fields.loai_the_hdv} onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Hạn thẻ">
+                      <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
+                    </Field>
+                    <Field label="SĐT">
+                      <input value={fields.sdt} onChange={(e) => setFields((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="MS thuế TNCN">
+                      <input value={fields.ma_so_thue_tncn} onChange={(e) => setFields((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="STK">
+                      <input value={fields.stk} onChange={(e) => setFields((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Ngân hàng">
+                      <input value={fields.ten_ngan_hang} onChange={(e) => setFields((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />
+                    </Field>
+                  </div>
 
-                {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+                  {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
 
-                <div className="flex gap-3 mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={!fields.ho_ten || saving}
-                    className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-                  >
-                    {saving && <Loader2 size={14} className="animate-spin" />}
-                    Lưu &amp; thêm người tiếp theo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetAll}
-                    className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-                  >
-                    Làm lại
-                  </button>
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={!fields.ho_ten || saving}
+                      className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+                    >
+                      {saving && <Loader2 size={14} className="animate-spin" />}
+                      Lưu &amp; thêm người tiếp theo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetAll}
+                      className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                    >
+                      Làm lại
+                    </button>
+                  </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
