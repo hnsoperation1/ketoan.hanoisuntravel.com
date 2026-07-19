@@ -23,6 +23,10 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 type Tab = 'info' | 'hdv' | 'files'
 
+// 9 mức CTP/ngày hay dùng, 800k để đầu (vị trí dễ bấm nhất) + tô nổi bật
+const CTP_NGAY_CHIPS = [800000, 500000, 700000, 900000, 1000000, 2000000, 3000000, 4000000, 5000000]
+const SO_NGAY_CHIPS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -210,9 +214,10 @@ export default function DoanDetailPage() {
         </div>
       </div>
 
-      {viewing && (
+      {viewing && doan && (
         <HoSoDetailModal
           hoSo={viewing}
+          doan={doan}
           onClose={() => setViewing(null)}
           onSaved={(updated) => {
             setHoSo((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
@@ -424,11 +429,13 @@ function nhansuFormFrom(hoSo: HoSoWithNhanSu) {
   }
 }
 
-function hsFormFrom(hoSo: HoSoWithNhanSu) {
+function hsFormFrom(hoSo: HoSoWithNhanSu, doan: Doan) {
   return {
     so_hop_dong: hoSo.so_hop_dong ?? '',
-    ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
-    ngay_ket_thuc: hoSo.ngay_ket_thuc ?? '',
+    // Mặc định lấy ngày đi/về của đoàn — kế toán chỉ sửa riêng khi người này
+    // tham gia lệch ngày so với cả đoàn.
+    ngay_dich_vu: hoSo.ngay_dich_vu ?? doan.ngay_di ?? '',
+    ngay_ket_thuc: hoSo.ngay_ket_thuc ?? doan.ngay_ve ?? '',
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
     ctp_ngay_thuc_nhan:
       hoSo.chi_tra != null && hoSo.so_ngay_cong_tac
@@ -442,11 +449,13 @@ function hsFormFrom(hoSo: HoSoWithNhanSu) {
 
 function HoSoDetailModal({
   hoSo,
+  doan,
   onClose,
   onSaved,
   onExported,
 }: {
   hoSo: HoSoWithNhanSu
+  doan: Doan
   onClose: () => void
   onSaved: (updated: HoSoWithNhanSu) => void
   onExported: (updated: HoSoWithNhanSu) => void
@@ -459,8 +468,10 @@ function HoSoDetailModal({
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
 
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
-  const [hs, setHs] = useState(() => hsFormFrom(hoSo))
+  const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
   const [submitting, setSubmitting] = useState(false)
+  const [showCtpChips, setShowCtpChips] = useState(false)
+  const [showSoNgayChips, setShowSoNgayChips] = useState(false)
 
   const loadFiles = useCallback(async () => {
     const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files`)
@@ -492,7 +503,7 @@ function HoSoDetailModal({
 
   function startEditing() {
     setNhansu(nhansuFormFrom(hoSo))
-    setHs(hsFormFrom(hoSo))
+    setHs(hsFormFrom(hoSo, doan))
     setEditing(true)
   }
 
@@ -730,26 +741,83 @@ function HoSoDetailModal({
                     label="CTP/ngày (thực nhận)"
                     value={hoSo.chi_tra != null && hoSo.so_ngay_cong_tac ? Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac).toLocaleString('vi-VN') : null}
                     input={
-                      <input
-                        type="number"
-                        placeholder="VD: 800000"
-                        value={hs.ctp_ngay_thuc_nhan}
-                        onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value }))}
-                        className={inputCls}
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="VD: 800.000"
+                          value={hs.ctp_ngay_thuc_nhan ? Number(hs.ctp_ngay_thuc_nhan).toLocaleString('vi-VN') : ''}
+                          onFocus={() => setShowCtpChips(true)}
+                          onBlur={() => setShowCtpChips(false)}
+                          onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value.replace(/\D/g, '') }))}
+                          className={inputCls}
+                        />
+                        {showCtpChips && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {CTP_NGAY_CHIPS.map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: String(v) }))}
+                                className={
+                                  v === 800000
+                                    ? 'px-2.5 py-1 rounded-full bg-accent-500 text-white text-xs font-bold hover:bg-accent-600 transition-colors'
+                                    : 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-colors'
+                                }
+                              >
+                                {(v / 1000).toLocaleString('vi-VN')}k
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     }
                   />
                   <InfoField
                     editing={editing}
                     label="Số ngày công tác"
                     value={hoSo.so_ngay_cong_tac?.toString() ?? null}
-                    input={<input type="number" value={hs.so_ngay_cong_tac} onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))} className={inputCls} />}
+                    input={
+                      <div>
+                        <input
+                          type="number"
+                          value={hs.so_ngay_cong_tac}
+                          onFocus={() => setShowSoNgayChips(true)}
+                          onBlur={() => setShowSoNgayChips(false)}
+                          onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))}
+                          className={inputCls}
+                        />
+                        {showSoNgayChips && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {SO_NGAY_CHIPS.map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => setHs((f) => ({ ...f, so_ngay_cong_tac: String(v) }))}
+                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold hover:bg-gray-200 transition-colors"
+                              >
+                                {v}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    }
                   />
                   <InfoField
                     editing={editing}
                     label="Tổng thực nhận"
                     value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
-                    input={<input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                    emphasize
+                    input={
+                      <input
+                        readOnly
+                        value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''}
+                        className="w-full text-sm border border-gray-200 bg-gray-50 text-red-600 font-bold rounded-xl px-3 py-2 cursor-not-allowed"
+                      />
+                    }
                   />
                   <InfoField
                     editing={editing}
@@ -925,11 +993,21 @@ function ImagePanel({
   )
 }
 
-function ViewField({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+function ViewField({
+  label,
+  value,
+  mono,
+  emphasize,
+}: {
+  label: string
+  value?: string | null
+  mono?: boolean
+  emphasize?: boolean
+}) {
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
-      <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : 'font-medium'}`}>
+      <p className={`text-sm ${emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'}`}>
         {value || <span className="text-gray-300 font-normal">—</span>}
       </p>
     </div>
@@ -941,15 +1019,21 @@ function InfoField({
   label,
   value,
   mono,
+  emphasize,
   input,
 }: {
   editing: boolean
   label: string
   value?: string | null
   mono?: boolean
+  emphasize?: boolean
   input: React.ReactNode
 }) {
-  return editing ? <Field label={label}>{input}</Field> : <ViewField label={label} value={value} mono={mono} />
+  return editing ? (
+    <Field label={label}>{input}</Field>
+  ) : (
+    <ViewField label={label} value={value} mono={mono} emphasize={emphasize} />
+  )
 }
 
 const inputCls =
