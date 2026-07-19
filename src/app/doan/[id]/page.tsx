@@ -1,10 +1,25 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2, Copy, Check, X, Pencil, FileText, Upload, UserPlus, ImagePlus } from 'lucide-react'
+import {
+  ArrowLeft,
+  Loader2,
+  Copy,
+  Check,
+  X,
+  Pencil,
+  FileText,
+  Upload,
+  UserPlus,
+  ImagePlus,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  RotateCw,
+} from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
@@ -23,6 +38,8 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 }
 
 type Tab = 'info' | 'hdv' | 'files'
+
+const LOAI_THE_HDV_OPTIONS = ['Nội địa', 'Quốc tế']
 
 // Các mức CTP/ngày hay dùng, 800k để đầu (vị trí dễ bấm nhất) + tô nổi bật
 const CTP_NGAY_CHIPS = [800000, 500000, 700000, 900000, 1000000, 2000000, 3000000, 4000000, 5000000, 10000000]
@@ -441,7 +458,7 @@ function HoSoRow({
         </div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-900 font-bold text-right">
-        <div>Thuế TNCN: {soTienChiTra > 0 ? `${thueNop.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
+        <div>TNCN: {soTienChiTra > 0 ? `${thueNop.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
         <div className="mt-1">CTP/ngày: {soTienChiTra > 0 ? `${donGiaNgay.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
         <div className="mt-1">Tổng: {soTienChiTra > 0 ? `${soTienChiTra.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
       </td>
@@ -507,6 +524,121 @@ const IMAGE_KIND_LABELS: Record<ImageKind, string> = {
   xac_nhan: 'Xác nhận',
 }
 
+const VIEWER_MIN_ZOOM = 0.5
+const VIEWER_MAX_ZOOM = 5
+
+/** Khung xem ảnh nhúng (không phải lightbox toàn màn hình) — zoom/xoay/kéo, để
+ *  kế toán vừa xem ảnh phóng to vừa đối chiếu với form bên cạnh cùng lúc. Select
+ *  ở thanh trên cho sửa lại loại ảnh nếu AI đoán sai. */
+function InlineImageViewer({
+  url,
+  kind,
+  onKindChange,
+}: {
+  url: string
+  kind: ImageKind | null
+  onKindChange: (kind: ImageKind) => void
+}) {
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset zoom/xoay khi đổi ảnh đang xem, không phải state phát sinh từ props
+    setZoom(1)
+    setRotation(0)
+    setPan({ x: 0, y: 0 })
+  }, [url])
+
+  function clampZoom(z: number) {
+    return Math.min(VIEWER_MAX_ZOOM, Math.max(VIEWER_MIN_ZOOM, z))
+  }
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault()
+    setZoom((z) => clampZoom(z - e.deltaY * 0.0015))
+  }
+  function handleMouseDown(e: React.MouseEvent) {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
+    setDragging(true)
+  }
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!dragRef.current) return
+    setPan({
+      x: dragRef.current.panX + (e.clientX - dragRef.current.startX),
+      y: dragRef.current.panY + (e.clientY - dragRef.current.startY),
+    })
+  }
+  function endDrag() {
+    dragRef.current = null
+    setDragging(false)
+  }
+  function reset() {
+    setZoom(1)
+    setRotation(0)
+    setPan({ x: 0, y: 0 })
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-900 overflow-hidden select-none">
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-800">
+        <select
+          value={kind ?? ''}
+          onChange={(e) => onKindChange(e.target.value as ImageKind)}
+          className="text-[11px] bg-transparent text-white/90 border border-white/20 rounded-md px-1 py-0.5"
+        >
+          <option value="" className="text-gray-900">
+            Không rõ
+          </option>
+          {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
+            <option key={k} value={k} className="text-gray-900">
+              {IMAGE_KIND_LABELS[k]}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center gap-0.5">
+          <button type="button" title="Thu nhỏ" onClick={() => setZoom((z) => clampZoom(z - 0.25))} className="p-1 rounded text-white/70 hover:text-white hover:bg-white/10">
+            <ZoomOut size={13} />
+          </button>
+          <button type="button" title="Phóng to" onClick={() => setZoom((z) => clampZoom(z + 0.25))} className="p-1 rounded text-white/70 hover:text-white hover:bg-white/10">
+            <ZoomIn size={13} />
+          </button>
+          <button type="button" title="Xoay trái" onClick={() => setRotation((r) => r - 90)} className="p-1 rounded text-white/70 hover:text-white hover:bg-white/10">
+            <RotateCcw size={13} />
+          </button>
+          <button type="button" title="Xoay phải" onClick={() => setRotation((r) => r + 90)} className="p-1 rounded text-white/70 hover:text-white hover:bg-white/10">
+            <RotateCw size={13} />
+          </button>
+        </div>
+      </div>
+      <div
+        className="h-72 overflow-hidden flex items-center justify-center"
+        style={{ cursor: dragging ? 'grabbing' : 'grab' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
+        onDoubleClick={reset}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- ảnh Supabase Storage (signed URL động) trong khung xem zoom/xoay */}
+        <img
+          src={url}
+          alt=""
+          draggable={false}
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+            transition: dragging ? 'none' : 'transform 0.1s ease-out',
+            maxWidth: '100%',
+            maxHeight: '100%',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 function emptyAiFields(): Record<keyof AiExtractedFields, string> {
   return {
     ho_ten: '',
@@ -543,6 +675,7 @@ function AddNhanSuModal({
   const [previews, setPreviews] = useState<string[]>([])
   const [extracting, setExtracting] = useState(false)
   const [images, setImages] = useState<{ url: string; kind: ImageKind | null }[]>([])
+  const [selectedImg, setSelectedImg] = useState(0)
   const [fields, setFields] = useState(emptyAiFields)
   const [prefix, setPrefix] = useState<Prefix>('HDV')
   const [saving, setSaving] = useState(false)
@@ -561,29 +694,28 @@ function AddNhanSuModal({
     setPreviews((p) => p.filter((_, idx) => idx !== i))
   }
 
-  useEffect(() => {
-    if (phase !== 'pick') return
-    function handlePaste(e: ClipboardEvent) {
-      const items = e.clipboardData?.items
-      if (!items) return
-      const imgFiles: File[] = []
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith('image/')) {
-          const file = items[i].getAsFile()
-          if (file) imgFiles.push(file)
-        }
+  function handlePasteEvent(e: React.ClipboardEvent<HTMLInputElement>) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const imgFiles: File[] = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile()
+        if (file) imgFiles.push(file)
       }
-      if (imgFiles.length > 0) addFiles(imgFiles)
     }
-    window.addEventListener('paste', handlePaste)
-    return () => window.removeEventListener('paste', handlePaste)
-  }, [phase])
+    if (imgFiles.length > 0) {
+      e.preventDefault()
+      addFiles(imgFiles)
+    }
+  }
 
   function resetAll() {
     setPhase('pick')
     setFiles([])
     setPreviews([])
     setImages([])
+    setSelectedImg(0)
     setFields(emptyAiFields())
     setError('')
   }
@@ -658,7 +790,7 @@ function AddNhanSuModal({
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
         <div
-          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${phase === 'review' ? 'max-w-3xl' : 'max-w-lg'}`}
+          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${phase === 'review' ? 'max-w-5xl' : 'max-w-lg'}`}
         >
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
             <div>
@@ -673,30 +805,40 @@ function AddNhanSuModal({
           <div className="p-6">
             {phase === 'pick' ? (
               <>
-                <label
+                <div
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault()
                     addFiles(Array.from(e.dataTransfer.files))
                   }}
-                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl py-10 px-4 text-center cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-colors"
+                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl py-8 px-4 text-center hover:border-brand-300 transition-colors"
                 >
                   <ImagePlus size={28} className="text-gray-300" />
                   <p className="text-sm text-gray-500">
-                    Kéo thả, dán (Ctrl+V) hoặc <span className="text-brand-600 font-semibold">chọn ảnh</span>
+                    Kéo thả ảnh vào đây, hoặc{' '}
+                    <label className="text-brand-600 font-semibold cursor-pointer hover:underline">
+                      chọn ảnh
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          addFiles(Array.from(e.target.files ?? []))
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
                   </p>
-                  <p className="text-xs text-gray-400">CCCD 2 mặt, thẻ HDV, ảnh xác nhận — của 1 người</p>
+                  <p className="text-xs text-gray-400 mb-1">CCCD 2 mặt, thẻ HDV, ảnh xác nhận — của 1 người</p>
                   <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      addFiles(Array.from(e.target.files ?? []))
-                      e.target.value = ''
-                    }}
+                    type="text"
+                    autoFocus
+                    onPaste={handlePasteEvent}
+                    placeholder="Bấm vào đây rồi dán ảnh (Ctrl+V)"
+                    className="w-full max-w-xs text-sm text-center border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-gray-400"
                   />
-                </label>
+                </div>
 
                 {previews.length > 0 && (
                   <div className="grid grid-cols-4 gap-2 mt-4">
@@ -729,28 +871,30 @@ function AddNhanSuModal({
                 </button>
               </>
             ) : (
-              <div className="grid md:grid-cols-[180px_1fr] gap-6">
-                <div className="space-y-3">
-                  {images.map((img, i) => (
-                    <div key={img.url} className="space-y-1">
-                      <div className="aspect-4/3 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- ảnh Supabase Storage (signed URL động) */}
-                        <img src={img.url} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      <select
-                        value={img.kind ?? ''}
-                        onChange={(e) => setImageKind(i, e.target.value as ImageKind)}
-                        className="w-full text-[11px] border border-gray-200 rounded-lg px-1.5 py-1"
+              <div className="grid md:grid-cols-[320px_1fr] gap-6">
+                <div className="space-y-2">
+                  {images[selectedImg] && (
+                    <InlineImageViewer
+                      url={images[selectedImg].url}
+                      kind={images[selectedImg].kind}
+                      onKindChange={(k) => setImageKind(selectedImg, k)}
+                    />
+                  )}
+                  <div className="grid grid-cols-4 gap-2">
+                    {images.map((img, i) => (
+                      <button
+                        key={img.url}
+                        type="button"
+                        onClick={() => setSelectedImg(i)}
+                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
+                          i === selectedImg ? 'border-brand-500' : 'border-transparent hover:border-gray-300'
+                        }`}
                       >
-                        <option value="">Không rõ</option>
-                        {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
-                          <option key={k} value={k}>
-                            {IMAGE_KIND_LABELS[k]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
+                        {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail ảnh Supabase Storage (signed URL động) */}
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="min-w-0">
@@ -784,7 +928,18 @@ function AddNhanSuModal({
                       <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
                     </Field>
                     <Field label="Loại thẻ">
-                      <input value={fields.loai_the_hdv} onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />
+                      <select
+                        value={fields.loai_the_hdv}
+                        onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))}
+                        className={inputCls}
+                      >
+                        <option value="">- Chọn -</option>
+                        {LOAI_THE_HDV_OPTIONS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
                     <Field label="Hạn thẻ">
                       <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
@@ -1260,7 +1415,20 @@ function HoSoDetailModal({
                       editing={editing}
                       label="Loại thẻ"
                       value={n.loai_the_hdv}
-                      input={<input value={nhansu.loai_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />}
+                      input={
+                        <select
+                          value={nhansu.loai_the_hdv}
+                          onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
+                          className={inputCls}
+                        >
+                          <option value="">- Chọn -</option>
+                          {LOAI_THE_HDV_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      }
                     />
                     <InfoField
                       editing={editing}

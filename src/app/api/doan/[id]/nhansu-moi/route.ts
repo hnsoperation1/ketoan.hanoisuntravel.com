@@ -34,6 +34,22 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     const supabase = await createClient()
     const nhansu = await upsertNhanSuFromExtract(supabase, body.fields, body.prefix)
+
+    // Không check trùng CCCD trong toàn bảng nhansu (1 người có thể làm nhiều đoàn),
+    // nhưng chặn thêm trùng 2 lần cùng 1 người vào CÙNG 1 đoàn này.
+    const { data: existingHoSo } = await supabase
+      .from('ho_so')
+      .select('id')
+      .eq('doan_id', id)
+      .eq('nhansu_id', nhansu.id)
+      .maybeSingle()
+    if (existingHoSo) {
+      return NextResponse.json(
+        { error: `${nhansu.ho_ten} đã có trong đoàn này rồi, không thêm trùng.` },
+        { status: 409 },
+      )
+    }
+
     const hoSo = await createHoSo(supabase, {
       doan_id: id,
       nhansu_id: nhansu.id,
