@@ -336,6 +336,7 @@ function HoSoRow({
   onToast: (msg: string) => void
 }) {
   const n = r.nhansu
+  const [rowEditing, setRowEditing] = useState(false)
   const [ctp, setCtp] = useState(() =>
     r.chi_tra != null && r.so_ngay_cong_tac ? String(Math.round(r.chi_tra / r.so_ngay_cong_tac)) : '',
   )
@@ -379,13 +380,13 @@ function HoSoRow({
         >
           <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
         </button>
-        <div className="text-xs text-gray-500 font-mono mt-1">{n.so_cccd ?? '—'}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{formatDateVN(n.ngay_sinh) || '—'}</div>
+        <div className="text-xs text-gray-500 font-mono mt-1">CCCD: {n.so_cccd ?? '—'}</div>
+        <div className="text-xs text-gray-400 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '—'}</div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-600">
-        <div>{n.sdt ?? '—'}</div>
-        <div className="text-gray-400 mt-1">{n.email ?? '—'}</div>
-        <div className="text-gray-400 mt-1">{n.dia_chi ?? '—'}</div>
+        <div>SĐT: {n.sdt ?? '—'}</div>
+        <div className="text-gray-400 mt-1">Email: {n.email ?? '—'}</div>
+        <div className="text-gray-400 mt-1">ĐC: {n.dia_chi ?? '—'}</div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-600">
         <div>{n.so_the_hdv ?? '—'}</div>
@@ -393,31 +394,66 @@ function HoSoRow({
         <div className="text-gray-400 mt-1">{formatDateVN(n.han_the_hdv) || '—'}</div>
       </td>
       <td className="px-4 py-3 min-w-42.5">
-        <div className="space-y-2">
-          <MoneyChipInput
-            value={ctp}
-            onChange={setCtp}
-            onCommit={commit}
-            placeholder="VD: 800.000"
-            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
-          <DayChipInput
-            value={soNgay}
-            onChange={setSoNgay}
-            onCommit={commit}
-            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
-          <div className="text-sm font-bold text-red-600">{soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : '—'}</div>
-        </div>
+        {rowEditing ? (
+          <div
+            className="space-y-2"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowEditing(false)
+            }}
+          >
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">CTP/ngày</div>
+              <MoneyChipInput
+                value={ctp}
+                onChange={setCtp}
+                onCommit={commit}
+                placeholder="VD: 800.000"
+                className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">Số ngày</div>
+              <DayChipInput
+                value={soNgay}
+                onChange={setSoNgay}
+                onCommit={commit}
+                className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">Tổng</div>
+              <div className="text-sm font-bold text-red-600">
+                {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-1">
+            <div className="text-xs text-gray-600">
+              <div>CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '—'}</div>
+              <div className="text-gray-400 mt-1">Số ngày: {soNgayNum > 0 ? soNgayNum : '—'}</div>
+              <div className="text-red-600 font-bold mt-1">
+                Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRowEditing(true)}
+              className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors shrink-0"
+            >
+              <Pencil size={13} />
+            </button>
+          </div>
+        )}
       </td>
       <td className="px-4 py-3 text-xs text-gray-600">
-        <div>{soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '—'}</div>
-        <div className="text-gray-400 mt-1">{soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '—'}</div>
-        <div className="text-gray-400 mt-1">{soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '—'}</div>
+        <div>CTP/ngày: {soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '—'}</div>
+        <div className="text-gray-400 mt-1">Thuế TNCN: {soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '—'}</div>
+        <div className="text-gray-400 mt-1">Tổng: {soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '—'}</div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-600">
-        <div>{n.stk ?? '—'}</div>
-        <div className="text-gray-400 mt-1">{n.ten_ngan_hang ?? '—'}</div>
+        <div>STK: {n.stk ?? '—'}</div>
+        <div className="text-gray-400 mt-1">Ngân hàng: {n.ten_ngan_hang ?? '—'}</div>
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
