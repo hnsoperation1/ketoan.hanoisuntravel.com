@@ -281,7 +281,7 @@ export default function DoanDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái'].map((h) => (
+                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái', ''].map((h) => (
                           <th
                             key={h}
                             className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${
@@ -309,7 +309,7 @@ export default function DoanDetailPage() {
                       ))}
                       {hoSo.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-14 text-center text-gray-400">
+                          <td colSpan={8} className="px-4 py-14 text-center text-gray-400">
                             Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
                           </td>
                         </tr>
@@ -434,32 +434,12 @@ function HoSoRow({
     <>
     <tr className="hover:bg-gray-50/70 transition-colors align-top">
       <td className="px-4 py-3">
-        <div className="flex items-start justify-between gap-1">
-          <button
-            onClick={onView}
-            className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left"
-          >
-            <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
-          </button>
-          <div className="flex flex-col items-center gap-0.5 shrink-0">
-            <button
-              type="button"
-              title="Xem"
-              onClick={onView}
-              className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
-            >
-              <Eye size={14} />
-            </button>
-            <button
-              type="button"
-              title="Xóa"
-              onClick={() => setDeleteOpen(true)}
-              className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={onView}
+          className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
+        >
+          <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+        </button>
         <div className="text-xs text-gray-900 font-mono mt-1">CCCD: {n.so_cccd ?? '-'}</div>
         <div className="text-xs text-gray-900 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '-'}</div>
       </td>
@@ -504,6 +484,26 @@ function HoSoRow({
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
           {TRANG_THAI_LABELS[r.trang_thai]}
         </span>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            type="button"
+            title="Xem"
+            onClick={onView}
+            className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            type="button"
+            title="Xóa"
+            onClick={() => setDeleteOpen(true)}
+            className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </td>
     </tr>
 
