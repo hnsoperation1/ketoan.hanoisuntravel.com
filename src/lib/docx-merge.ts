@@ -33,6 +33,7 @@ export function buildMergeData(doan: Doan, hoSo: HoSoWithNhanSu): Record<string,
 
     so_hop_dong: hoSo.so_hop_dong ?? '',
     ngay_dich_vu: formatDateVN(hoSo.ngay_dich_vu),
+    ngay_ket_thuc: formatDateVN(hoSo.ngay_ket_thuc),
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac != null ? String(hoSo.so_ngay_cong_tac) : '',
     don_gia_ngay: money(hoSo.don_gia_ngay),
     so_tien_chi_tra: money(hoSo.so_tien_chi_tra),

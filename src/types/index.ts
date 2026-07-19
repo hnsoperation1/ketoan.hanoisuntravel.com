@@ -79,6 +79,7 @@ export interface HoSo {
   doan_id: string
   nhansu_id: string
   ngay_dich_vu: string | null
+  ngay_ket_thuc: string | null
   so_ngay_cong_tac: number | null
   don_gia_ngay: number | null
   so_tien_chi_tra: number | null

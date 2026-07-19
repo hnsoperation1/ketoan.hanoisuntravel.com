@@ -160,9 +160,8 @@ export default function DoanDetailPage() {
                               onClick={() => setViewing(r)}
                               className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left"
                             >
-                              {r.nhansu.ho_ten}
+                              <span className="text-gray-400 font-medium">{r.nhansu.prefix || 'NS'}:</span> {r.nhansu.ho_ten}
                             </button>
-                            <span className="ml-1.5 text-[11px] font-medium text-gray-400">{r.nhansu.prefix || 'NS'}</span>
                           </td>
                           <td className="px-4 py-3 text-gray-600">{r.nhansu.sdt ?? '—'}</td>
                           <td className="px-4 py-3 text-gray-600 font-mono text-xs">{r.nhansu.so_cccd ?? '—'}</td>
@@ -429,6 +428,7 @@ function hsFormFrom(hoSo: HoSoWithNhanSu) {
   return {
     so_hop_dong: hoSo.so_hop_dong ?? '',
     ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
+    ngay_ket_thuc: hoSo.ngay_ket_thuc ?? '',
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
     ctp_ngay_thuc_nhan:
       hoSo.chi_tra != null && hoSo.so_ngay_cong_tac
@@ -531,6 +531,7 @@ function HoSoDetailModal({
         ho_so: {
           so_hop_dong: hs.so_hop_dong || null,
           ngay_dich_vu: hs.ngay_dich_vu || null,
+          ngay_ket_thuc: hs.ngay_ket_thuc || null,
           so_ngay_cong_tac: hs.so_ngay_cong_tac ? Number(hs.so_ngay_cong_tac) : null,
           don_gia_ngay: soTienChiTra > 0 ? donGiaNgay : null,
           so_tien_chi_tra: soTienChiTra > 0 ? soTienChiTra : null,
@@ -555,8 +556,9 @@ function HoSoDetailModal({
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{n.ho_ten}</h2>
-              <span className="text-[11px] font-medium text-gray-400">{n.prefix || 'NS'}</span>
+              <h2 className="text-lg font-bold text-gray-900">
+                <span className="text-gray-400 font-semibold">{n.prefix || 'NS'}:</span> {n.ho_ten}
+              </h2>
             </div>
             <div className="flex items-center gap-2">
               {editing ? (
@@ -596,88 +598,90 @@ function HoSoDetailModal({
             <ImagePanel hoSo={hoSo} onUploaded={onSaved} onView={(url, label) => setViewerImage({ url, label })} />
 
             <div className="space-y-6 min-w-0">
-              <div className="grid sm:grid-cols-2 gap-6">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
                   <div className="space-y-3">
-                    <InfoField
-                      editing={editing}
-                      label="Số CCCD"
-                      value={n.so_cccd}
-                      mono
-                      input={<input value={nhansu.so_cccd} onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />}
-                    />
-                    <InfoField
-                      editing={editing}
-                      label="Ngày sinh"
-                      value={formatDateVN(n.ngay_sinh)}
-                      input={<DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />}
-                    />
-                    <InfoField
-                      editing={editing}
-                      label="Ngày cấp"
-                      value={formatDateVN(n.ngay_cap)}
-                      input={<DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />}
-                    />
-                    <InfoField
-                      editing={editing}
-                      label="Nơi cấp"
-                      value={n.noi_cap}
-                      input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoField
+                        editing={editing}
+                        label="Số CCCD"
+                        value={n.so_cccd}
+                        mono
+                        input={<input value={nhansu.so_cccd} onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Ngày sinh"
+                        value={formatDateVN(n.ngay_sinh)}
+                        input={<DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoField
+                        editing={editing}
+                        label="Ngày cấp"
+                        value={formatDateVN(n.ngay_cap)}
+                        input={<DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Nơi cấp"
+                        value={n.noi_cap}
+                        input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
+                      />
+                    </div>
                     <InfoField
                       editing={editing}
                       label="Địa chỉ"
                       value={n.dia_chi}
                       input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
                     />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
+                  <div className="grid grid-cols-3 gap-4">
                     <InfoField
                       editing={editing}
-                      label="MS thuế TNCN"
-                      value={n.ma_so_thue_tncn}
-                      input={<input value={nhansu.ma_so_thue_tncn} onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />}
+                      label="Số thẻ"
+                      value={n.so_the_hdv}
+                      input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Loại thẻ"
+                      value={n.loai_the_hdv}
+                      input={<input value={nhansu.loai_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Hạn thẻ"
+                      value={formatDateVN(n.han_the_hdv)}
+                      input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
                     />
                   </div>
                 </div>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
-                    <div className="space-y-3">
-                      <InfoField
-                        editing={editing}
-                        label="Số thẻ"
-                        value={n.so_the_hdv}
-                        input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
-                      />
-                      <InfoField
-                        editing={editing}
-                        label="Loại thẻ"
-                        value={n.loai_the_hdv}
-                        input={<input value={nhansu.loai_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />}
-                      />
-                      <InfoField
-                        editing={editing}
-                        label="Hạn thẻ"
-                        value={formatDateVN(n.han_the_hdv)}
-                        input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
-                      />
-                    </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <InfoField
+                      editing={editing}
+                      label="SĐT"
+                      value={n.sdt}
+                      input={<input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Email"
+                      value={n.email}
+                      input={<input value={nhansu.email} onChange={(e) => setNhansu((f) => ({ ...f, email: e.target.value }))} className={inputCls} />}
+                    />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ &amp; ngân hàng</p>
-                    <div className="space-y-3">
-                      <InfoField
-                        editing={editing}
-                        label="SĐT"
-                        value={n.sdt}
-                        input={<input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />}
-                      />
-                      <InfoField
-                        editing={editing}
-                        label="Email"
-                        value={n.email}
-                        input={<input value={nhansu.email} onChange={(e) => setNhansu((f) => ({ ...f, email: e.target.value }))} className={inputCls} />}
-                      />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Ngân hàng</p>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <InfoField
                         editing={editing}
                         label="STK"
@@ -691,9 +695,14 @@ function HoSoDetailModal({
                         input={<input value={nhansu.ten_ngan_hang} onChange={(e) => setNhansu((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />}
                       />
                     </div>
+                    <InfoField
+                      editing={editing}
+                      label="MS thuế TNCN"
+                      value={n.ma_so_thue_tncn}
+                      input={<input value={nhansu.ma_so_thue_tncn} onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />}
+                    />
                   </div>
                 </div>
-              </div>
 
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
@@ -706,18 +715,21 @@ function HoSoDetailModal({
                   />
                   <InfoField
                     editing={editing}
-                    label="Ngày dịch vụ"
+                    label="Từ ngày"
                     value={formatDateVN(hoSo.ngay_dich_vu)}
                     input={<DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />}
                   />
                   <InfoField
                     editing={editing}
-                    label="Số ngày công tác"
-                    value={hoSo.so_ngay_cong_tac?.toString() ?? null}
-                    input={<input type="number" value={hs.so_ngay_cong_tac} onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))} className={inputCls} />}
+                    label="Đến ngày"
+                    value={formatDateVN(hoSo.ngay_ket_thuc)}
+                    input={<DateInput value={hs.ngay_ket_thuc} onChange={(v) => setHs((f) => ({ ...f, ngay_ket_thuc: v }))} className="w-full" />}
                   />
-                  {editing && (
-                    <Field label="CTP thực nhận/ngày">
+                  <InfoField
+                    editing={editing}
+                    label="CTP/ngày (thực nhận)"
+                    value={hoSo.chi_tra != null && hoSo.so_ngay_cong_tac ? Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac).toLocaleString('vi-VN') : null}
+                    input={
                       <input
                         type="number"
                         placeholder="VD: 800000"
@@ -725,31 +737,37 @@ function HoSoDetailModal({
                         onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value }))}
                         className={inputCls}
                       />
-                    </Field>
-                  )}
+                    }
+                  />
                   <InfoField
                     editing={editing}
-                    label="Đơn giá/ngày"
+                    label="Số ngày công tác"
+                    value={hoSo.so_ngay_cong_tac?.toString() ?? null}
+                    input={<input type="number" value={hs.so_ngay_cong_tac} onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))} className={inputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Tổng thực nhận"
+                    value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="CTP/ngày"
                     value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
                     editing={editing}
-                    label="Số tiền chi trả"
-                    value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
-                    input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
-                  />
-                  <InfoField
-                    editing={editing}
-                    label="Thuế nộp"
+                    label="Thuế TNCN"
                     value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
                     editing={editing}
-                    label="Chi trả"
-                    value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
-                    input={<input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                    label="Tổng CTP"
+                    value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
                     editing={editing}
