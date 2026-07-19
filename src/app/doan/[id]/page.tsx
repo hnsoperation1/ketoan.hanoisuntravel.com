@@ -1832,11 +1832,19 @@ function ViewField({
   emphasize?: boolean
 }) {
   return (
-    <div>
-      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
-      <p className={`text-sm ${emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'}`}>
+    <div className="flex items-center gap-2">
+      <span
+        className={`shrink-0 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}
+      >
+        {label}:
+      </span>
+      <div
+        className={`flex-1 min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
+          emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
+        }`}
+      >
         {value || <span className="text-gray-300 font-normal">—</span>}
-      </p>
+      </div>
     </div>
   )
 }
