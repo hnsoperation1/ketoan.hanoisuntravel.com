@@ -162,11 +162,7 @@ export default function DoanDetailPage() {
                             >
                               {r.nhansu.ho_ten}
                             </button>
-                            <div>
-                              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                {r.nhansu.prefix}
-                              </span>
-                            </div>
+                            <span className="ml-1.5 text-[11px] font-medium text-gray-400">{r.nhansu.prefix || 'NS'}</span>
                           </td>
                           <td className="px-4 py-3 text-gray-600">{r.nhansu.sdt ?? '—'}</td>
                           <td className="px-4 py-3 text-gray-600 font-mono text-xs">{r.nhansu.so_cccd ?? '—'}</td>
@@ -410,6 +406,40 @@ const DETAIL_IMAGE_FIELDS = [
   { key: 'anh_xac_nhan_url', label: 'Xác nhận' },
 ] as const
 
+function nhansuFormFrom(hoSo: HoSoWithNhanSu) {
+  const n = hoSo.nhansu
+  return {
+    so_cccd: n.so_cccd ?? '',
+    ngay_sinh: n.ngay_sinh ?? '',
+    ngay_cap: n.ngay_cap ?? '',
+    noi_cap: n.noi_cap ?? '',
+    dia_chi: n.dia_chi ?? '',
+    ma_so_thue_tncn: n.ma_so_thue_tncn ?? '',
+    so_the_hdv: n.so_the_hdv ?? '',
+    loai_the_hdv: n.loai_the_hdv ?? '',
+    han_the_hdv: n.han_the_hdv ?? '',
+    sdt: n.sdt ?? '',
+    email: n.email ?? '',
+    stk: n.stk ?? '',
+    ten_ngan_hang: n.ten_ngan_hang ?? '',
+  }
+}
+
+function hsFormFrom(hoSo: HoSoWithNhanSu) {
+  return {
+    so_hop_dong: hoSo.so_hop_dong ?? '',
+    ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
+    so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
+    ctp_ngay_thuc_nhan:
+      hoSo.chi_tra != null && hoSo.so_ngay_cong_tac
+        ? String(Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac))
+        : '',
+    loai_hop_dong: hoSo.loai_hop_dong ?? '',
+    tinh_trang_thanh_toan: hoSo.tinh_trang_thanh_toan ?? '',
+    trang_thai: hoSo.trang_thai,
+  }
+}
+
 function HoSoDetailModal({
   hoSo,
   onClose,
@@ -427,6 +457,10 @@ function HoSoDetailModal({
   const [exportError, setExportError] = useState('')
   const [viewerImage, setViewerImage] = useState<{ url: string; label: string } | null>(null)
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
+
+  const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
+  const [hs, setHs] = useState(() => hsFormFrom(hoSo))
+  const [submitting, setSubmitting] = useState(false)
 
   const loadFiles = useCallback(async () => {
     const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files`)
@@ -456,267 +490,11 @@ function HoSoDetailModal({
     loadFiles()
   }
 
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">{n.ho_ten}</h2>
-              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{n.prefix}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil size={13} /> Sửa
-                </button>
-              )}
-              <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {editing ? (
-            <HoSoEditForm
-              hoSo={hoSo}
-              onCancel={() => setEditing(false)}
-              onSaved={(updated) => {
-                setEditing(false)
-                onSaved(updated)
-              }}
-            />
-          ) : (
-            <div className="grid md:grid-cols-[260px_1fr] gap-6 p-6">
-              <ImagePanel hoSo={hoSo} onUploaded={onSaved} onView={(url, label) => setViewerImage({ url, label })} />
-
-              <div className="space-y-6 min-w-0">
-                <div className="grid sm:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
-                    <div className="space-y-3">
-                      <ViewField label="Số CCCD" value={n.so_cccd} mono />
-                      <ViewField label="Ngày sinh" value={formatDateVN(n.ngay_sinh)} />
-                      <ViewField label="Ngày cấp" value={formatDateVN(n.ngay_cap)} />
-                      <ViewField label="Nơi cấp" value={n.noi_cap} />
-                      <ViewField label="Địa chỉ" value={n.dia_chi} />
-                      <ViewField label="MS thuế TNCN" value={n.ma_so_thue_tncn} />
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
-                      <div className="space-y-3">
-                        <ViewField label="Số thẻ" value={n.so_the_hdv} />
-                        <ViewField label="Loại thẻ" value={n.loai_the_hdv} />
-                        <ViewField label="Hạn thẻ" value={formatDateVN(n.han_the_hdv)} />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ &amp; ngân hàng</p>
-                      <div className="space-y-3">
-                        <ViewField label="SĐT" value={n.sdt} />
-                        <ViewField label="Email" value={n.email} />
-                        <ViewField label="STK" value={n.stk} />
-                        <ViewField label="Ngân hàng" value={n.ten_ngan_hang} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <ViewField label="Số hợp đồng" value={hoSo.so_hop_dong} />
-                    <ViewField label="Ngày dịch vụ" value={formatDateVN(hoSo.ngay_dich_vu)} />
-                    <ViewField label="Số ngày công tác" value={hoSo.so_ngay_cong_tac?.toString() ?? null} />
-                    <ViewField label="Đơn giá/ngày" value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null} />
-                    <ViewField label="Số tiền chi trả" value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null} />
-                    <ViewField label="Thuế nộp" value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null} />
-                    <ViewField label="Chi trả" value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null} />
-                    <ViewField label="Loại hợp đồng" value={hoSo.loai_hop_dong} />
-                    <ViewField label="Tình trạng thanh toán" value={hoSo.tinh_trang_thanh_toan} />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[hoSo.trang_thai]}`}>
-                        {TRANG_THAI_LABELS[hoSo.trang_thai]}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-100 pt-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">File hợp đồng</p>
-                    <button
-                      onClick={handleExport}
-                      disabled={exporting}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
-                    >
-                      {exporting && <Loader2 size={13} className="animate-spin" />}
-                      Xuất hợp đồng (.docx)
-                    </button>
-                  </div>
-                  {exportError && <p className="text-xs text-red-500 mb-2">{exportError}</p>}
-                  {files.length === 0 ? (
-                    <p className="text-xs text-gray-400">Chưa có file nào được xuất.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {files.map((f) => (
-                        <a
-                          key={f.id}
-                          href={`/api/ho-so/${hoSo.id}/hop-dong-files/${f.id}/download`}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs hover:bg-gray-50 transition-colors"
-                        >
-                          <span className="flex items-center gap-1.5 text-brand-600 font-medium truncate">
-                            <FileText size={13} className="shrink-0" /> {f.file_name ?? 'Xem file'}
-                          </span>
-                          <span className="text-gray-400">
-                            {new Date(f.created_at).toLocaleString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {viewerImage && (
-        <ImageViewer url={viewerImage.url} label={viewerImage.label} onClose={() => setViewerImage(null)} />
-      )}
-    </>
-  )
-}
-
-function ImagePanel({
-  hoSo,
-  onUploaded,
-  onView,
-}: {
-  hoSo: HoSoWithNhanSu
-  onUploaded: (updated: HoSoWithNhanSu) => void
-  onView: (url: string, label: string) => void
-}) {
-  const [uploadingField, setUploadingField] = useState<string | null>(null)
-
-  async function handleUpload(field: string, file: File) {
-    setUploadingField(field)
-    const formData = new FormData()
-    formData.append('field', field)
-    formData.append('file', file)
-    const res = await fetch(`/api/ho-so/${hoSo.id}/anh`, { method: 'POST', body: formData })
-    setUploadingField(null)
-    if (res.ok) {
-      const data = await res.json()
-      onUploaded(data.ho_so)
-    }
+  function startEditing() {
+    setNhansu(nhansuFormFrom(hoSo))
+    setHs(hsFormFrom(hoSo))
+    setEditing(true)
   }
-
-  return (
-    <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ảnh hồ sơ</p>
-      {DETAIL_IMAGE_FIELDS.map((f) => {
-        const url = hoSo[f.key]
-        const uploading = uploadingField === f.key
-        return (
-          <div key={f.key} className="relative group">
-            {url ? (
-              <button
-                onClick={() => onView(url, f.label)}
-                className="w-full aspect-4/3 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- ảnh từ Supabase Storage (signed URL động), không phù hợp next/image */}
-                <img src={url} alt={f.label} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
-              </button>
-            ) : (
-              <div className="w-full aspect-4/3 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300">
-                <FileText size={20} />
-              </div>
-            )}
-            <label className="absolute bottom-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-lg bg-white/90 border border-gray-200 text-gray-500 hover:text-brand-600 hover:border-brand-300 shadow-sm transition-colors cursor-pointer">
-              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleUpload(f.key, file)
-                  e.target.value = ''
-                }}
-              />
-            </label>
-            <p className="text-[11px] text-gray-500 mt-1 text-center">{f.label}</p>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function ViewField({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
-      <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : 'font-medium'}`}>
-        {value || <span className="text-gray-300 font-normal">—</span>}
-      </p>
-    </div>
-  )
-}
-
-function HoSoEditForm({
-  hoSo,
-  onCancel,
-  onSaved,
-}: {
-  hoSo: HoSoWithNhanSu
-  onCancel: () => void
-  onSaved: (updated: HoSoWithNhanSu) => void
-}) {
-  const [nhansu, setNhansu] = useState({
-    so_cccd: hoSo.nhansu.so_cccd ?? '',
-    ngay_sinh: hoSo.nhansu.ngay_sinh ?? '',
-    ngay_cap: hoSo.nhansu.ngay_cap ?? '',
-    noi_cap: hoSo.nhansu.noi_cap ?? '',
-    dia_chi: hoSo.nhansu.dia_chi ?? '',
-    ma_so_thue_tncn: hoSo.nhansu.ma_so_thue_tncn ?? '',
-    so_the_hdv: hoSo.nhansu.so_the_hdv ?? '',
-    loai_the_hdv: hoSo.nhansu.loai_the_hdv ?? '',
-    han_the_hdv: hoSo.nhansu.han_the_hdv ?? '',
-    sdt: hoSo.nhansu.sdt ?? '',
-    email: hoSo.nhansu.email ?? '',
-    stk: hoSo.nhansu.stk ?? '',
-    ten_ngan_hang: hoSo.nhansu.ten_ngan_hang ?? '',
-  })
-  const [hs, setHs] = useState({
-    so_hop_dong: hoSo.so_hop_dong ?? '',
-    ngay_dich_vu: hoSo.ngay_dich_vu ?? '',
-    so_ngay_cong_tac: hoSo.so_ngay_cong_tac?.toString() ?? '',
-    ctp_ngay_thuc_nhan:
-      hoSo.chi_tra != null && hoSo.so_ngay_cong_tac
-        ? String(Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac))
-        : '',
-    loai_hop_dong: hoSo.loai_hop_dong ?? '',
-    tinh_trang_thanh_toan: hoSo.tinh_trang_thanh_toan ?? '',
-    trang_thai: hoSo.trang_thai,
-  })
-  const [submitting, setSubmitting] = useState(false)
 
   // Kế toán chỉ gõ công tác phí thực nhận/ngày (a1, vd 800k) — các cột còn lại
   // tự tính ra để khớp đúng công thức thuế 10%/90% đã áp dụng ở server.
@@ -764,182 +542,396 @@ function HoSoEditForm({
     })
     const data = await res.json()
     setSubmitting(false)
-    if (res.ok) onSaved(data.ho_so)
+    if (res.ok) {
+      setEditing(false)
+      onSaved(data.ho_so)
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">CCCD</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Số CCCD">
-                <input
-                  value={nhansu.so_cccd}
-                  onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="MS thuế TNCN">
-                <input
-                  value={nhansu.ma_so_thue_tncn}
-                  onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Ngày sinh">
-                <DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
-              </Field>
-              <Field label="Ngày cấp">
-                <DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
-              </Field>
-              <Field label="Nơi cấp">
-                <input
-                  value={nhansu.noi_cap}
-                  onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Địa chỉ">
-                <input
-                  value={nhansu.dia_chi}
-                  onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">{n.ho_ten}</h2>
+              <span className="text-[11px] font-medium text-gray-400">{n.prefix || 'NS'}</span>
             </div>
-
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Thẻ HDV</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Số thẻ">
-                <input
-                  value={nhansu.so_the_hdv}
-                  onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Loại thẻ">
-                <input
-                  value={nhansu.loai_the_hdv}
-                  onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Hạn thẻ">
-                <DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
-              </Field>
-            </div>
-
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Liên hệ &amp; ngân hàng</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="SĐT">
-                <input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
-              </Field>
-              <Field label="Email">
-                <input value={nhansu.email} onChange={(e) => setNhansu((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
-              </Field>
-              <Field label="STK">
-                <input value={nhansu.stk} onChange={(e) => setNhansu((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
-              </Field>
-              <Field label="Ngân hàng">
-                <input
-                  value={nhansu.ten_ngan_hang}
-                  onChange={(e) => setNhansu((f) => ({ ...f, ten_ngan_hang: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-            </div>
-
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pt-2">Hợp đồng</p>
-            <Field label="Số hợp đồng">
-              <input
-                placeholder="VD: 015/2026/HĐHDV"
-                value={hs.so_hop_dong}
-                onChange={(e) => setHs((f) => ({ ...f, so_hop_dong: e.target.value }))}
-                className={inputCls}
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Ngày dịch vụ">
-                <DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />
-              </Field>
-              <Field label="Số ngày công tác">
-                <input
-                  type="number"
-                  value={hs.so_ngay_cong_tac}
-                  onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="CTP thực nhận/ngày">
-                <input
-                  type="number"
-                  placeholder="VD: 800000"
-                  value={hs.ctp_ngay_thuc_nhan}
-                  onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value }))}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Đơn giá/ngày">
-                <input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
-              </Field>
-              <Field label="Số tiền chi trả">
-                <input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
-              </Field>
-              <Field label="Thuế nộp">
-                <input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
-              </Field>
-              <Field label="Chi trả">
-                <input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />
-              </Field>
-            </div>
-            <Field label="Loại hợp đồng">
-              <input
-                placeholder="VD: HĐ điện tử"
-                value={hs.loai_hop_dong}
-                onChange={(e) => setHs((f) => ({ ...f, loai_hop_dong: e.target.value }))}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Tình trạng thanh toán">
-              <input
-                placeholder="VD: Ngày 17/01/2026 - TCB017"
-                value={hs.tinh_trang_thanh_toan}
-                onChange={(e) => setHs((f) => ({ ...f, tinh_trang_thanh_toan: e.target.value }))}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Trạng thái">
-              <select
-                value={hs.trang_thai}
-                onChange={(e) => setHs((f) => ({ ...f, trang_thai: e.target.value as TrangThaiHoSo }))}
-                className={inputCls}
-              >
-                {Object.entries(TRANG_THAI_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              >
-                {submitting && <Loader2 size={14} className="animate-spin" />}
-                Lưu
+            <div className="flex items-center gap-2">
+              {editing ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="submit"
+                    form="ho-so-edit-form"
+                    disabled={submitting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                  >
+                    {submitting && <Loader2 size={13} className="animate-spin" />}
+                    Lưu
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={startEditing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Pencil size={13} /> Sửa
+                </button>
+              )}
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+                <X size={18} />
               </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-              >
-                Huỷ
-              </button>
+            </div>
+          </div>
+
+          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-[260px_1fr] gap-6 p-6">
+            <ImagePanel hoSo={hoSo} onUploaded={onSaved} onView={(url, label) => setViewerImage({ url, label })} />
+
+            <div className="space-y-6 min-w-0">
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
+                  <div className="space-y-3">
+                    <InfoField
+                      editing={editing}
+                      label="Số CCCD"
+                      value={n.so_cccd}
+                      mono
+                      input={<input value={nhansu.so_cccd} onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Ngày sinh"
+                      value={formatDateVN(n.ngay_sinh)}
+                      input={<DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Ngày cấp"
+                      value={formatDateVN(n.ngay_cap)}
+                      input={<DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Nơi cấp"
+                      value={n.noi_cap}
+                      input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="Địa chỉ"
+                      value={n.dia_chi}
+                      input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
+                    />
+                    <InfoField
+                      editing={editing}
+                      label="MS thuế TNCN"
+                      value={n.ma_so_thue_tncn}
+                      input={<input value={nhansu.ma_so_thue_tncn} onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
+                    <div className="space-y-3">
+                      <InfoField
+                        editing={editing}
+                        label="Số thẻ"
+                        value={n.so_the_hdv}
+                        input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Loại thẻ"
+                        value={n.loai_the_hdv}
+                        input={<input value={nhansu.loai_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Hạn thẻ"
+                        value={formatDateVN(n.han_the_hdv)}
+                        input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ &amp; ngân hàng</p>
+                    <div className="space-y-3">
+                      <InfoField
+                        editing={editing}
+                        label="SĐT"
+                        value={n.sdt}
+                        input={<input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Email"
+                        value={n.email}
+                        input={<input value={nhansu.email} onChange={(e) => setNhansu((f) => ({ ...f, email: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="STK"
+                        value={n.stk}
+                        input={<input value={nhansu.stk} onChange={(e) => setNhansu((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Ngân hàng"
+                        value={n.ten_ngan_hang}
+                        input={<input value={nhansu.ten_ngan_hang} onChange={(e) => setNhansu((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <InfoField
+                    editing={editing}
+                    label="Số hợp đồng"
+                    value={hoSo.so_hop_dong}
+                    input={<input placeholder="VD: 015/2026/HĐHDV" value={hs.so_hop_dong} onChange={(e) => setHs((f) => ({ ...f, so_hop_dong: e.target.value }))} className={inputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Ngày dịch vụ"
+                    value={formatDateVN(hoSo.ngay_dich_vu)}
+                    input={<DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Số ngày công tác"
+                    value={hoSo.so_ngay_cong_tac?.toString() ?? null}
+                    input={<input type="number" value={hs.so_ngay_cong_tac} onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))} className={inputCls} />}
+                  />
+                  {editing && (
+                    <Field label="CTP thực nhận/ngày">
+                      <input
+                        type="number"
+                        placeholder="VD: 800000"
+                        value={hs.ctp_ngay_thuc_nhan}
+                        onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </Field>
+                  )}
+                  <InfoField
+                    editing={editing}
+                    label="Đơn giá/ngày"
+                    value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Số tiền chi trả"
+                    value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Thuế nộp"
+                    value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Chi trả"
+                    value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
+                    input={<input readOnly value={soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Loại hợp đồng"
+                    value={hoSo.loai_hop_dong}
+                    input={<input placeholder="VD: HĐ điện tử" value={hs.loai_hop_dong} onChange={(e) => setHs((f) => ({ ...f, loai_hop_dong: e.target.value }))} className={inputCls} />}
+                  />
+                  <InfoField
+                    editing={editing}
+                    label="Tình trạng thanh toán"
+                    value={hoSo.tinh_trang_thanh_toan}
+                    input={<input placeholder="VD: Ngày 17/01/2026 - TCB017" value={hs.tinh_trang_thanh_toan} onChange={(e) => setHs((f) => ({ ...f, tinh_trang_thanh_toan: e.target.value }))} className={inputCls} />}
+                  />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
+                    {editing ? (
+                      <select
+                        value={hs.trang_thai}
+                        onChange={(e) => setHs((f) => ({ ...f, trang_thai: e.target.value as TrangThaiHoSo }))}
+                        className={inputCls}
+                      >
+                        {Object.entries(TRANG_THAI_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[hoSo.trang_thai]}`}>
+                        {TRANG_THAI_LABELS[hoSo.trang_thai]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">File hợp đồng</p>
+                  <button
+                    type="button"
+                    onClick={handleExport}
+                    disabled={exporting}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                  >
+                    {exporting && <Loader2 size={13} className="animate-spin" />}
+                    Xuất hợp đồng (.docx)
+                  </button>
+                </div>
+                {exportError && <p className="text-xs text-red-500 mb-2">{exportError}</p>}
+                {files.length === 0 ? (
+                  <p className="text-xs text-gray-400">Chưa có file nào được xuất.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {files.map((f) => (
+                      <a
+                        key={f.id}
+                        href={`/api/ho-so/${hoSo.id}/hop-dong-files/${f.id}/download`}
+                        className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="flex items-center gap-1.5 text-brand-600 font-medium truncate">
+                          <FileText size={13} className="shrink-0" /> {f.file_name ?? 'Xem file'}
+                        </span>
+                        <span className="text-gray-400">
+                          {new Date(f.created_at).toLocaleString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </form>
+        </div>
+      </div>
+
+      {viewerImage && (
+        <ImageViewer url={viewerImage.url} label={viewerImage.label} onClose={() => setViewerImage(null)} />
+      )}
+    </>
   )
+}
+
+function ImagePanel({
+  hoSo,
+  onUploaded,
+  onView,
+}: {
+  hoSo: HoSoWithNhanSu
+  onUploaded: (updated: HoSoWithNhanSu) => void
+  onView: (url: string, label: string) => void
+}) {
+  const [uploadingField, setUploadingField] = useState<string | null>(null)
+
+  async function handleUpload(field: string, file: File) {
+    setUploadingField(field)
+    const formData = new FormData()
+    formData.append('field', field)
+    formData.append('file', file)
+    const res = await fetch(`/api/ho-so/${hoSo.id}/anh`, { method: 'POST', body: formData })
+    setUploadingField(null)
+    if (res.ok) {
+      const data = await res.json()
+      onUploaded(data.ho_so)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ảnh hồ sơ</p>
+      {DETAIL_IMAGE_FIELDS.map((f) => {
+        const url = hoSo[f.key]
+        const uploading = uploadingField === f.key
+        return (
+          <div key={f.key} className="relative group">
+            {url ? (
+              <button
+                type="button"
+                onClick={() => onView(url, f.label)}
+                className="w-full aspect-4/3 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- ảnh từ Supabase Storage (signed URL động), không phù hợp next/image */}
+                <img src={url} alt={f.label} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+              </button>
+            ) : (
+              <div className="w-full aspect-4/3 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300">
+                <FileText size={20} />
+              </div>
+            )}
+            <label className="absolute bottom-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-lg bg-white/90 border border-gray-200 text-gray-500 hover:text-brand-600 hover:border-brand-300 shadow-sm transition-colors cursor-pointer">
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(f.key, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <p className="text-[11px] text-gray-500 mt-1 text-center">{f.label}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ViewField({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+      <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : 'font-medium'}`}>
+        {value || <span className="text-gray-300 font-normal">—</span>}
+      </p>
+    </div>
+  )
+}
+
+function InfoField({
+  editing,
+  label,
+  value,
+  mono,
+  input,
+}: {
+  editing: boolean
+  label: string
+  value?: string | null
+  mono?: boolean
+  input: React.ReactNode
+}) {
+  return editing ? <Field label={label}>{input}</Field> : <ViewField label={label} value={value} mono={mono} />
 }
 
 const inputCls =
