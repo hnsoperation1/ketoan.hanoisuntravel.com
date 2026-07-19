@@ -387,24 +387,24 @@ function HoSoRow({
         >
           <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
         </button>
-        <div className="text-xs text-gray-500 font-mono mt-1">CCCD: {n.so_cccd ?? '—'}</div>
-        <div className="text-xs text-gray-400 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '—'}</div>
+        <div className="text-xs text-gray-900 font-mono mt-1">CCCD: {n.so_cccd ?? '—'}</div>
+        <div className="text-xs text-gray-900 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '—'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-600">
+      <td className="px-4 py-3 text-xs text-gray-900">
         <div>SĐT: {n.sdt ?? '—'}</div>
-        <div className="text-gray-400 mt-1">Email: {n.email ?? '—'}</div>
-        <div className="text-gray-400 mt-1">ĐC: {n.dia_chi ?? '—'}</div>
+        <div className="mt-1">Email: {n.email ?? '—'}</div>
+        <div className="mt-1">ĐC: {n.dia_chi ?? '—'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-600">
+      <td className="px-4 py-3 text-xs text-gray-900">
         <div>{n.so_the_hdv ?? '—'}</div>
-        <div className="text-gray-400 mt-1">{n.loai_the_hdv ?? '—'}</div>
-        <div className="text-gray-400 mt-1">{formatDateVN(n.han_the_hdv) || '—'}</div>
+        <div className="mt-1">{n.loai_the_hdv ?? '—'}</div>
+        <div className="mt-1">{formatDateVN(n.han_the_hdv) || '—'}</div>
       </td>
       <td className="px-4 py-3 min-w-42.5">
         <div className="flex items-start justify-between gap-1">
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-gray-900">
             <div>CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '—'}</div>
-            <div className="text-gray-400 mt-1">Số ngày: {soNgayNum > 0 ? soNgayNum : '—'}</div>
+            <div className="mt-1">Số ngày: {soNgayNum > 0 ? soNgayNum : '—'}</div>
             <div className="text-red-600 font-bold mt-1">
               Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
             </div>
@@ -418,14 +418,14 @@ function HoSoRow({
           </button>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-600">
+      <td className="px-4 py-3 text-xs text-gray-900">
         <div>CTP/ngày: {soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '—'}</div>
-        <div className="text-gray-400 mt-1">Thuế TNCN: {soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '—'}</div>
-        <div className="text-gray-400 mt-1">Tổng: {soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '—'}</div>
+        <div className="mt-1">Thuế TNCN: {soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '—'}</div>
+        <div className="mt-1">Tổng: {soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '—'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-600">
+      <td className="px-4 py-3 text-xs text-gray-900">
         <div>STK: {n.stk ?? '—'}</div>
-        <div className="text-gray-400 mt-1">Ngân hàng: {n.ten_ngan_hang ?? '—'}</div>
+        <div className="mt-1">Ngân hàng: {n.ten_ngan_hang ?? '—'}</div>
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
