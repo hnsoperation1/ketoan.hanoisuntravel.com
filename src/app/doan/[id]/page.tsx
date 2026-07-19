@@ -24,8 +24,8 @@ import {
 } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
-import { buildDsHdvRows, buildTheoDoiHopDongRows } from '@/lib/export-format'
-import { formatDateVN } from '@/lib/format'
+import { buildDsHdvRows } from '@/lib/export-format'
+import { formatDateVN, deriveTinhTp } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
 
@@ -162,7 +162,7 @@ export default function DoanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [viewing, setViewing] = useState<HoSoWithNhanSu | null>(null)
   const [tab, setTab] = useState<Tab>('info')
-  const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
+  const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [addingNhanSu, setAddingNhanSu] = useState(false)
 
@@ -202,12 +202,12 @@ export default function DoanDetailPage() {
     }
   }, [setBreadcrumb, setOnRefresh, doan?.ten_doan, load])
 
-  async function handleCopy(kind: 'ds' | 'td') {
+  async function handleCopy() {
     if (!doan) return
-    const text = kind === 'ds' ? buildDsHdvRows(doan, hoSo) : buildTheoDoiHopDongRows(doan, hoSo)
+    const text = buildDsHdvRows(doan, hoSo)
     await navigator.clipboard.writeText(text)
-    setCopied(kind)
-    setTimeout(() => setCopied(null), 1500)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
 
   if (loading) {
@@ -269,18 +269,11 @@ export default function DoanDetailPage() {
                   </button>
                   <div className="flex-1" />
                   <button
-                    onClick={() => handleCopy('ds')}
+                    onClick={handleCopy}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    {copied === 'ds' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                    Copy DS HDV (29 cột)
-                  </button>
-                  <button
-                    onClick={() => handleCopy('td')}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    {copied === 'td' ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                    Copy Theo dõi HĐ (4 cột)
+                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                    Copy DS HDV (23 cột)
                   </button>
                 </div>
 
@@ -725,6 +718,7 @@ function emptyAiFields(): Record<keyof AiExtractedFields, string> {
     ngay_cap: '',
     noi_cap: '',
     dia_chi: '',
+    tinh_tp: '',
     so_the_hdv: '',
     loai_the_hdv: '',
     han_the_hdv: '',
@@ -829,6 +823,7 @@ function AddNhanSuModal({
       ngay_cap: f.ngay_cap ?? '',
       noi_cap: f.noi_cap ?? '',
       dia_chi: f.dia_chi ?? '',
+      tinh_tp: f.tinh_tp || deriveTinhTp(f.dia_chi),
       so_the_hdv: f.so_the_hdv ?? '',
       loai_the_hdv: f.loai_the_hdv ?? '',
       han_the_hdv: f.han_the_hdv ?? '',
@@ -1028,12 +1023,15 @@ function AddNhanSuModal({
                       <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
                     </Field>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <Field label="Ngày cấp">
                       <DateInput value={fields.ngay_cap} onChange={(v) => setFields((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
                     </Field>
                     <Field label="Nơi cấp">
                       <input value={fields.noi_cap} onChange={(e) => setFields((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Tỉnh/TP">
+                      <input value={fields.tinh_tp} onChange={(e) => setFields((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />
                     </Field>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
@@ -1300,6 +1298,7 @@ function nhansuFormFrom(hoSo: HoSoWithNhanSu) {
     ngay_cap: n.ngay_cap ?? '',
     noi_cap: n.noi_cap ?? '',
     dia_chi: n.dia_chi ?? '',
+    tinh_tp: n.tinh_tp ?? '',
     ma_so_thue_tncn: n.ma_so_thue_tncn ?? '',
     so_the_hdv: n.so_the_hdv ?? '',
     loai_the_hdv: n.loai_the_hdv ?? '',
@@ -1409,6 +1408,7 @@ function HoSoDetailModal({
           ngay_cap: nhansu.ngay_cap || null,
           noi_cap: nhansu.noi_cap || null,
           dia_chi: nhansu.dia_chi || null,
+          tinh_tp: nhansu.tinh_tp || null,
           ma_so_thue_tncn: nhansu.ma_so_thue_tncn || null,
           so_the_hdv: nhansu.so_the_hdv || null,
           loai_the_hdv: nhansu.loai_the_hdv || null,
@@ -1522,12 +1522,20 @@ function HoSoDetailModal({
                         input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
                       />
                     </div>
-                    <InfoField
-                      editing={editing}
-                      label="Địa chỉ"
-                      value={n.dia_chi}
-                      input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoField
+                        editing={editing}
+                        label="Địa chỉ"
+                        value={n.dia_chi}
+                        input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Tỉnh/TP"
+                        value={n.tinh_tp}
+                        input={<input value={nhansu.tinh_tp} onChange={(e) => setNhansu((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div>

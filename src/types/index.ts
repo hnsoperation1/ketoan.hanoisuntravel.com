@@ -49,6 +49,7 @@ export interface NhanSu {
   prefix: Prefix
   ho_ten: string
   dia_chi: string | null
+  tinh_tp: string | null
   so_cccd: string | null
   ngay_sinh: string | null
   ngay_cap: string | null
@@ -114,6 +115,7 @@ export interface AiExtractedFields {
   ngay_cap?: string
   noi_cap?: string
   dia_chi?: string
+  tinh_tp?: string
   so_the_hdv?: string
   loai_the_hdv?: string
   han_the_hdv?: string

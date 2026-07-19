@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AiExtractedFields, NhanSu, Prefix } from '@/types'
+import { deriveTinhTp } from '@/lib/format'
 
 /**
  * Upsert nhansu theo so_cccd (nếu trùng CCCD với người đã có từ đoàn khác thì
@@ -20,6 +21,7 @@ export async function upsertNhanSuFromExtract(
     ngay_cap: fields.ngay_cap ?? null,
     noi_cap: fields.noi_cap ?? null,
     dia_chi: fields.dia_chi ?? null,
+    tinh_tp: fields.tinh_tp || deriveTinhTp(fields.dia_chi) || null,
     so_the_hdv: fields.so_the_hdv ?? null,
     loai_the_hdv: fields.loai_the_hdv ?? null,
     han_the_hdv: fields.han_the_hdv ?? null,
