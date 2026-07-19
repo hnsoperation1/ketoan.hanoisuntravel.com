@@ -122,6 +122,7 @@ export interface AiExtractedFields {
   ma_so_thue_tncn?: string
   stk?: string
   ten_ngan_hang?: string
+  email?: string
 }
 
 /** Loại ảnh trong 1 bộ hồ sơ — dùng khi AI tự phân loại ảnh kế toán thả vào. */

@@ -27,6 +27,7 @@ export async function upsertNhanSuFromExtract(
     ma_so_thue_tncn: fields.ma_so_thue_tncn ?? null,
     stk: fields.stk ?? null,
     ten_ngan_hang: fields.ten_ngan_hang ?? null,
+    email: fields.email ?? null,
   }
 
   if (insertPayload.so_cccd) {

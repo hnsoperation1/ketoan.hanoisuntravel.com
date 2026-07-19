@@ -19,6 +19,8 @@ import {
   ZoomOut,
   RotateCcw,
   RotateCw,
+  Eye,
+  Trash2,
 } from 'lucide-react'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
@@ -287,7 +289,7 @@ export default function DoanDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái', ''].map((h) => (
+                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái'].map((h) => (
                           <th
                             key={h}
                             className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${
@@ -306,12 +308,16 @@ export default function DoanDetailPage() {
                           r={r}
                           onView={() => setViewing(r)}
                           onSaved={(updated) => setHoSo((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+                          onDeleted={(deletedId) => {
+                            setHoSo((prev) => prev.filter((x) => x.id !== deletedId))
+                            showToast('Đã xóa khỏi đoàn')
+                          }}
                           onToast={showToast}
                         />
                       ))}
                       {hoSo.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-4 py-14 text-center text-gray-400">
+                          <td colSpan={7} className="px-4 py-14 text-center text-gray-400">
                             Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
                           </td>
                         </tr>
@@ -368,15 +374,19 @@ function HoSoRow({
   r,
   onView,
   onSaved,
+  onDeleted,
   onToast,
 }: {
   r: HoSoWithNhanSu
   onView: () => void
   onSaved: (updated: HoSoWithNhanSu) => void
+  onDeleted: (id: string) => void
   onToast: (msg: string) => void
 }) {
   const n = r.nhansu
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [ctp, setCtp] = useState(() =>
     r.chi_tra != null && r.so_ngay_cong_tac ? String(Math.round(r.chi_tra / r.so_ngay_cong_tac)) : '',
   )
@@ -416,16 +426,47 @@ function HoSoRow({
     setEditOpen(false)
   }
 
+  async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
+    const res = await fetch(`/api/ho-so/${r.id}`, { method: 'DELETE' })
+    setDeleting(false)
+    if (res.ok) {
+      setDeleteOpen(false)
+      onDeleted(r.id)
+    }
+  }
+
   return (
     <>
     <tr className="hover:bg-gray-50/70 transition-colors align-top">
       <td className="px-4 py-3">
-        <button
-          onClick={onView}
-          className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
-        >
-          <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
-        </button>
+        <div className="flex items-start justify-between gap-1">
+          <button
+            onClick={onView}
+            className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left"
+          >
+            <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+          </button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              title="Xem"
+              onClick={onView}
+              className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
+            >
+              <Eye size={14} />
+            </button>
+            <button
+              type="button"
+              title="Xóa"
+              onClick={() => setDeleteOpen(true)}
+              className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
         <div className="text-xs text-gray-900 font-mono mt-1">CCCD: {n.so_cccd ?? '-'}</div>
         <div className="text-xs text-gray-900 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '-'}</div>
       </td>
@@ -471,11 +512,6 @@ function HoSoRow({
           {TRANG_THAI_LABELS[r.trang_thai]}
         </span>
       </td>
-      <td className="px-4 py-3">
-        <button onClick={onView} className="p-1.5 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors">
-          <Pencil size={15} />
-        </button>
-      </td>
     </tr>
 
     {editOpen &&
@@ -507,6 +543,42 @@ function HoSoRow({
                     {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '—'}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+
+    {deleteOpen &&
+      createPortal(
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !deleting && setDeleteOpen(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Xóa khỏi đoàn?</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Xóa <span className="font-semibold text-gray-700">{n.ho_ten}</span> khỏi đoàn này? Hồ sơ và file hợp đồng đã xuất
+                cho người này trong đoàn sẽ mất. Thông tin CCCD/thẻ của người này vẫn được giữ lại (dùng cho đoàn khác).
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+                >
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Xóa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(false)}
+                  disabled={deleting}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
               </div>
             </div>
           </div>
@@ -613,7 +685,7 @@ function InlineImageViewer({
         </div>
       </div>
       <div
-        className="h-72 overflow-hidden flex items-center justify-center"
+        className="h-105 overflow-hidden flex items-center justify-center"
         style={{ cursor: dragging ? 'grabbing' : 'grab' }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
@@ -654,6 +726,7 @@ function emptyAiFields(): Record<keyof AiExtractedFields, string> {
     ma_so_thue_tncn: '',
     stk: '',
     ten_ngan_hang: '',
+    email: '',
   }
 }
 
@@ -749,6 +822,7 @@ function AddNhanSuModal({
       ma_so_thue_tncn: f.ma_so_thue_tncn ?? '',
       stk: f.stk ?? '',
       ten_ngan_hang: f.ten_ngan_hang ?? '',
+      email: f.email ?? '',
     })
     setPhase('review')
   }
@@ -757,8 +831,8 @@ function AddNhanSuModal({
     setImages((imgs) => imgs.map((img, idx) => (idx === i ? { ...img, kind } : img)))
   }
 
-  async function handleSave() {
-    if (!fields.ho_ten || saving) return
+  async function saveNhanSu(): Promise<HoSoWithNhanSu | null> {
+    if (!fields.ho_ten || saving) return null
     setSaving(true)
     setError('')
     const byKind = (k: ImageKind) => images.find((img) => img.kind === k)?.url ?? null
@@ -778,11 +852,24 @@ function AddNhanSuModal({
     setSaving(false)
     if (!res.ok) {
       setError(data.error ?? 'Có lỗi khi lưu')
-      return
+      return null
     }
-    onAdded(data.ho_so)
+    return data.ho_so as HoSoWithNhanSu
+  }
+
+  async function handleSaveAndContinue() {
+    const created = await saveNhanSu()
+    if (!created) return
+    onAdded(created)
     setAddedCount((c) => c + 1)
     resetAll()
+  }
+
+  async function handleSaveAndClose() {
+    const created = await saveNhanSu()
+    if (!created) return
+    onAdded(created)
+    onClose()
   }
 
   return (
@@ -871,7 +958,7 @@ function AddNhanSuModal({
                 </button>
               </>
             ) : (
-              <div className="grid md:grid-cols-[320px_1fr] gap-6">
+              <div className="grid md:grid-cols-[380px_1fr] gap-6">
                 <div className="space-y-2">
                   {images[selectedImg] && (
                     <InlineImageViewer
@@ -897,8 +984,8 @@ function AddNhanSuModal({
                   </div>
                 </div>
 
-                <div className="min-w-0">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="min-w-0 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <Field label="Loại">
                       <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
                         <option value="HDV">HDV</option>
@@ -912,18 +999,24 @@ function AddNhanSuModal({
                     <Field label="Số CCCD">
                       <input value={fields.so_cccd} onChange={(e) => setFields((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />
                     </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="Ngày sinh">
                       <DateInput value={fields.ngay_sinh} onChange={(v) => setFields((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
                     </Field>
+                    <Field label="Địa chỉ">
+                      <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="Ngày cấp">
                       <DateInput value={fields.ngay_cap} onChange={(v) => setFields((f) => ({ ...f, ngay_cap: v }))} className="w-full" />
                     </Field>
                     <Field label="Nơi cấp">
                       <input value={fields.noi_cap} onChange={(e) => setFields((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />
                     </Field>
-                    <Field label="Địa chỉ">
-                      <input value={fields.dia_chi} onChange={(e) => setFields((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />
-                    </Field>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
                     <Field label="Số thẻ HDV">
                       <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
                     </Field>
@@ -944,12 +1037,19 @@ function AddNhanSuModal({
                     <Field label="Hạn thẻ">
                       <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
                     </Field>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
                     <Field label="SĐT">
                       <input value={fields.sdt} onChange={(e) => setFields((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
+                    </Field>
+                    <Field label="Email">
+                      <input value={fields.email} onChange={(e) => setFields((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
                     </Field>
                     <Field label="MS thuế TNCN">
                       <input value={fields.ma_so_thue_tncn} onChange={(e) => setFields((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />
                     </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="STK">
                       <input value={fields.stk} onChange={(e) => setFields((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
                     </Field>
@@ -958,24 +1058,32 @@ function AddNhanSuModal({
                     </Field>
                   </div>
 
-                  {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+                  {error && <p className="text-xs text-red-500">{error}</p>}
 
-                  <div className="flex gap-3 mt-4">
+                  <div className="flex gap-3 pt-1">
                     <button
                       type="button"
-                      onClick={handleSave}
+                      onClick={handleSaveAndContinue}
                       disabled={!fields.ho_ten || saving}
                       className="flex-1 flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
                     >
                       {saving && <Loader2 size={14} className="animate-spin" />}
-                      Lưu &amp; thêm người tiếp theo
+                      Lưu và thêm nhân sự khác
                     </button>
                     <button
                       type="button"
-                      onClick={resetAll}
+                      onClick={handleSaveAndClose}
+                      disabled={!fields.ho_ten || saving}
+                      className="px-4 py-2.5 rounded-xl border border-accent-300 text-sm font-semibold text-accent-600 hover:bg-accent-50 disabled:opacity-50 transition-colors"
+                    >
+                      Lưu và đóng
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
                       className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
                     >
-                      Làm lại
+                      Hủy
                     </button>
                   </div>
                 </div>

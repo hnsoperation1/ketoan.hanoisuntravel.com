@@ -74,7 +74,7 @@ Nhiệm vụ:
 2. Trích xuất và GỘP thông tin của người này vào một bộ field duy nhất. Quy tắc ưu tiên khi 1 field xuất hiện ở nhiều ảnh:
    - "ho_ten", "so_cccd", "ngay_sinh", "ngay_cap", "noi_cap", "dia_chi": lấy từ CCCD gốc (rõ nét, chính xác pháp lý) nếu có, chỉ lấy từ ảnh xác nhận khi không có CCCD gốc.
    - "so_the_hdv", "loai_the_hdv", "han_the_hdv": lấy từ ảnh thẻ HDV gốc nếu có. "loai_the_hdv" CHỈ được là 1 trong 2 giá trị "Nội địa" hoặc "Quốc tế" — tự dịch/suy ra từ chữ trên thẻ (vd "Domestic Tour Guide Licence" -> "Nội địa", "International Tour Guide Licence" -> "Quốc tế"), KHÔNG chép nguyên văn tiếng Anh trên thẻ.
-   - "sdt", "ma_so_thue_tncn", "stk", "ten_ngan_hang": lấy từ ảnh xác nhận (đây là nguồn gõ tay rõ ràng, KHÔNG có trên CCCD/thẻ).
+   - "sdt", "ma_so_thue_tncn", "stk", "ten_ngan_hang", "email": lấy từ ảnh xác nhận (đây là nguồn gõ tay rõ ràng, KHÔNG có trên CCCD/thẻ).
 3. Trường nào không tìm thấy ở bất kỳ ảnh nào thì bỏ qua, KHÔNG bịa đặt.
 
 Trả về đúng JSON thuần (không markdown, không text thêm) theo cấu trúc:
@@ -83,7 +83,7 @@ Trả về đúng JSON thuần (không markdown, không text thêm) theo cấu t
   "fields": {
     "ho_ten": "...", "so_cccd": "...", "ngay_sinh": "yyyy-mm-dd", "ngay_cap": "yyyy-mm-dd",
     "noi_cap": "...", "dia_chi": "...", "so_the_hdv": "...", "loai_the_hdv": "...", "han_the_hdv": "yyyy-mm-dd",
-    "sdt": "...", "ma_so_thue_tncn": "...", "stk": "...", "ten_ngan_hang": "..."
+    "sdt": "...", "ma_so_thue_tncn": "...", "stk": "...", "ten_ngan_hang": "...", "email": "..."
   }
 }`
 

@@ -49,3 +49,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ho_so: data })
 }
+
+/** Xóa hồ sơ của người này khỏi đoàn — chỉ xóa dòng ho_so (kèm cascade file hợp
+ *  đồng đã xuất nếu có), KHÔNG đụng tới nhansu vì người đó có thể còn ở đoàn khác. */
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const { unauthorized } = await requireUser()
+  if (unauthorized) return unauthorized
+  const { id } = await ctx.params
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('ho_so').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
