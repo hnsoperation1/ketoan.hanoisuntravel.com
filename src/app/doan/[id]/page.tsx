@@ -1594,24 +1594,28 @@ function HoSoDetailModal({
                 <div className="grid sm:grid-cols-3 gap-4">
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Số hợp đồng"
                     value={hoSo.so_hop_dong}
                     input={<input placeholder="VD: 015/2026/HĐHDV" value={hs.so_hop_dong} onChange={(e) => setHs((f) => ({ ...f, so_hop_dong: e.target.value }))} className={inputCls} />}
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Từ ngày"
                     value={formatDateVN(hoSo.ngay_dich_vu)}
                     input={<DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />}
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Đến ngày"
                     value={formatDateVN(hoSo.ngay_ket_thuc)}
                     input={<DateInput value={hs.ngay_ket_thuc} onChange={(v) => setHs((f) => ({ ...f, ngay_ket_thuc: v }))} className="w-full" />}
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="CTP/ngày (thực nhận)"
                     value={hoSo.chi_tra != null && hoSo.so_ngay_cong_tac ? Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac).toLocaleString('vi-VN') : null}
                     input={
@@ -1624,6 +1628,7 @@ function HoSoDetailModal({
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Số ngày công tác"
                     value={hoSo.so_ngay_cong_tac?.toString() ?? null}
                     input={
@@ -1635,6 +1640,7 @@ function HoSoDetailModal({
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Tổng thực nhận"
                     value={hoSo.chi_tra?.toLocaleString('vi-VN') ?? null}
                     emphasize
@@ -1648,33 +1654,24 @@ function HoSoDetailModal({
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="CTP/ngày"
                     value={hoSo.don_gia_ngay?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Thuế TNCN"
                     value={hoSo.thue_nop?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
                     editing={editing}
+                    stacked
                     label="Tổng CTP"
                     value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
-                  />
-                  <InfoField
-                    editing={editing}
-                    label="Loại hợp đồng"
-                    value={hoSo.loai_hop_dong}
-                    input={<input placeholder="VD: HĐ điện tử" value={hs.loai_hop_dong} onChange={(e) => setHs((f) => ({ ...f, loai_hop_dong: e.target.value }))} className={inputCls} />}
-                  />
-                  <InfoField
-                    editing={editing}
-                    label="Tình trạng thanh toán"
-                    value={hoSo.tinh_trang_thanh_toan}
-                    input={<input placeholder="VD: Ngày 17/01/2026 - TCB017" value={hs.tinh_trang_thanh_toan} onChange={(e) => setHs((f) => ({ ...f, tinh_trang_thanh_toan: e.target.value }))} className={inputCls} />}
                   />
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
@@ -1825,26 +1822,41 @@ function ViewField({
   value,
   mono,
   emphasize,
+  stacked,
 }: {
   label: string
   value?: string | null
   mono?: boolean
   emphasize?: boolean
+  stacked?: boolean
 }) {
+  const box = (
+    <div
+      className={`min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
+        emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
+      } ${stacked ? '' : 'flex-1'}`}
+    >
+      {value || <span className="text-gray-300 font-normal">—</span>}
+    </div>
+  )
+
+  if (stacked) {
+    return (
+      <div>
+        <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>{label}</p>
+        {box}
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
       <span
-        className={`shrink-0 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}
+        className={`shrink-0 w-28 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}
       >
         {label}:
       </span>
-      <div
-        className={`flex-1 min-w-0 truncate text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2 ${
-          emphasize ? 'text-red-600 font-bold' : mono ? 'font-mono text-gray-900' : 'font-medium text-gray-900'
-        }`}
-      >
-        {value || <span className="text-gray-300 font-normal">—</span>}
-      </div>
+      {box}
     </div>
   )
 }
@@ -1855,6 +1867,7 @@ function InfoField({
   value,
   mono,
   emphasize,
+  stacked,
   input,
 }: {
   editing: boolean
@@ -1862,14 +1875,15 @@ function InfoField({
   value?: string | null
   mono?: boolean
   emphasize?: boolean
+  stacked?: boolean
   input: React.ReactNode
 }) {
   return editing ? (
-    <Field label={label} emphasize={emphasize}>
+    <Field label={label} emphasize={emphasize} inline={!stacked}>
       {input}
     </Field>
   ) : (
-    <ViewField label={label} value={value} mono={mono} emphasize={emphasize} />
+    <ViewField label={label} value={value} mono={mono} emphasize={emphasize} stacked={stacked} />
   )
 }
 
@@ -1882,11 +1896,23 @@ function Field({
   label,
   children,
   emphasize,
+  inline,
 }: {
   label: string
   children: React.ReactNode
   emphasize?: boolean
+  inline?: boolean
 }) {
+  if (inline) {
+    return (
+      <div className="flex items-center gap-2">
+        <label className={`shrink-0 w-28 text-[10px] font-bold uppercase tracking-widest ${emphasize ? 'text-red-500' : 'text-gray-400'}`}>
+          {label}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    )
+  }
   return (
     <div>
       <label className={`block text-xs font-semibold mb-1 ${emphasize ? 'text-red-500' : 'text-gray-500'}`}>{label}</label>
