@@ -406,7 +406,7 @@ function HoSoRow({
         <div className="flex items-start justify-end gap-1">
           <div className="text-xs text-gray-900 font-bold text-right">
             <div>Số ngày: {soNgayNum > 0 ? soNgayNum : '-'}</div>
-            <div className="mt-1">CTP/ngày: {ctpNum > 0 ? ctpNum.toLocaleString('vi-VN') : '-'}</div>
+            <div className="mt-1">CTP/ngày: {ctpNum > 0 ? `${ctpNum.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
             <div className="text-red-600 mt-1">
               Tổng: {soTienChiTra > 0 ? `${chiTra.toLocaleString('vi-VN')} VNĐ` : '-'}
             </div>
@@ -421,9 +421,9 @@ function HoSoRow({
         </div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-900 font-bold text-right">
-        <div>Thuế TNCN: {soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '-'}</div>
-        <div className="mt-1">CTP/ngày: {soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '-'}</div>
-        <div className="mt-1">Tổng: {soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '-'}</div>
+        <div>Thuế TNCN: {soTienChiTra > 0 ? `${thueNop.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
+        <div className="mt-1">CTP/ngày: {soTienChiTra > 0 ? `${donGiaNgay.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
+        <div className="mt-1">Tổng: {soTienChiTra > 0 ? `${soTienChiTra.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
       </td>
       <td className="px-4 py-3 text-xs text-gray-900">
         <div>STK: {n.stk ?? '-'}</div>
