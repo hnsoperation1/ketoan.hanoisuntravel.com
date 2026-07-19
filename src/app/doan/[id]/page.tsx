@@ -281,7 +281,7 @@ export default function DoanDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái', ''].map((h) => (
+                        {['', 'Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái'].map((h) => (
                           <th
                             key={h}
                             className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${
@@ -434,6 +434,26 @@ function HoSoRow({
     <>
     <tr className="hover:bg-gray-50/70 transition-colors align-top">
       <td className="px-4 py-3">
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            type="button"
+            title="Xem"
+            onClick={onView}
+            className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            type="button"
+            title="Xóa"
+            onClick={() => setDeleteOpen(true)}
+            className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </td>
+      <td className="px-4 py-3">
         <button
           onClick={onView}
           className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
@@ -484,26 +504,6 @@ function HoSoRow({
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
           {TRANG_THAI_LABELS[r.trang_thai]}
         </span>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex flex-col items-center gap-0.5">
-          <button
-            type="button"
-            title="Xem"
-            onClick={onView}
-            className="p-1 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
-          >
-            <Eye size={14} />
-          </button>
-          <button
-            type="button"
-            title="Xóa"
-            onClick={() => setDeleteOpen(true)}
-            className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
       </td>
     </tr>
 
