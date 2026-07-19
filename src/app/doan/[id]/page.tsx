@@ -31,6 +31,110 @@ function formatChipMoney(v: number) {
   return v >= 1_000_000 ? `${v / 1_000_000} tr` : `${v / 1000}k`
 }
 
+/** Input số tiền có dấu chấm hàng nghìn, click vào hiện chips mức hay dùng. */
+function MoneyChipInput({
+  value,
+  onChange,
+  onCommit,
+  placeholder,
+  className,
+}: {
+  value: string
+  onChange: (digits: string) => void
+  onCommit?: () => void
+  placeholder?: string
+  className?: string
+}) {
+  const [showChips, setShowChips] = useState(false)
+  return (
+    <div>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value ? Number(value).toLocaleString('vi-VN') : ''}
+        onFocus={() => setShowChips(true)}
+        onBlur={() => {
+          setShowChips(false)
+          onCommit?.()
+        }}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+        className={className ?? inputCls}
+      />
+      {showChips && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {CTP_NGAY_CHIPS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(String(v))
+                onCommit?.()
+              }}
+              className={
+                v === 800000
+                  ? 'px-2.5 py-1 rounded-full bg-accent-500 text-white text-xs font-bold hover:bg-accent-600 transition-colors'
+                  : 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-colors'
+              }
+            >
+              {formatChipMoney(v)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Input số ngày, click vào hiện chips 1-6. */
+function DayChipInput({
+  value,
+  onChange,
+  onCommit,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onCommit?: () => void
+  className?: string
+}) {
+  const [showChips, setShowChips] = useState(false)
+  return (
+    <div>
+      <input
+        type="number"
+        value={value}
+        onFocus={() => setShowChips(true)}
+        onBlur={() => {
+          setShowChips(false)
+          onCommit?.()
+        }}
+        onChange={(e) => onChange(e.target.value)}
+        className={className ?? inputCls}
+      />
+      {showChips && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {SO_NGAY_CHIPS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(String(v))
+                onCommit?.()
+              }}
+              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold hover:bg-gray-200 transition-colors"
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -40,6 +144,12 @@ export default function DoanDetailPage() {
   const [viewing, setViewing] = useState<HoSoWithNhanSu | null>(null)
   const [tab, setTab] = useState<Tab>('info')
   const [copied, setCopied] = useState<'ds' | 'td' | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2000)
+  }
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/doan/${params.id}`)
@@ -150,7 +260,7 @@ export default function DoanDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['Người', 'SĐT', 'CCCD', 'Ngân hàng', 'Số tiền chi trả', 'Trạng thái', ''].map((h) => (
+                        {['Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái', ''].map((h) => (
                           <th
                             key={h}
                             className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
@@ -162,48 +272,17 @@ export default function DoanDetailPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {hoSo.map((r) => (
-                        <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setViewing(r)}
-                              className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left"
-                            >
-                              <span className="text-gray-400 font-medium">{r.nhansu.prefix || 'NS'}:</span> {r.nhansu.ho_ten}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">{r.nhansu.sdt ?? '—'}</td>
-                          <td className="px-4 py-3 text-gray-600 font-mono text-xs">{r.nhansu.so_cccd ?? '—'}</td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">
-                            {r.nhansu.stk ? (
-                              <>
-                                <div>{r.nhansu.stk}</div>
-                                <div className="text-gray-400">{r.nhansu.ten_ngan_hang}</div>
-                              </>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {r.so_tien_chi_tra != null ? r.so_tien_chi_tra.toLocaleString('vi-VN') : '—'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
-                              {TRANG_THAI_LABELS[r.trang_thai]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setViewing(r)}
-                              className="p-1.5 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          </td>
-                        </tr>
+                        <HoSoRow
+                          key={`${r.id}:${r.so_ngay_cong_tac}:${r.chi_tra}`}
+                          r={r}
+                          onView={() => setViewing(r)}
+                          onSaved={(updated) => setHoSo((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+                          onToast={showToast}
+                        />
                       ))}
                       {hoSo.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-14 text-center text-gray-400">
+                          <td colSpan={8} className="px-4 py-14 text-center text-gray-400">
                             Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
                           </td>
                         </tr>
@@ -233,7 +312,124 @@ export default function DoanDetailPage() {
           }}
         />
       )}
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
+  )
+}
+
+/** 1 dòng bảng Nhân sự — CTP/ngày (thực nhận) và Số ngày công tác sửa trực tiếp tại đây
+ *  (nhập tay hoặc chọn chip), tự lưu khi rời ô hoặc chọn chip xong. */
+function HoSoRow({
+  r,
+  onView,
+  onSaved,
+  onToast,
+}: {
+  r: HoSoWithNhanSu
+  onView: () => void
+  onSaved: (updated: HoSoWithNhanSu) => void
+  onToast: (msg: string) => void
+}) {
+  const n = r.nhansu
+  const [ctp, setCtp] = useState(() =>
+    r.chi_tra != null && r.so_ngay_cong_tac ? String(Math.round(r.chi_tra / r.so_ngay_cong_tac)) : '',
+  )
+  const [soNgay, setSoNgay] = useState(() => r.so_ngay_cong_tac?.toString() ?? '')
+
+  const soNgayNum = Number(soNgay) || 0
+  const ctpNum = Number(ctp) || 0
+  const chiTra = ctpNum * soNgayNum
+  const soTienChiTra = chiTra > 0 ? Math.round(chiTra / 0.9) : 0
+  const thueNop = soTienChiTra - chiTra
+  const donGiaNgay = soNgayNum > 0 ? Math.round(soTienChiTra / soNgayNum) : 0
+
+  async function commit() {
+    const update: Record<string, number | null> = {}
+    if (soNgay !== (r.so_ngay_cong_tac?.toString() ?? '')) {
+      update.so_ngay_cong_tac = soNgayNum > 0 ? soNgayNum : null
+    }
+    if (soTienChiTra > 0) {
+      update.don_gia_ngay = donGiaNgay
+      update.so_tien_chi_tra = soTienChiTra
+    }
+    if (Object.keys(update).length === 0) return
+    const res = await fetch(`/api/ho-so/${r.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ho_so: update }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      onSaved(data.ho_so)
+      onToast('Đã lưu')
+    }
+  }
+
+  return (
+    <tr className="hover:bg-gray-50/70 transition-colors align-top">
+      <td className="px-4 py-3">
+        <button
+          onClick={onView}
+          className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
+        >
+          <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+        </button>
+        <div className="text-xs text-gray-500 font-mono mt-1">{n.so_cccd ?? '—'}</div>
+        <div className="text-xs text-gray-400 mt-0.5">{formatDateVN(n.ngay_sinh) || '—'}</div>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-600">
+        <div>{n.sdt ?? '—'}</div>
+        <div className="text-gray-400 mt-1">{n.email ?? '—'}</div>
+        <div className="text-gray-400 mt-1">{n.dia_chi ?? '—'}</div>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-600">
+        <div>{n.so_the_hdv ?? '—'}</div>
+        <div className="text-gray-400 mt-1">{n.loai_the_hdv ?? '—'}</div>
+        <div className="text-gray-400 mt-1">{formatDateVN(n.han_the_hdv) || '—'}</div>
+      </td>
+      <td className="px-4 py-3 min-w-42.5">
+        <div className="space-y-2">
+          <MoneyChipInput
+            value={ctp}
+            onChange={setCtp}
+            onCommit={commit}
+            placeholder="VD: 800.000"
+            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+          <DayChipInput
+            value={soNgay}
+            onChange={setSoNgay}
+            onCommit={commit}
+            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+          <div className="text-sm font-bold text-red-600">{soTienChiTra > 0 ? chiTra.toLocaleString('vi-VN') : '—'}</div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-600">
+        <div>{soTienChiTra > 0 ? donGiaNgay.toLocaleString('vi-VN') : '—'}</div>
+        <div className="text-gray-400 mt-1">{soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : '—'}</div>
+        <div className="text-gray-400 mt-1">{soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : '—'}</div>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-600">
+        <div>{n.stk ?? '—'}</div>
+        <div className="text-gray-400 mt-1">{n.ten_ngan_hang ?? '—'}</div>
+      </td>
+      <td className="px-4 py-3">
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
+          {TRANG_THAI_LABELS[r.trang_thai]}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <button onClick={onView} className="p-1.5 rounded-lg hover:bg-sky-50 text-gray-300 hover:text-sky-500 transition-colors">
+          <Pencil size={15} />
+        </button>
+      </td>
+    </tr>
   )
 }
 
@@ -474,8 +670,6 @@ function HoSoDetailModal({
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
   const [submitting, setSubmitting] = useState(false)
-  const [showCtpChips, setShowCtpChips] = useState(false)
-  const [showSoNgayChips, setShowSoNgayChips] = useState(false)
 
   const loadFiles = useCallback(async () => {
     const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files`)
@@ -745,37 +939,11 @@ function HoSoDetailModal({
                     label="CTP/ngày (thực nhận)"
                     value={hoSo.chi_tra != null && hoSo.so_ngay_cong_tac ? Math.round(hoSo.chi_tra / hoSo.so_ngay_cong_tac).toLocaleString('vi-VN') : null}
                     input={
-                      <div>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="VD: 800.000"
-                          value={hs.ctp_ngay_thuc_nhan ? Number(hs.ctp_ngay_thuc_nhan).toLocaleString('vi-VN') : ''}
-                          onFocus={() => setShowCtpChips(true)}
-                          onBlur={() => setShowCtpChips(false)}
-                          onChange={(e) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: e.target.value.replace(/\D/g, '') }))}
-                          className={inputCls}
-                        />
-                        {showCtpChips && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {CTP_NGAY_CHIPS.map((v) => (
-                              <button
-                                key={v}
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: String(v) }))}
-                                className={
-                                  v === 800000
-                                    ? 'px-2.5 py-1 rounded-full bg-accent-500 text-white text-xs font-bold hover:bg-accent-600 transition-colors'
-                                    : 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-colors'
-                                }
-                              >
-                                {formatChipMoney(v)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <MoneyChipInput
+                        value={hs.ctp_ngay_thuc_nhan}
+                        onChange={(digits) => setHs((f) => ({ ...f, ctp_ngay_thuc_nhan: digits }))}
+                        placeholder="VD: 800.000"
+                      />
                     }
                   />
                   <InfoField
@@ -783,31 +951,10 @@ function HoSoDetailModal({
                     label="Số ngày công tác"
                     value={hoSo.so_ngay_cong_tac?.toString() ?? null}
                     input={
-                      <div>
-                        <input
-                          type="number"
-                          value={hs.so_ngay_cong_tac}
-                          onFocus={() => setShowSoNgayChips(true)}
-                          onBlur={() => setShowSoNgayChips(false)}
-                          onChange={(e) => setHs((f) => ({ ...f, so_ngay_cong_tac: e.target.value }))}
-                          className={inputCls}
-                        />
-                        {showSoNgayChips && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {SO_NGAY_CHIPS.map((v) => (
-                              <button
-                                key={v}
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => setHs((f) => ({ ...f, so_ngay_cong_tac: String(v) }))}
-                                className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold hover:bg-gray-200 transition-colors"
-                              >
-                                {v}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <DayChipInput
+                        value={hs.so_ngay_cong_tac}
+                        onChange={(v) => setHs((f) => ({ ...f, so_ngay_cong_tac: v }))}
+                      />
                     }
                   />
                   <InfoField
