@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const nam = req.nextUrl.searchParams.get('nam') // vd "2026"
 
-  let query = supabase.from('doan').select('*').order('ngay_di', { ascending: false })
+  let query = supabase.from('doan').select('*').is('deleted_at', null).order('ngay_di', { ascending: false })
   if (nam) {
     query = query.gte('ngay_di', `${nam}-01-01`).lte('ngay_di', `${nam}-12-31`)
   }

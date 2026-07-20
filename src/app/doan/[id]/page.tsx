@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Loader2,
@@ -156,6 +156,7 @@ function DayChipInput({
 
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [doan, setDoan] = useState<Doan | null>(null)
   const [hoSo, setHoSo] = useState<HoSoWithNhanSu[]>([])
@@ -165,10 +166,20 @@ export default function DoanDetailPage() {
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [addingNhanSu, setAddingNhanSu] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(null), 2000)
+  }
+
+  async function handleDeleteDoan() {
+    if (!doan || deleting) return
+    setDeleting(true)
+    const res = await fetch(`/api/doan/${doan.id}`, { method: 'DELETE' })
+    setDeleting(false)
+    if (res.ok) router.push('/doan')
   }
 
   const load = useCallback(async () => {
@@ -239,6 +250,13 @@ export default function DoanDetailPage() {
             <Pencil size={14} />
           </button>
         </h1>
+        <button
+          onClick={() => setDeleteOpen(true)}
+          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors shrink-0"
+          title="Xóa đoàn"
+        >
+          <Trash2 size={16} />
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -247,7 +265,7 @@ export default function DoanDetailPage() {
             Thông tin đoàn
           </TabButton>
           <TabButton active={tab === 'hdv'} onClick={() => setTab('hdv')}>
-            Nhân sự
+            Nhân sự ({hoSo.length})
           </TabButton>
           <TabButton active={tab === 'files'} onClick={() => setTab('files')}>
             File hợp đồng
@@ -356,6 +374,40 @@ export default function DoanDetailPage() {
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg">
           {toast}
         </div>
+      )}
+
+      {deleteOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !deleting && setDeleteOpen(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Xóa đoàn?</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Xóa đoàn <span className="font-semibold text-gray-700">{doan.ten_doan}</span>? Đoàn sẽ ẩn khỏi danh sách,
+                hồ sơ/file hợp đồng bên trong vẫn được giữ lại (xóa mềm, có thể khôi phục nếu cần).
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeleteDoan}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
+                >
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Xóa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(false)}
+                  disabled={deleting}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

@@ -73,6 +73,7 @@ export interface Doan {
   ngay_ve: string | null
   sl_khach: number | null
   created_at: string
+  deleted_at: string | null
 }
 
 export interface HoSo {
