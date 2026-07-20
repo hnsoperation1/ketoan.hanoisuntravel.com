@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/lib/auth'
 import { extractCccdFields, type ExtractImageInput } from '@/lib/ai-extract'
+import { getErrorMessage } from '@/lib/errors'
 
 /** Fallback thủ công từ dashboard: kế toán upload ảnh CCCD/thẻ HDV thẳng từ trình duyệt
  *  thay vì qua Telegram bot, dùng chung logic AI trích xuất trong lib/ai-extract.ts. */
@@ -25,7 +26,6 @@ export async function POST(req: NextRequest) {
     const fields = await extractCccdFields(images)
     return NextResponse.json({ fields })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
   }
 }

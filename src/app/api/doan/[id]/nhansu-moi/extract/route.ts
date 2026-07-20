@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/lib/auth'
 import { extractProfileFromImages } from '@/lib/ai-extract'
 import { uploadHoSoImage } from '@/lib/storage'
+import { getErrorMessage } from '@/lib/errors'
 import type { ImageKind } from '@/types'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -46,7 +47,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     return NextResponse.json({ fields, images })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { uploadHoSoImage } from '@/lib/storage'
+import { getErrorMessage } from '@/lib/errors'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -39,7 +40,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     return NextResponse.json({ ho_so: data })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
   }
 }

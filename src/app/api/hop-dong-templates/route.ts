@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { uploadTemplateFile } from '@/lib/storage'
 import { slugifyFileName } from '@/lib/format'
+import { getErrorMessage } from '@/lib/errors'
 
 export async function GET() {
   const { unauthorized } = await requireUser()
@@ -51,7 +52,6 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ template: data }, { status: 201 })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
   }
 }

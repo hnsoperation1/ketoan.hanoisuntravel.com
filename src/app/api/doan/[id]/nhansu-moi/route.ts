@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { upsertNhanSuFromExtract, createHoSo } from '@/lib/ho-so'
+import { getErrorMessage } from '@/lib/errors'
 import type { AiExtractedFields, Prefix } from '@/types'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -61,7 +62,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     })
     return NextResponse.json({ ho_so: hoSo })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
   }
 }

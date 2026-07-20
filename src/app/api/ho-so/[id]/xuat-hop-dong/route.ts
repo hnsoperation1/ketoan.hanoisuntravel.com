@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { buildMergeData, mergeDocxTemplate, buildContractFileName } from '@/lib/docx-merge'
 import { uploadGeneratedContract } from '@/lib/storage'
+import { getErrorMessage } from '@/lib/errors'
 import type { Doan, HoSoWithNhanSu, HopDongTemplate } from '@/types'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -68,7 +69,6 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
 
     return NextResponse.json({ ho_so: updated })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Lỗi khi tạo hợp đồng: ${msg}` }, { status: 500 })
+    return NextResponse.json({ error: `Lỗi khi tạo hợp đồng: ${getErrorMessage(e)}` }, { status: 500 })
   }
 }
