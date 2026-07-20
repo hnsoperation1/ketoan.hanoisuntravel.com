@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
+import { useAuth } from '@/contexts/auth'
 
 const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string }[] }[] = [
   {
@@ -52,10 +54,18 @@ const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string 
 ]
 
 export default function BieuMauHopDongPage() {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+
+  const notAllowed = !authLoading && !!user && !user.is_super_admin
+
+  useEffect(() => {
+    if (notAllowed) router.replace('/')
+  }, [notAllowed, router])
 
   const load = useCallback(async () => {
     const res = await fetch('/api/hop-dong-templates')
@@ -68,8 +78,8 @@ export default function BieuMauHopDongPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách khi mount, pattern chuẩn cho fetch-on-mount
-    void load()
-  }, [load])
+    if (!notAllowed) void load()
+  }, [load, notAllowed])
 
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Biểu mẫu hợp đồng</span>)
@@ -85,8 +95,10 @@ export default function BieuMauHopDongPage() {
     load()
   }
 
+  if (notAllowed) return null
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-gray-900">Biểu mẫu hợp đồng</h1>
         <button
@@ -97,88 +109,85 @@ export default function BieuMauHopDongPage() {
         </button>
       </div>
 
-      <p className="text-sm text-gray-500 mb-5">
-        Xuất hợp đồng tự động từ biểu mẫu chưa được xây (chờ quyết định hạ tầng) — trang này để quản lý
-        trước các file biểu mẫu <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.docx</code> sẽ dùng.
-      </p>
-
-      {loading ? (
-        <div className="flex justify-center py-14">
-          <Loader2 className="animate-spin text-gray-300" size={28} />
-        </div>
-      ) : templates.length === 0 ? (
-        <div className="text-center py-14 text-gray-400 text-sm bg-white rounded-2xl border border-gray-200">
-          Chưa có biểu mẫu nào. Nhấn &quot;Thêm biểu mẫu&quot; để tải lên file .docx đầu tiên.
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['Tên biểu mẫu', 'Loại', 'File', 'Ngày tạo', ''].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {templates.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-gray-900">{t.ten}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {t.loai ? (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{t.loai}</span>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={t.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
-                    >
-                      <FileText size={13} /> {t.file_name}
-                    </a>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDateVN(t.created_at.slice(0, 10))}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
+      <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
+        {loading ? (
+          <div className="flex justify-center py-14">
+            <Loader2 className="animate-spin text-gray-300" size={28} />
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="text-center py-14 text-gray-400 text-sm bg-white rounded-2xl border border-gray-200">
+            Chưa có biểu mẫu nào. Nhấn &quot;Thêm biểu mẫu&quot; để tải lên file .docx đầu tiên.
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['Tên biểu mẫu', 'Loại', 'File', 'Ngày tạo', ''].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <p className="text-sm font-semibold text-gray-800 mb-1">Các trường có thể dùng trong biểu mẫu</p>
-        <p className="text-xs text-gray-400 mb-4">
-          Gõ đúng dạng <code className="bg-gray-100 px-1 py-0.5 rounded">{'{{ten_truong}}'}</code> vào file Word — hệ thống sẽ
-          tự thay bằng dữ liệu thật khi xuất hợp đồng.
-        </p>
-        <div className="grid sm:grid-cols-3 gap-6">
-          {PLACEHOLDER_GROUPS.map((g) => (
-            <div key={g.title}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{g.title}</p>
-              <div className="space-y-1.5">
-                {g.fields.map((f) => (
-                  <div key={f.tag} className="flex items-baseline justify-between gap-2">
-                    <code className="text-xs font-mono text-brand-600">{`{{${f.tag}}}`}</code>
-                    <span className="text-[11px] text-gray-400 text-right">{f.label}</span>
-                  </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {templates.map((t) => (
+                  <tr key={t.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-900">{t.ten}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.loai ? (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{t.loai}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={t.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
+                      >
+                        <FileText size={13} /> {t.file_name}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDateVN(t.created_at.slice(0, 10))}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-800 mb-1">Các trường có thể dùng trong biểu mẫu</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Gõ đúng dạng <code className="bg-gray-100 px-1 py-0.5 rounded">{'{{ten_truong}}'}</code> vào file Word — hệ thống sẽ
+            tự thay bằng dữ liệu thật khi xuất hợp đồng.
+          </p>
+          <div className="space-y-5">
+            {PLACEHOLDER_GROUPS.map((g) => (
+              <div key={g.title}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{g.title}</p>
+                <div className="space-y-1.5">
+                  {g.fields.map((f) => (
+                    <div key={f.tag} className="flex items-baseline justify-between gap-2">
+                      <code className="text-xs font-mono text-brand-600">{`{{${f.tag}}}`}</code>
+                      <span className="text-[11px] text-gray-400 text-right">{f.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

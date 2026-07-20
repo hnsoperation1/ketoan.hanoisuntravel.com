@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 interface AuthUser {
   id: string
   email: string
+  is_super_admin: boolean
 }
 
 interface AuthContextValue {

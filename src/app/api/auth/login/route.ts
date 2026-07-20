@@ -12,5 +12,18 @@ export async function POST(req: NextRequest) {
   if (error || !data.user) {
     return NextResponse.json({ error: 'Sai email hoặc mật khẩu' }, { status: 401 })
   }
-  return NextResponse.json({ user: { id: data.user.id, email: data.user.email } })
+
+  // Đúng mật khẩu Supabase Auth (dùng chung với hns-crm) không có nghĩa là được
+  // vào app này — chỉ email trong ke_toan_allowlist mới hợp lệ. Không cho tạo
+  // session "lơ lửng" nếu không đúng quyền.
+  const { data: isKeToan } = await supabase.rpc('is_ke_toan')
+  if (!isKeToan) {
+    await supabase.auth.signOut()
+    return NextResponse.json({ error: 'Tài khoản này không có quyền truy cập hệ thống kế toán' }, { status: 403 })
+  }
+  const { data: isSuperAdmin } = await supabase.rpc('is_super_admin')
+
+  return NextResponse.json({
+    user: { id: data.user.id, email: data.user.email, is_super_admin: isSuperAdmin ?? false },
+  })
 }

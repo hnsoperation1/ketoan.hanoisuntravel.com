@@ -1705,26 +1705,7 @@ function HoSoDetailModal({
                     value={hoSo.so_tien_chi_tra?.toLocaleString('vi-VN') ?? null}
                     input={<input readOnly value={soTienChiTra > 0 ? soTienChiTra.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Trạng thái</p>
-                    {editing ? (
-                      <select
-                        value={hs.trang_thai}
-                        onChange={(e) => setHs((f) => ({ ...f, trang_thai: e.target.value as TrangThaiHoSo }))}
-                        className={inputCls}
-                      >
-                        {Object.entries(TRANG_THAI_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[hoSo.trang_thai]}`}>
-                        {TRANG_THAI_LABELS[hoSo.trang_thai]}
-                      </span>
-                    )}
-                  </div>
+                  {/* Trạng thái: ẩn tạm trong modal chi tiết, sẽ hiện lại sau. Vẫn hiện ở cột Trạng thái trên bảng Nhân sự. */}
                 </div>
               </div>
 
