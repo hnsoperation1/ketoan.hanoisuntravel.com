@@ -8,11 +8,14 @@ import type { Doan, HoSoWithNhanSu, HopDongTemplate } from '@/types'
 
 type Ctx = { params: Promise<{ id: string }> }
 
-export async function POST(_req: NextRequest, ctx: Ctx) {
+export async function POST(req: NextRequest, ctx: Ctx) {
   const { unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
   const supabase = await createClient()
+
+  const body = await req.json().catch(() => ({}))
+  const templateId = (body as { template_id?: string })?.template_id
 
   const { data: hoSo, error: hoSoErr } = await supabase
     .from('ho_so')
@@ -33,7 +36,9 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
   const templateList = (templates ?? []) as HopDongTemplate[]
   const prefix = (hoSo as HoSoWithNhanSu).nhansu.prefix
   const template =
-    templateList.find((t) => t.loai?.toLowerCase() === prefix.toLowerCase()) ?? templateList[0]
+    (templateId ? templateList.find((t) => t.id === templateId) : undefined) ??
+    templateList.find((t) => t.loai?.toLowerCase() === prefix.toLowerCase()) ??
+    templateList[0]
 
   if (!template) {
     return NextResponse.json(

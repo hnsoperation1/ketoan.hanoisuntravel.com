@@ -22,7 +22,7 @@ import {
   Eye,
   Trash2,
 } from 'lucide-react'
-import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix } from '@/types'
+import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix, HopDongTemplate } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
 import { formatDateVN, deriveTinhTp } from '@/lib/format'
@@ -1399,6 +1399,8 @@ function HoSoDetailModal({
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
+  const [templates, setTemplates] = useState<HopDongTemplate[]>([])
+  const [templateId, setTemplateId] = useState('')
 
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
@@ -1417,11 +1419,31 @@ function HoSoDetailModal({
     void loadFiles()
   }, [loadFiles])
 
+  useEffect(() => {
+    async function loadTemplates() {
+      const res = await fetch('/api/hop-dong-templates')
+      if (!res.ok) return
+      const data = await res.json()
+      const list = ((data.templates ?? []) as HopDongTemplate[]).filter((t) => t.is_active)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách biểu mẫu khi mở modal, pattern chuẩn cho fetch-on-mount
+      setTemplates(list)
+      const matched = list.find((t) => t.loai?.toLowerCase() === n.prefix.toLowerCase())
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- chọn sẵn mẫu khớp loại HDV/MC/NS, kế toán có thể đổi tay
+      setTemplateId((matched ?? list[0])?.id ?? '')
+    }
+    void loadTemplates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần chạy lại khi đổi hồ sơ đang xem
+  }, [hoSo.id])
+
   async function handleExport() {
     if (exporting) return
     setExporting(true)
     setExportError('')
-    const res = await fetch(`/api/ho-so/${hoSo.id}/xuat-hop-dong`, { method: 'POST' })
+    const res = await fetch(`/api/ho-so/${hoSo.id}/xuat-hop-dong`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: templateId || undefined }),
+    })
     const data = await res.json()
     setExporting(false)
     if (!res.ok) {
@@ -1777,15 +1799,33 @@ function HoSoDetailModal({
               <div className="border-t border-gray-100 pt-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">File hợp đồng</p>
-                  <button
-                    type="button"
-                    onClick={handleExport}
-                    disabled={exporting}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
-                  >
-                    {exporting && <Loader2 size={13} className="animate-spin" />}
-                    Xuất hợp đồng (.docx)
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={templateId}
+                      onChange={(e) => setTemplateId(e.target.value)}
+                      disabled={templates.length === 0}
+                      className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 bg-white text-gray-700 disabled:opacity-60"
+                    >
+                      {templates.length === 0 ? (
+                        <option value="">Chưa có biểu mẫu</option>
+                      ) : (
+                        templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.ten}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleExport}
+                      disabled={exporting || !templateId}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                    >
+                      {exporting && <Loader2 size={13} className="animate-spin" />}
+                      Xuất hợp đồng (.docx)
+                    </button>
+                  </div>
                 </div>
                 {exportError && <p className="text-xs text-red-500 mb-2">{exportError}</p>}
                 {files.length === 0 ? (
