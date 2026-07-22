@@ -1,7 +1,7 @@
 import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import type { Doan, HoSoWithNhanSu } from '@/types'
-import { formatDateVN } from '@/lib/format'
+import { formatDateVN, formatDateVNFull } from '@/lib/format'
 
 /** Gom field từ nhansu + doan + ho_so thành object phẳng khớp đúng danh sách
  *  placeholder liệt kê ở màn "Biểu mẫu hợp đồng" (src/app/cai-dat/bieu-mau-hop-dong). */
@@ -32,6 +32,7 @@ export function buildMergeData(doan: Doan, hoSo: HoSoWithNhanSu): Record<string,
     sl_khach: doan.sl_khach != null ? String(doan.sl_khach) : '',
 
     so_hop_dong: hoSo.so_hop_dong ?? '',
+    ngay_ky: formatDateVNFull(hoSo.ngay_ky),
     ngay_dich_vu: formatDateVN(hoSo.ngay_dich_vu),
     ngay_ket_thuc: formatDateVN(hoSo.ngay_ket_thuc),
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac != null ? String(hoSo.so_ngay_cong_tac) : '',

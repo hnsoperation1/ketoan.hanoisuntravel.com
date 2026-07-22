@@ -1365,6 +1365,7 @@ function nhansuFormFrom(hoSo: HoSoWithNhanSu) {
 function hsFormFrom(hoSo: HoSoWithNhanSu, doan: Doan) {
   return {
     so_hop_dong: hoSo.so_hop_dong ?? '',
+    ngay_ky: hoSo.ngay_ky ?? '',
     // Mặc định lấy ngày đi/về của đoàn — kế toán chỉ sửa riêng khi người này
     // tham gia lệch ngày so với cả đoàn.
     ngay_dich_vu: hoSo.ngay_dich_vu ?? doan.ngay_di ?? '',
@@ -1472,6 +1473,7 @@ function HoSoDetailModal({
         },
         ho_so: {
           so_hop_dong: hs.so_hop_dong || null,
+          ngay_ky: hs.ngay_ky || null,
           ngay_dich_vu: hs.ngay_dich_vu || null,
           ngay_ket_thuc: hs.ngay_ket_thuc || null,
           so_ngay_cong_tac: hs.so_ngay_cong_tac ? Number(hs.so_ngay_cong_tac) : null,
@@ -1669,7 +1671,7 @@ function HoSoDetailModal({
 
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
                   <InfoField
                     editing={editing}
                     stacked
@@ -1680,17 +1682,28 @@ function HoSoDetailModal({
                   <InfoField
                     editing={editing}
                     stacked
-                    label="Từ ngày"
+                    label="Ngày ký"
+                    value={formatDateVN(hoSo.ngay_ky)}
+                    input={<DateInput value={hs.ngay_ky} onChange={(v) => setHs((f) => ({ ...f, ngay_ky: v }))} className="w-full" />}
+                  />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                  <InfoField
+                    editing={editing}
+                    stacked
+                    label="Ngày đi"
                     value={formatDateVN(hoSo.ngay_dich_vu)}
                     input={<DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />}
                   />
                   <InfoField
                     editing={editing}
                     stacked
-                    label="Đến ngày"
+                    label="Ngày về"
                     value={formatDateVN(hoSo.ngay_ket_thuc)}
                     input={<DateInput value={hs.ngay_ket_thuc} onChange={(v) => setHs((f) => ({ ...f, ngay_ket_thuc: v }))} className="w-full" />}
                   />
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4 mt-4">
                   <InfoField
                     editing={editing}
                     stacked

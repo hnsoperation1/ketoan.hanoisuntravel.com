@@ -6,6 +6,14 @@ export function formatDateVN(value: string | null | undefined): string {
   return `${d}/${m}/${y}`
 }
 
+/** yyyy-mm-dd -> "ngày dd tháng mm năm yyyy" (dạng chữ đầy đủ dùng trong văn bản hợp đồng) */
+export function formatDateVNFull(value: string | null | undefined): string {
+  if (!value) return ''
+  const [y, m, d] = value.split('-')
+  if (!y || !m || !d) return value
+  return `ngày ${d} tháng ${m} năm ${y}`
+}
+
 /** Suy ra Tỉnh/Thành phố từ địa chỉ đầy đủ — luôn là phần cuối cùng sau dấu phẩy
  *  trong địa chỉ kiểu Việt Nam (vd "Thanh Lâm, An Thịnh, Lương Tài, Bắc Ninh" -> "Bắc Ninh"). */
 export function deriveTinhTp(diaChi: string | null | undefined): string {

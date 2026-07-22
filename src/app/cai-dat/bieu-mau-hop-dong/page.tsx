@@ -42,6 +42,7 @@ const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string 
     title: 'Hợp đồng',
     fields: [
       { tag: 'so_hop_dong', label: 'Số hợp đồng' },
+      { tag: 'ngay_ky', label: 'Ngày ký (vd: ngày 16 tháng 07 năm 2026)' },
       { tag: 'ngay_dich_vu', label: 'Từ ngày' },
       { tag: 'ngay_ket_thuc', label: 'Đến ngày' },
       { tag: 'so_ngay_cong_tac', label: 'Số ngày công tác' },
