@@ -25,6 +25,7 @@ import {
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix, HopDongTemplate } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
+import { buildContractFileName } from '@/lib/contract-file-name'
 import { formatDateVN, deriveTinhTp } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
@@ -338,7 +339,7 @@ export default function DoanDetailPage() {
               </>
             )}
 
-          {tab === 'files' && <FilesTab hoSo={hoSo} />}
+          {tab === 'files' && <FilesTab doan={doan} hoSo={hoSo} />}
         </div>
       </div>
 
@@ -1292,7 +1293,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   )
 }
 
-function FilesTab({ hoSo }: { hoSo: HoSoWithNhanSu[] }) {
+function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
   const withFile = hoSo.filter((r) => r.file_hop_dong_url)
 
   if (withFile.length === 0) {
@@ -1324,7 +1325,7 @@ function FilesTab({ hoSo }: { hoSo: HoSoWithNhanSu[] }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
                 >
-                  <FileText size={13} /> Xem file
+                  <FileText size={13} /> {buildContractFileName(doan, r)}
                 </a>
               </td>
             </tr>

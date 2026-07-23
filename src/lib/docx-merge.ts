@@ -2,6 +2,7 @@ import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import type { Doan, HoSoWithNhanSu } from '@/types'
 import { formatDateVN, formatDateVNFull } from '@/lib/format'
+export { buildContractFileName } from '@/lib/contract-file-name'
 
 /** Gom field từ nhansu + doan + ho_so thành object phẳng khớp đúng danh sách
  *  placeholder liệt kê ở màn "Biểu mẫu hợp đồng" (src/app/cai-dat/bieu-mau-hop-dong). */
@@ -41,15 +42,6 @@ export function buildMergeData(doan: Doan, hoSo: HoSoWithNhanSu): Record<string,
     thue_nop: money(hoSo.thue_nop),
     chi_tra: money(hoSo.chi_tra),
   }
-}
-
-/** Tên file hiển thị khi tải xuống, dạng "yyyymmdd_HDV Họ tên dd.ddTm.docx" (yyyymmdd/dd.dd/T lấy theo
- *  ngày đi-về của đoàn). Khác với storage key nội bộ (đã bỏ dấu) — tên này chỉ dùng cho Content-Disposition. */
-export function buildContractFileName(doan: Doan, hoSo: HoSoWithNhanSu): string {
-  const [y, m, d] = doan.ngay_di.split('-')
-  const ngayVeDD = doan.ngay_ve ? doan.ngay_ve.split('-')[2] : d
-  const thang = String(Number(m))
-  return `${y}${m}${d}_${hoSo.nhansu.prefix} ${hoSo.nhansu.ho_ten} ${d}.${ngayVeDD}T${thang}.docx`
 }
 
 /** Merge dữ liệu vào template .docx (placeholder dạng {{ten_truong}}), trả về buffer file kết quả. */
