@@ -1295,6 +1295,32 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
   const withFile = hoSo.filter((r) => r.file_hop_dong_url)
+  const withFileIds = withFile.map((r) => r.id).join(',')
+  const [latestFileId, setLatestFileId] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadLatestFileIds() {
+      const ids = withFileIds ? withFileIds.split(',') : []
+      const entries = await Promise.all(
+        ids.map(async (hoSoId) => {
+          const res = await fetch(`/api/ho-so/${hoSoId}/hop-dong-files`)
+          if (!res.ok) return null
+          const data = await res.json()
+          const latest = (data.files as HoSoHopDongFile[] | undefined)?.[0]
+          return latest ? ([hoSoId, latest.id] as const) : null
+        }),
+      )
+      if (cancelled) return
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- tải id file mới nhất/hồ sơ khi mở tab, pattern chuẩn cho fetch-on-mount
+      setLatestFileId(Object.fromEntries(entries.filter((e): e is [string, string] => e !== null)))
+    }
+    void loadLatestFileIds()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần chạy lại khi danh sách hồ sơ có file thay đổi
+  }, [withFileIds])
 
   if (withFile.length === 0) {
     return <p className="text-sm text-gray-400 text-center py-14">Chưa có hợp đồng nào được tạo.</p>
@@ -1319,14 +1345,18 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
               <td className="px-4 py-3 text-gray-600">{r.so_hop_dong || '—'}</td>
               <td className="px-4 py-3 text-gray-600">{formatDateVN(r.ngay_ky)}</td>
               <td className="px-4 py-3">
-                <a
-                  href={r.file_hop_dong_url!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
-                >
-                  <FileText size={13} /> {buildContractFileName(doan, r)}
-                </a>
+                {latestFileId[r.id] ? (
+                  <a
+                    href={`/api/ho-so/${r.id}/hop-dong-files/${latestFileId[r.id]}/download`}
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
+                  >
+                    <FileText size={13} /> {buildContractFileName(doan, r)}
+                  </a>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                    <FileText size={13} /> {buildContractFileName(doan, r)}
+                  </span>
+                )}
               </td>
             </tr>
           ))}
