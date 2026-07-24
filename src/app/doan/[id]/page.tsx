@@ -172,11 +172,11 @@ function useLoaiNhanSuList() {
     void loadList()
   }, [])
 
-  async function create(ten: string): Promise<LoaiNhanSu | null> {
+  async function create(ten: string, ma: string): Promise<LoaiNhanSu | null> {
     const res = await fetch('/api/loai-nhan-su', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ten }),
+      body: JSON.stringify({ ten, ma }),
     })
     if (!res.ok) return null
     const data = await res.json()
@@ -194,17 +194,18 @@ function CreateLoaiNhanSuModal({
   onCreate,
 }: {
   onClose: () => void
-  onCreate: (ten: string) => Promise<LoaiNhanSu | null>
+  onCreate: (ten: string, ma: string) => Promise<LoaiNhanSu | null>
 }) {
   const [ten, setTen] = useState('')
+  const [ma, setMa] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSave() {
-    if (!ten.trim() || saving) return
+    if (!ten.trim() || !ma.trim() || saving) return
     setSaving(true)
     setError('')
-    const created = await onCreate(ten.trim())
+    const created = await onCreate(ten.trim(), ma.trim())
     setSaving(false)
     if (!created) {
       setError('Có lỗi xảy ra, thử lại nhé')
@@ -219,12 +220,21 @@ function CreateLoaiNhanSuModal({
       <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Tạo loại nhân sự mới</h3>
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
           <input
             autoFocus
             value={ten}
             onChange={(e) => setTen(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             placeholder="VD: HDV nội địa, Lái xe..."
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
+          />
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Mã ngắn</label>
+          <input
+            value={ma}
+            onChange={(e) => setMa(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            placeholder="VD: LX (dùng đặt tên file + khớp mẫu hợp đồng)"
             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
           />
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
@@ -240,7 +250,7 @@ function CreateLoaiNhanSuModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !ten.trim()}
+              disabled={saving || !ten.trim() || !ma.trim()}
               className="flex-1 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
             >
               {saving ? 'Đang lưu...' : 'Lưu'}
@@ -1317,8 +1327,8 @@ function AddNhanSuModal({
       {creatingLoai && (
         <CreateLoaiNhanSuModal
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten) => {
-            const created = await loaiNhanSu.create(ten)
+          onCreate={async (ten, ma) => {
+            const created = await loaiNhanSu.create(ten, ma)
             if (created) setLoaiNhanSuId(created.id)
             return created
           }}
@@ -2087,8 +2097,8 @@ function HoSoDetailModal({
       {creatingLoai && (
         <CreateLoaiNhanSuModal
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten) => {
-            const created = await loaiNhanSu.create(ten)
+          onCreate={async (ten, ma) => {
+            const created = await loaiNhanSu.create(ten, ma)
             if (created) setNhansu((f) => ({ ...f, loai_nhan_su_id: created.id }))
             return created
           }}
