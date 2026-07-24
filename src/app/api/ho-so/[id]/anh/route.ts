@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       .from('ho_so')
       .update({ [field]: url })
       .eq('id', id)
-      .select('*, nhansu:nhansu_id(*)')
+      .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

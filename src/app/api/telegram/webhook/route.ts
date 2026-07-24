@@ -217,7 +217,7 @@ async function handleCallback(admin: ReturnType<typeof createAdminClient>, cb: T
       await sendMessage(chatId, 'Thiếu dữ liệu, gửi lại ảnh từ đầu giúp mình nhé.')
       return
     }
-    const nhansu = await upsertNhanSuFromExtract(admin, fields, 'HDV')
+    const nhansu = await upsertNhanSuFromExtract(admin, fields)
     const images = session.draft_json.images ?? {}
     await createHoSo(admin, {
       doan_id: doanId,

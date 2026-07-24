@@ -21,8 +21,9 @@ import {
   RotateCw,
   Eye,
   Trash2,
+  Plus,
 } from 'lucide-react'
-import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, Prefix, HopDongTemplate } from '@/types'
+import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
 import { buildContractFileName } from '@/lib/contract-file-name'
@@ -155,6 +156,102 @@ function DayChipInput({
   )
 }
 
+/** Danh mục "Loại nhân sự" — do kế toán tự tạo (vd "HDV", "MC", "Lái xe"...), có
+ *  mã ngắn (`ma`) dùng để đặt tên file hợp đồng + khớp biểu mẫu Word. Mỗi nơi cần
+ *  danh sách này tự gọi hook riêng (đơn giản hơn truyền props xuyên nhiều modal độc lập). */
+function useLoaiNhanSuList() {
+  const [list, setList] = useState<LoaiNhanSu[]>([])
+
+  useEffect(() => {
+    async function loadList() {
+      const res = await fetch('/api/loai-nhan-su')
+      if (!res.ok) return
+      const data = await res.json()
+      setList((data.loai_nhan_su ?? []) as LoaiNhanSu[])
+    }
+    void loadList()
+  }, [])
+
+  async function create(ten: string): Promise<LoaiNhanSu | null> {
+    const res = await fetch('/api/loai-nhan-su', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ten }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const created = data.loai_nhan_su as LoaiNhanSu
+    setList((prev) => [...prev, created].sort((a, b) => a.ten.localeCompare(b.ten)))
+    return created
+  }
+
+  return { list, create }
+}
+
+/** Modal nhỏ để nhập tên loại nhân sự mới — dùng chung ở dropdown lọc và ở form thêm/sửa nhân sự. */
+function CreateLoaiNhanSuModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void
+  onCreate: (ten: string) => Promise<LoaiNhanSu | null>
+}) {
+  const [ten, setTen] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave() {
+    if (!ten.trim() || saving) return
+    setSaving(true)
+    setError('')
+    const created = await onCreate(ten.trim())
+    setSaving(false)
+    if (!created) {
+      setError('Có lỗi xảy ra, thử lại nhé')
+      return
+    }
+    onClose()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !saving && onClose()} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Tạo loại nhân sự mới</h3>
+          <input
+            autoFocus
+            value={ten}
+            onChange={(e) => setTen(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            placeholder="VD: HDV nội địa, Lái xe..."
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
+          />
+          {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !ten.trim()}
+              className="flex-1 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+            >
+              {saving ? 'Đang lưu...' : 'Lưu'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -169,6 +266,10 @@ export default function DoanDetailPage() {
   const [addingNhanSu, setAddingNhanSu] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [filterLoaiId, setFilterLoaiId] = useState('')
+  const [creatingLoai, setCreatingLoai] = useState(false)
+  const loaiNhanSu = useLoaiNhanSuList()
+  const filteredHoSo = filterLoaiId ? hoSo.filter((r) => r.nhansu.loai_nhan_su_id === filterLoaiId) : hoSo
 
   function showToast(msg: string) {
     setToast(msg)
@@ -286,6 +387,27 @@ export default function DoanDetailPage() {
                     <UserPlus size={13} />
                     Thêm nhân sự
                   </button>
+                  <select
+                    value={filterLoaiId}
+                    onChange={(e) => setFilterLoaiId(e.target.value)}
+                    className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 bg-white text-gray-600"
+                  >
+                    <option value="">Tất cả loại nhân sự</option>
+                    {loaiNhanSu.list.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.ten}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setCreatingLoai(true)}
+                    title="Tạo loại nhân sự mới"
+                    className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                  >
+                    <Plus size={13} />
+                    Loại nhân sự
+                  </button>
                   <div className="flex-1" />
                   <button
                     onClick={handleCopy}
@@ -313,7 +435,7 @@ export default function DoanDetailPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {hoSo.map((r) => (
+                      {filteredHoSo.map((r) => (
                         <HoSoRow
                           key={`${r.id}:${r.so_ngay_cong_tac}:${r.chi_tra}`}
                           r={r}
@@ -326,10 +448,12 @@ export default function DoanDetailPage() {
                           onToast={showToast}
                         />
                       ))}
-                      {hoSo.length === 0 && (
+                      {filteredHoSo.length === 0 && (
                         <tr>
                           <td colSpan={8} className="px-4 py-14 text-center text-gray-400">
-                            Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.
+                            {hoSo.length === 0
+                              ? 'Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.'
+                              : 'Không có ai thuộc loại nhân sự này.'}
                           </td>
                         </tr>
                       )}
@@ -342,6 +466,10 @@ export default function DoanDetailPage() {
           {tab === 'files' && <FilesTab doan={doan} hoSo={hoSo} />}
         </div>
       </div>
+
+      {creatingLoai && (
+        <CreateLoaiNhanSuModal onClose={() => setCreatingLoai(false)} onCreate={loaiNhanSu.create} />
+      )}
 
       {viewing && doan && (
         <HoSoDetailModal
@@ -511,7 +639,7 @@ function HoSoRow({
           onClick={onView}
           className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
         >
-          <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+          <span className="text-gray-400 font-medium">{n.loai_nhan_su?.ma || 'NS'}:</span> {n.ho_ten}
         </button>
         <div className="text-xs text-gray-900 font-mono mt-1">CCCD: {n.so_cccd ?? '-'}</div>
         <div className="text-xs text-gray-900 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '-'}</div>
@@ -568,7 +696,7 @@ function HoSoRow({
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-gray-900">
-                  <span className="text-gray-400 font-medium">{n.prefix || 'NS'}:</span> {n.ho_ten}
+                  <span className="text-gray-400 font-medium">{n.loai_nhan_su?.ma || 'NS'}:</span> {n.ho_ten}
                 </h3>
                 <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
                   <X size={16} />
@@ -805,10 +933,22 @@ function AddNhanSuModal({
   const [images, setImages] = useState<{ url: string; kind: ImageKind | null }[]>([])
   const [selectedImg, setSelectedImg] = useState(0)
   const [fields, setFields] = useState(emptyAiFields)
-  const [prefix, setPrefix] = useState<Prefix>('HDV')
+  const [loaiNhanSuId, setLoaiNhanSuId] = useState('')
+  const [creatingLoai, setCreatingLoai] = useState(false)
+  const loaiNhanSu = useLoaiNhanSuList()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [addedCount, setAddedCount] = useState(0)
+
+  // Mặc định chọn loại "HDV" (giống default cũ của prefix) ngay khi danh mục tải xong,
+  // kế toán vẫn đổi tay sang loại khác nếu cần.
+  useEffect(() => {
+    if (loaiNhanSuId || loaiNhanSu.list.length === 0) return
+    const hdv = loaiNhanSu.list.find((l) => l.ma.toUpperCase() === 'HDV')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tự chọn sẵn loại mặc định khi danh mục tải xong, kế toán vẫn đổi tay được
+    setLoaiNhanSuId((hdv ?? loaiNhanSu.list[0]).id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần tự chọn 1 lần khi danh mục tải xong lần đầu
+  }, [loaiNhanSu.list])
 
   // Trùng CCCD với người đã có sẵn trong CHÍNH đoàn này (không phải toàn hệ thống)
   // — kiểm tra ngay khi biết CCCD, không đợi đến lúc bấm Lưu mới báo.
@@ -902,8 +1042,8 @@ function AddNhanSuModal({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prefix,
         fields,
+        loai_nhan_su_id: loaiNhanSuId || undefined,
         anh_cccd_truoc_url: byKind('cccd_truoc'),
         anh_cccd_sau_url: byKind('cccd_sau'),
         anh_the_hdv_url: byKind('the_hdv'),
@@ -1053,14 +1193,7 @@ function AddNhanSuModal({
                       </span>
                     </div>
                   )}
-                  <div className="grid grid-cols-3 gap-3">
-                    <Field label="Loại">
-                      <select value={prefix} onChange={(e) => setPrefix(e.target.value as Prefix)} className={inputCls}>
-                        <option value="HDV">HDV</option>
-                        <option value="MC">MC</option>
-                        <option value="NS">NS</option>
-                      </select>
-                    </Field>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="Họ tên">
                       <input value={fields.ho_ten} onChange={(e) => setFields((f) => ({ ...f, ho_ten: e.target.value }))} className={inputCls} />
                     </Field>
@@ -1068,6 +1201,25 @@ function AddNhanSuModal({
                       <input value={fields.so_cccd} onChange={(e) => setFields((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />
                     </Field>
                   </div>
+                  <Field label="Loại nhân sự">
+                    <div className="flex gap-2">
+                      <select value={loaiNhanSuId} onChange={(e) => setLoaiNhanSuId(e.target.value)} className={`${inputCls} flex-1`}>
+                        {loaiNhanSu.list.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.ten}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setCreatingLoai(true)}
+                        title="Tạo loại nhân sự mới"
+                        className="shrink-0 px-2.5 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Ngày sinh">
                       <DateInput value={fields.ngay_sinh} onChange={(v) => setFields((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />
@@ -1162,6 +1314,16 @@ function AddNhanSuModal({
             )}
         </div>
       </div>
+      {creatingLoai && (
+        <CreateLoaiNhanSuModal
+          onClose={() => setCreatingLoai(false)}
+          onCreate={async (ten) => {
+            const created = await loaiNhanSu.create(ten)
+            if (created) setLoaiNhanSuId(created.id)
+            return created
+          }}
+        />
+      )}
     </>
   )
 }
@@ -1312,14 +1474,12 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
         }),
       )
       if (cancelled) return
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- tải id file mới nhất/hồ sơ khi mở tab, pattern chuẩn cho fetch-on-mount
       setLatestFileId(Object.fromEntries(entries.filter((e): e is [string, string] => e !== null)))
     }
     void loadLatestFileIds()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần chạy lại khi danh sách hồ sơ có file thay đổi
   }, [withFileIds])
 
   if (withFile.length === 0) {
@@ -1390,6 +1550,7 @@ function nhansuFormFrom(hoSo: HoSoWithNhanSu) {
     email: n.email ?? '',
     stk: n.stk ?? '',
     ten_ngan_hang: n.ten_ngan_hang ?? '',
+    loai_nhan_su_id: n.loai_nhan_su_id ?? '',
   }
 }
 
@@ -1432,6 +1593,8 @@ function HoSoDetailModal({
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [templateId, setTemplateId] = useState('')
+  const [creatingLoai, setCreatingLoai] = useState(false)
+  const loaiNhanSu = useLoaiNhanSuList()
 
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
@@ -1456,14 +1619,13 @@ function HoSoDetailModal({
       if (!res.ok) return
       const data = await res.json()
       const list = ((data.templates ?? []) as HopDongTemplate[]).filter((t) => t.is_active)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách biểu mẫu khi mở modal, pattern chuẩn cho fetch-on-mount
       setTemplates(list)
-      const matched = list.find((t) => t.loai?.toLowerCase() === n.prefix.toLowerCase())
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- chọn sẵn mẫu khớp loại HDV/MC/NS, kế toán có thể đổi tay
+      const ma = n.loai_nhan_su?.ma?.toLowerCase() ?? ''
+      const matched = list.find((t) => t.loai?.toLowerCase() === ma)
       setTemplateId((matched ?? list[0])?.id ?? '')
     }
     void loadTemplates()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần chạy lại khi đổi hồ sơ đang xem
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- n.loai_nhan_su gắn với hoSo.id, chỉ cần chạy lại khi đổi hồ sơ đang xem
   }, [hoSo.id])
 
   async function handleExport() {
@@ -1523,6 +1685,7 @@ function HoSoDetailModal({
           email: nhansu.email || null,
           stk: nhansu.stk || null,
           ten_ngan_hang: nhansu.ten_ngan_hang || null,
+          loai_nhan_su_id: nhansu.loai_nhan_su_id || null,
         },
         ho_so: {
           so_hop_dong: hs.so_hop_dong || null,
@@ -1554,7 +1717,7 @@ function HoSoDetailModal({
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                <span className="text-gray-400 font-semibold">{n.prefix || 'NS'}:</span> {n.ho_ten}
+                <span className="text-gray-400 font-semibold">{n.loai_nhan_su?.ma || 'NS'}:</span> {n.ho_ten}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -1597,6 +1760,37 @@ function HoSoDetailModal({
             </div>
 
             <div className="space-y-6 min-w-0 overflow-y-auto p-6">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Phân loại</p>
+                  <InfoField
+                    editing={editing}
+                    label="Loại nhân sự"
+                    value={loaiNhanSu.list.find((l) => l.id === n.loai_nhan_su_id)?.ten ?? null}
+                    input={
+                      <div className="flex gap-2">
+                        <select
+                          value={nhansu.loai_nhan_su_id}
+                          onChange={(e) => setNhansu((f) => ({ ...f, loai_nhan_su_id: e.target.value }))}
+                          className={`${inputCls} flex-1`}
+                        >
+                          {loaiNhanSu.list.map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.ten}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setCreatingLoai(true)}
+                          title="Tạo loại nhân sự mới"
+                          className="shrink-0 px-2.5 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    }
+                  />
+                </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">CCCD</p>
                   <div className="space-y-3">
@@ -1890,6 +2084,16 @@ function HoSoDetailModal({
           </form>
         </div>
       </div>
+      {creatingLoai && (
+        <CreateLoaiNhanSuModal
+          onClose={() => setCreatingLoai(false)}
+          onCreate={async (ten) => {
+            const created = await loaiNhanSu.create(ten)
+            if (created) setNhansu((f) => ({ ...f, loai_nhan_su_id: created.id }))
+            return created
+          }}
+        />
+      )}
     </>
   )
 }

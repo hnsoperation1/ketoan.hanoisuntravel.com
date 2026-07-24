@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     supabase.from('doan').select('*').eq('id', id).is('deleted_at', null).single(),
     supabase
       .from('ho_so')
-      .select('*, nhansu:nhansu_id(*)')
+      .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
       .eq('doan_id', id)
       .order('created_at', { ascending: true }),
   ])

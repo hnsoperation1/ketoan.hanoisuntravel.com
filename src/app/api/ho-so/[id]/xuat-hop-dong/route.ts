@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const { data: hoSo, error: hoSoErr } = await supabase
     .from('ho_so')
-    .select('*, nhansu:nhansu_id(*)')
+    .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
     .eq('id', id)
     .single()
   if (hoSoErr || !hoSo) return NextResponse.json({ error: 'Không tìm thấy hồ sơ' }, { status: 404 })
@@ -34,10 +34,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     .order('created_at', { ascending: false })
 
   const templateList = (templates ?? []) as HopDongTemplate[]
-  const prefix = (hoSo as HoSoWithNhanSu).nhansu.prefix
+  const ma = (hoSo as HoSoWithNhanSu).nhansu.loai_nhan_su?.ma ?? ''
   const template =
     (templateId ? templateList.find((t) => t.id === templateId) : undefined) ??
-    templateList.find((t) => t.loai?.toLowerCase() === prefix.toLowerCase()) ??
+    templateList.find((t) => t.loai?.toLowerCase() === ma.toLowerCase()) ??
     templateList[0]
 
   if (!template) {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       .from('ho_so')
       .update({ file_hop_dong_url: fileUrl })
       .eq('id', id)
-      .select('*, nhansu:nhansu_id(*)')
+      .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
       .single()
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 

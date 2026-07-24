@@ -3,13 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { upsertNhanSuFromExtract, createHoSo } from '@/lib/ho-so'
 import { getErrorMessage } from '@/lib/errors'
-import type { AiExtractedFields, Prefix } from '@/types'
+import type { AiExtractedFields } from '@/types'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 interface Body {
-  prefix: Prefix
   fields: AiExtractedFields
+  loai_nhan_su_id?: string
   anh_cccd_truoc_url?: string | null
   anh_cccd_sau_url?: string | null
   anh_the_hdv_url?: string | null
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   try {
     const supabase = await createClient()
-    const nhansu = await upsertNhanSuFromExtract(supabase, body.fields, body.prefix)
+    const nhansu = await upsertNhanSuFromExtract(supabase, body.fields, body.loai_nhan_su_id)
 
     // Không check trùng CCCD trong toàn bảng nhansu (1 người có thể làm nhiều đoàn),
     // nhưng chặn thêm trùng 2 lần cùng 1 người vào CÙNG 1 đoàn này.

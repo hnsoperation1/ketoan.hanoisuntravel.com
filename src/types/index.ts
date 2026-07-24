@@ -1,5 +1,3 @@
-export type Prefix = 'HDV' | 'MC' | 'NS'
-
 export interface AppNotification {
   id: string
   title: string
@@ -46,7 +44,6 @@ export const TRANG_THAI_LABELS: Record<TrangThaiHoSo, string> = {
 
 export interface NhanSu {
   id: string
-  prefix: Prefix
   ho_ten: string
   dia_chi: string | null
   tinh_tp: string | null
@@ -62,6 +59,19 @@ export interface NhanSu {
   stk: string | null
   ten_ngan_hang: string | null
   email: string | null
+  loai_nhan_su_id: string
+  /** Join tiện dùng — có mặt khi query nhansu kèm `loai_nhan_su:loai_nhan_su_id(*)`. */
+  loai_nhan_su?: LoaiNhanSu
+  created_at: string
+}
+
+/** Danh mục "loại nhân sự" do kế toán tự tạo — nhóm theo tính chất công việc (vd "HDV nội địa",
+ *  "Lái xe"...). `ma` là mã ngắn (vd "HDV") dùng để đặt tên file hợp đồng và khớp
+ *  hop_dong_templates.loai khi tự chọn mẫu Word. */
+export interface LoaiNhanSu {
+  id: string
+  ten: string
+  ma: string
   created_at: string
 }
 

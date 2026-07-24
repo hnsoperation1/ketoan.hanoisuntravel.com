@@ -7,5 +7,6 @@ export function buildContractFileName(doan: Doan, hoSo: HoSoWithNhanSu): string 
   const [y, m, d] = doan.ngay_di.split('-')
   const ngayVeDD = doan.ngay_ve ? doan.ngay_ve.split('-')[2] : d
   const thang = String(Number(m))
-  return `${y}${m}${d}_${hoSo.nhansu.prefix} ${hoSo.nhansu.ho_ten} ${d}.${ngayVeDD}T${thang}.docx`
+  const ma = hoSo.nhansu.loai_nhan_su?.ma ?? ''
+  return `${y}${m}${d}_${ma} ${hoSo.nhansu.ho_ten} ${d}.${ngayVeDD}T${thang}.docx`
 }

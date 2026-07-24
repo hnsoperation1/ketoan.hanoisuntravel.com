@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   const { data, error } = await supabase
     .from('ho_so')
-    .select('*, nhansu:nhansu_id(*)')
+    .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
     .eq('id', id)
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

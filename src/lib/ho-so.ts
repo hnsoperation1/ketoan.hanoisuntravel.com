@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AiExtractedFields, NhanSu, Prefix } from '@/types'
+import type { AiExtractedFields, NhanSu } from '@/types'
 import { deriveTinhTp } from '@/lib/format'
 
 /**
@@ -7,14 +7,17 @@ import { deriveTinhTp } from '@/lib/format'
  * cập nhật lại thông tin mới nhất thay vì tạo trùng). Dùng chung cho cả API
  * dashboard và Telegram webhook — nhận `supabase` làm tham số để mỗi nơi gọi
  * với client phù hợp (server session hoặc admin/service-role).
+ *
+ * `loaiNhanSuId` bỏ trống thì không đụng tới field này khi update người đã có sẵn
+ * (giữ nguyên phân loại cũ), còn khi tạo mới thì để cột `nhansu.loai_nhan_su_id`
+ * tự áp default (loại "HDV") ở DB.
  */
 export async function upsertNhanSuFromExtract(
   supabase: SupabaseClient,
   fields: AiExtractedFields,
-  prefix: Prefix,
+  loaiNhanSuId?: string,
 ): Promise<NhanSu> {
-  const insertPayload = {
-    prefix,
+  const insertPayload: Record<string, unknown> = {
     ho_ten: fields.ho_ten ?? '',
     so_cccd: fields.so_cccd ?? null,
     ngay_sinh: fields.ngay_sinh ?? null,
@@ -31,6 +34,7 @@ export async function upsertNhanSuFromExtract(
     ten_ngan_hang: fields.ten_ngan_hang ?? null,
     email: fields.email ?? null,
   }
+  if (loaiNhanSuId) insertPayload.loai_nhan_su_id = loaiNhanSuId
 
   if (insertPayload.so_cccd) {
     const { data: existing } = await supabase
@@ -72,7 +76,11 @@ export interface NewHoSoInput {
 }
 
 export async function createHoSo(supabase: SupabaseClient, input: NewHoSoInput) {
-  const { data, error } = await supabase.from('ho_so').insert(input).select('*, nhansu:nhansu_id(*)').single()
+  const { data, error } = await supabase
+    .from('ho_so')
+    .insert(input)
+    .select('*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*))')
+    .single()
   if (error) throw error
   return data
 }
