@@ -70,7 +70,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
     const fileName = buildContractFileName(doan as Doan, hoSo as HoSoWithNhanSu)
-    await supabase.from('ho_so_hop_dong_files').insert({ ho_so_id: id, file_url: fileUrl, file_name: fileName })
+    const { error: fileErr } = await supabase
+      .from('ho_so_hop_dong_files')
+      .insert({ ho_so_id: id, file_url: fileUrl, file_name: fileName })
+    if (fileErr) return NextResponse.json({ error: fileErr.message }, { status: 500 })
 
     return NextResponse.json({ ho_so: updated })
   } catch (e) {

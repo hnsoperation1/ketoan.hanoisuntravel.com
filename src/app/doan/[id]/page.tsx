@@ -29,6 +29,7 @@ import { buildDsHdvRows } from '@/lib/export-format'
 import { buildContractFileName } from '@/lib/contract-file-name'
 import { formatDateVN, deriveTinhTp } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
+import { useAuth } from '@/contexts/auth'
 import DateInput from '@/components/DateInput'
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
@@ -1597,10 +1598,13 @@ function HoSoDetailModal({
   onExported: (updated: HoSoWithNhanSu) => void
 }) {
   const n = hoSo.nhansu
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
+  // Kế toán thường chỉ xem file mới nhất; super admin xem được toàn bộ lịch sử đã xuất.
+  const visibleFiles = user?.is_super_admin ? files : files.slice(0, 1)
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [templateId, setTemplateId] = useState('')
   const [creatingLoai, setCreatingLoai] = useState(false)
@@ -2063,11 +2067,11 @@ function HoSoDetailModal({
                   </div>
                 </div>
                 {exportError && <p className="text-xs text-red-500 mb-2">{exportError}</p>}
-                {files.length === 0 ? (
+                {visibleFiles.length === 0 ? (
                   <p className="text-xs text-gray-400">Chưa có file nào được xuất.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {files.map((f) => (
+                    {visibleFiles.map((f) => (
                       <a
                         key={f.id}
                         href={`/api/ho-so/${hoSo.id}/hop-dong-files/${f.id}/download`}
