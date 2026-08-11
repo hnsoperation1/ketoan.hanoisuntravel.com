@@ -150,7 +150,7 @@ export default function CongNoKhachHangPage() {
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['Mã khách', 'Tổng giá bán', 'Tổng đã thu', 'Công nợ'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">{h}</th>
+                  <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50 ${h === 'Mã khách' ? 'text-left' : 'text-right'}`}>{h}</th>
                 ))}
               </tr>
             </thead>

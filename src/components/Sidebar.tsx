@@ -108,12 +108,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
               style={{ color: '#0069a0' }}
             >
-              Kế toán
+              Kế toán tour
             </p>
           )}
           <NavLink
             href="/doan"
-            label="Kế toán tour"
+            label="Quyết toán tour"
             icon={FileSpreadsheet}
             pathname={pathname}
             collapsed={collapsed}
