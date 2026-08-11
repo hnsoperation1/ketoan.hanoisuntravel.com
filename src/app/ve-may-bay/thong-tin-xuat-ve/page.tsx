@@ -592,7 +592,7 @@ export default function VeMayBayPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr className="bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
                 {user?.is_super_admin && (
                   <th className="w-8 pl-3">
                     <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll}
@@ -608,7 +608,7 @@ export default function VeMayBayPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
+                  <tr key={i} className="animate-pulse divide-x divide-gray-100">
                     {Array.from({ length: colCount }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-3 bg-gray-100 rounded" style={{ width: `${40 + (i + j) % 4 * 10}%` }} /></td>
                     ))}
@@ -634,7 +634,7 @@ export default function VeMayBayPage() {
                   const parsedBookings = r.ve_parse_logs?.parsed_bookings
                   return (
                   <Fragment key={r.id}>
-                  <tr className="hover:bg-gray-50/70 transition-colors">
+                  <tr className="hover:bg-gray-50/70 transition-colors divide-x divide-gray-100">
                     {user?.is_super_admin && (
                       <td className="pl-3">
                         <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)}

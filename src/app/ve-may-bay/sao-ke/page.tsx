@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, Download } from 'lucide-react'
 
 type SaoKeRow = {
@@ -28,6 +28,19 @@ const TAI_KHOAN_OPTIONS = ['Tất cả', 'Tiền mặt', 'TCB VA 866', 'TCB P889
 function formatTien(n: number | null): string {
   if (n == null) return '—'
   return Math.round(n).toLocaleString('vi-VN')
+}
+
+// ngay lưu dạng TEXT "DD/MM/YYYY" (nguyên văn đọc từ Google Sheet, không
+// phải cột DATE thật) — đổi sang ISO để sort/group đúng theo ngày thực,
+// không theo thứ tự chuỗi (vd "09/08/2026" > "10/07/2026" theo string
+// nhưng sai theo ngày thực).
+function toIsoDate(dateStr: string | null): string | null {
+  if (!dateStr) return null
+  const parts = dateStr.split('/')
+  if (parts.length !== 3) return null
+  const [d, m, y] = parts
+  if (!d || !m || !y) return null
+  return `${y.padStart(4, '0')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 }
 
 export default function SaoKePage() {
@@ -94,6 +107,24 @@ export default function SaoKePage() {
 
   const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
   const tongChi = useMemo(() => filtered.reduce((s, r) => s + (r.chi ?? 0), 0), [filtered])
+
+  // Phân theo tháng, mới nhất trước — cả thứ tự tháng lẫn thứ tự giao dịch
+  // trong từng tháng đều sort giảm dần theo ngày thực (ISO), không theo
+  // thứ tự API trả về (vốn sort theo tai_khoan/row_index, không phải ngày).
+  const groupedByMonth = useMemo(() => {
+    const map = new Map<string, { label: string; rows: typeof filtered }>()
+    for (const r of filtered) {
+      const iso = toIsoDate(r.ngay)
+      const key = iso ? iso.slice(0, 7) : '0000-00'
+      const label = iso ? `Tháng ${Number(iso.slice(5, 7))}/${iso.slice(0, 4)}` : 'Chưa rõ ngày'
+      if (!map.has(key)) map.set(key, { label, rows: [] })
+      map.get(key)!.rows.push(r)
+    }
+    for (const g of Array.from(map.values())) {
+      g.rows.sort((a, b) => (toIsoDate(b.ngay) ?? '').localeCompare(toIsoDate(a.ngay) ?? ''))
+    }
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([, g]) => g)
+  }, [filtered])
 
   return (
     <div className="p-5 space-y-4">
@@ -164,25 +195,34 @@ export default function SaoKePage() {
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={10} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.ngay ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.tai_khoan}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.ma ?? '—'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    {r.tag && (
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${r.tag.toUpperCase() === 'VMB' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {r.tag}
-                      </span>
-                    )}
+              ) : groupedByMonth.map(g => (
+                <Fragment key={g.label}>
+                <tr>
+                  <td colSpan={10} className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs font-bold text-gray-700">
+                    {g.label} <span className="text-gray-400 font-normal">({g.rows.length} dòng)</span>
                   </td>
-                  <td className="px-4 py-2 text-gray-700 max-w-[200px] truncate" title={r.don_vi ?? ''}>{r.don_vi ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700 max-w-[320px] truncate" title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
-                  <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{r.thu ? formatTien(r.thu) : '—'}</td>
-                  <td className="px-4 py-2 text-red-500 whitespace-nowrap text-right">{r.chi ? formatTien(r.chi) : '—'}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{formatTien(r.so_du_cuoi_ky)}</td>
-                  <td className="px-4 py-2 text-gray-500 max-w-[180px] truncate" title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
                 </tr>
+                {g.rows.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.ngay ?? '—'}</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.tai_khoan}</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.ma ?? '—'}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {r.tag && (
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${r.tag.toUpperCase() === 'VMB' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {r.tag}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700 max-w-[200px] truncate" title={r.don_vi ?? ''}>{r.don_vi ?? '—'}</td>
+                    <td className="px-4 py-2 text-gray-700 max-w-[320px] truncate" title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
+                    <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{r.thu ? formatTien(r.thu) : '—'}</td>
+                    <td className="px-4 py-2 text-red-500 whitespace-nowrap text-right">{r.chi ? formatTien(r.chi) : '—'}</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{formatTien(r.so_du_cuoi_ky)}</td>
+                    <td className="px-4 py-2 text-gray-500 max-w-[180px] truncate" title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
+                  </tr>
+                ))}
+                </Fragment>
               ))}
             </tbody>
           </table>
