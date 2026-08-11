@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -113,12 +113,38 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
           <NavLink
             href="/doan"
-            label="Quyết toán tour"
+            label="Kế toán tour"
             icon={FileSpreadsheet}
             pathname={pathname}
             collapsed={collapsed}
             onClick={onMobileClose}
           />
+        </div>
+
+        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+          {!collapsed && (
+            <p
+              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
+              style={{ color: '#0069a0' }}
+            >
+              Kế toán vé máy bay
+            </p>
+          )}
+          <NavLink href="/ve-may-bay/thong-tin-xuat-ve" label="Thông tin xuất vé" icon={Plane} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/cong-no" label="Công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TK" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục khách hàng" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          {/* "/ve-may-bay/sao-ke" (Đầu vào sao kê) CỐ Ý không có link ở đây
+              — chỉ vào được bằng gõ thẳng URL, giống quy ước bên hns-crm. */}
+          {user?.is_super_admin && (
+            <>
+              <NavLink href="/ve-may-bay/parse-logs" label="Nhật ký bot vé" icon={ScrollText} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+              <NavLink href="/ve-may-bay/nhom" label="Nhóm Telegram" icon={Send} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+              <NavLink href="/ve-may-bay/tkt" label="TKT" icon={UserCog} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+            </>
+          )}
         </div>
 
         {user?.is_super_admin && (

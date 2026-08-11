@@ -26,3 +26,25 @@ export async function requireUser() {
   }
   return { user: data.user, unauthorized: null }
 }
+
+/**
+ * Như requireUser() nhưng bắt buộc thêm is_super_admin — dùng cho các route
+ * "Vé máy bay" nhạy cảm hơn (Nhật ký bot vé lộ nguyên văn tin Telegram +
+ * JSON AI đọc được của MỌI TKT, Nhóm Telegram/TKT là cấu hình hệ thống),
+ * khớp đúng mức siết đang áp dụng ở hns-crm cho cùng 3 trang này.
+ */
+export async function requireSuperAdminUser() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) {
+    return { user: null, unauthorized: NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 }) }
+  }
+  const { data: isSuperAdmin } = await supabase.rpc('is_super_admin')
+  if (!isSuperAdmin) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json({ error: 'Chỉ Super Admin mới có quyền truy cập' }, { status: 403 }),
+    }
+  }
+  return { user: data.user, unauthorized: null }
+}

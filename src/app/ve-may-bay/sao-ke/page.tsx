@@ -1,0 +1,193 @@
+'use client'
+
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { RefreshCw, Search, Download } from 'lucide-react'
+
+type SaoKeRow = {
+  id: string
+  tai_khoan: string
+  stt: number | null
+  ngay: string | null
+  ma: string | null
+  tag: string | null
+  don_vi: string | null
+  dien_giai: string | null
+  thu: number | null
+  chi: number | null
+  vay: number | null
+  so_du_cuoi_ky: number | null
+  ten_du_an: string | null
+  ma_tk: string | null
+  ma_1: string | null
+  ma_2: string | null
+  ma_3: string | null
+}
+
+const TAI_KHOAN_OPTIONS = ['Tất cả', 'Tiền mặt', 'TCB VA 866', 'TCB P889', 'TCB017', 'TCB012']
+
+function formatTien(n: number | null): string {
+  if (n == null) return '—'
+  return Math.round(n).toLocaleString('vi-VN')
+}
+
+export default function SaoKePage() {
+  const [rows, setRows] = useState<SaoKeRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [taiKhoan, setTaiKhoan] = useState('Tất cả')
+  const [chiVmb, setChiVmb] = useState(false)
+  const [search, setSearch] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const res = await fetch('/api/ve-may-bay/sao-ke')
+      if (!res.ok) throw new Error('load failed')
+      const { data } = await res.json()
+      setRows(Array.isArray(data) ? data : [])
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, [loadData])
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true)
+    setSyncMsg(null)
+    try {
+      const res = await fetch('/api/ve-may-bay/sao-ke/sync', { method: 'POST' })
+      const json = await res.json()
+      const breakdownText = Array.isArray(json.breakdown)
+        ? ' — ' + json.breakdown.map((b: any) => `${b.tai_khoan}: ${b.parsed}`).join(', ')
+        : ''
+      if (!res.ok) throw new Error((json.error ?? 'Đồng bộ thất bại') + breakdownText)
+      setSyncMsg({ ok: true, text: `Đã đồng bộ ${Number(json.synced).toLocaleString('vi-VN')} dòng từ Google Sheet${breakdownText}.` })
+      await loadData()
+    } catch (err: any) {
+      setSyncMsg({ ok: false, text: err?.message ?? 'Đồng bộ thất bại' })
+    } finally {
+      setSyncing(false)
+    }
+  }, [loadData])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return rows.filter(r => {
+      if (taiKhoan !== 'Tất cả' && r.tai_khoan !== taiKhoan) return false
+      if (chiVmb && (r.tag ?? '').toUpperCase() !== 'VMB') return false
+      if (q) {
+        const hay = `${r.ma ?? ''} ${r.don_vi ?? ''} ${r.dien_giai ?? ''} ${r.ten_du_an ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [rows, taiKhoan, chiVmb, search])
+
+  const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
+  const tongChi = useMemo(() => filtered.reduce((s, r) => s + (r.chi ?? 0), 0), [filtered])
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-lg font-bold text-gray-900">Đầu vào sao kê</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={15} className={syncing ? 'animate-pulse' : ''} />
+            {syncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Sheet'}
+          </button>
+          <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
+      </div>
+
+      {syncMsg && (
+        <p className={`text-sm ${syncMsg.ok ? 'text-emerald-600' : 'text-red-500'}`}>{syncMsg.text}</p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {TAI_KHOAN_OPTIONS.map(tk => (
+          <button key={tk} onClick={() => setTaiKhoan(tk)}
+            className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+              taiKhoan === tk ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}>
+            {tk}
+          </button>
+        ))}
+        <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-gray-600 cursor-pointer select-none">
+          <input type="checkbox" checked={chiVmb} onChange={e => setChiVmb(e.target.checked)} />
+          Chỉ dòng VMB
+        </label>
+        <div className="relative ml-auto">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm đơn vị, diễn giải, mã..."
+            className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 text-sm">
+        <span className="text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</span>
+        <span className="text-emerald-600 font-semibold">Thu: {formatTien(tongThu)}</span>
+        <span className="text-red-500 font-semibold">Chi: {formatTien(tongChi)}</span>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['Ngày', 'Tài khoản', 'Mã', 'Tag', 'Đơn vị', 'Diễn giải', 'Thu', 'Chi', 'Dư cuối kỳ', 'Dự án'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr><td colSpan={10} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+              ) : loadError ? (
+                <tr><td colSpan={10} className="px-5 py-14 text-center">
+                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                </td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={10} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
+              ) : filtered.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.ngay ?? '—'}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.tai_khoan}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.ma ?? '—'}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {r.tag && (
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${r.tag.toUpperCase() === 'VMB' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {r.tag}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-gray-700 max-w-[200px] truncate" title={r.don_vi ?? ''}>{r.don_vi ?? '—'}</td>
+                  <td className="px-4 py-2 text-gray-700 max-w-[320px] truncate" title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
+                  <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{r.thu ? formatTien(r.thu) : '—'}</td>
+                  <td className="px-4 py-2 text-red-500 whitespace-nowrap text-right">{r.chi ? formatTien(r.chi) : '—'}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{formatTien(r.so_du_cuoi_ky)}</td>
+                  <td className="px-4 py-2 text-gray-500 max-w-[180px] truncate" title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
