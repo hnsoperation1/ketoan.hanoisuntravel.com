@@ -23,6 +23,7 @@ import {
   Trash2,
   Plus,
 } from 'lucide-react'
+import { tinhGrossTuNet } from '@/lib/tax'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
@@ -580,7 +581,7 @@ function HoSoRow({
   const soNgayNum = Number(soNgay) || 0
   const ctpNum = Number(ctp) || 0
   const chiTra = ctpNum * soNgayNum
-  const soTienChiTra = chiTra > 0 ? Math.round(chiTra / 0.9) : 0
+  const soTienChiTra = chiTra > 0 ? tinhGrossTuNet(chiTra) : 0
   const thueNop = soTienChiTra - chiTra
   const donGiaNgay = soNgayNum > 0 ? Math.round(soTienChiTra / soNgayNum) : 0
 
@@ -1668,11 +1669,13 @@ function HoSoDetailModal({
   }
 
   // Kế toán chỉ gõ công tác phí thực nhận/ngày (a1, vd 800k) — các cột còn lại
-  // tự tính ra để khớp đúng công thức thuế 10%/90% đã áp dụng ở server.
+  // tự tính ra để khớp đúng công thức thuế đã áp dụng ở server (10%/90% nếu
+  // >= 5 triệu/lần theo NĐ 253/2026, dưới ngưỡng thì không khấu trừ gì — xem
+  // tinhGrossTuNet ở lib/tax.ts).
   const soNgay = Number(hs.so_ngay_cong_tac) || 0
   const ctpNgayThucNhan = Number(hs.ctp_ngay_thuc_nhan) || 0
   const chiTra = ctpNgayThucNhan * soNgay
-  const soTienChiTra = chiTra > 0 ? Math.round(chiTra / 0.9) : 0
+  const soTienChiTra = chiTra > 0 ? tinhGrossTuNet(chiTra) : 0
   const thueNop = soTienChiTra - chiTra
   const donGiaNgay = soNgay > 0 ? Math.round(soTienChiTra / soNgay) : 0
 
