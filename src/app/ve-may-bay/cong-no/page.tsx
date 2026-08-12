@@ -1148,7 +1148,6 @@ const BANG_COLS: ColDef[] = [
   { key: 'stt', label: 'STT', width: 40 },
   { key: 'ncc', label: 'NCC', width: 70 },
   { key: 'ngay_xuat', label: 'Ngày xuất vé', width: 110 },
-  { key: 'ngay_tt', label: 'Ngày thanh toán', width: 120 },
   { key: 'ma_ve', label: 'Mã vé', width: 100 },
   { key: 'pax', label: 'Pax', width: 150 },
   { key: 'ngay_di', label: 'Ngày bay đi', width: 100 },
@@ -1238,7 +1237,6 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   <td className={TD}>{i + 1}</td>
                   <td className={TD}>{r.ncc ?? '—'}</td>
                   <td className={TD}>{r.issued_date ?? '—'}</td>
-                  <td className={TD}>{r.payment_date ?? '—'}</td>
                   <td className={TD}>{r.ticket_no ?? '—'}</td>
                   <td className={TD}>{r.pax_name ?? '—'}</td>
                   <td className={TD}>{r.departure_date ?? '—'}</td>
@@ -1286,7 +1284,6 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   <>
                     <td className={TD}>{r.ncc ?? '—'}</td>
                     <td className={TD}>{r.issued_date ?? '—'}</td>
-                    <td className={TD}>{r.payment_date ?? '—'}</td>
                     <td className={TD}>{r.ticket_no ?? '—'}</td>
                     <td className={`${TD} font-semibold`}>{name}</td>
                     <td className={TD}>{r.departure_date ?? '—'}</td>
@@ -1322,8 +1319,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   </>
                 ) : (
                   <>
-                    {/* ncc, ngày xuất, ngày TT, mã vé — để trống */}
-                    {Array.from({ length: 4 }).map((_, k) => <td key={`b1-${k}`} className={TD}></td>)}
+                    {/* ncc, ngày xuất, mã vé — để trống */}
+                    {Array.from({ length: 3 }).map((_, k) => <td key={`b1-${k}`} className={TD}></td>)}
                     <td className={`${TD} text-gray-500`}>↳ {name}</td>
                     {/* ngày đi, ngày về, hành trình + 23 cột công thức/tag/ghi chú/action còn lại — để trống */}
                     {Array.from({ length: 26 }).map((_, k) => <td key={`b2-${k}`} className={TD}></td>)}
