@@ -86,6 +86,9 @@ export interface Doan {
   ten_chuong_trinh: string | null
   thoi_gian_chuong_trinh: string | null
   dia_diem_chuong_trinh: string | null
+  diem_don_tra: string | null
+  dieu_hanh_phu_trach: string | null
+  dieu_hanh_dien_thoai: string | null
   created_at: string
   deleted_at: string | null
 }

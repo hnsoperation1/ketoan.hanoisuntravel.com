@@ -1356,6 +1356,11 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
             <ViewField label="Ngày về" value={formatDateVN(doan.ngay_ve)} />
           </div>
           <ViewField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+          <ViewField label="Điểm đón/trả khách" value={doan.diem_don_tra} />
+          <div className="grid grid-cols-2 gap-4">
+            <ViewField label="Điều hành phụ trách" value={doan.dieu_hanh_phu_trach} />
+            <ViewField label="Điện thoại điều hành" value={doan.dieu_hanh_dien_thoai} />
+          </div>
           {doan.loai_doan === 'su_kien' && (
             <>
               <ViewField label="Tên chương trình" value={doan.ten_chuong_trinh} />
@@ -1388,6 +1393,9 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
     ten_chuong_trinh: doan.ten_chuong_trinh ?? '',
     thoi_gian_chuong_trinh: doan.thoi_gian_chuong_trinh ?? '',
     dia_diem_chuong_trinh: doan.dia_diem_chuong_trinh ?? '',
+    diem_don_tra: doan.diem_don_tra ?? '',
+    dieu_hanh_phu_trach: doan.dieu_hanh_phu_trach ?? '',
+    dieu_hanh_dien_thoai: doan.dieu_hanh_dien_thoai ?? '',
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -1408,6 +1416,9 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
         ten_chuong_trinh: form.ten_chuong_trinh.trim() || null,
         thoi_gian_chuong_trinh: form.thoi_gian_chuong_trinh.trim() || null,
         dia_diem_chuong_trinh: form.dia_diem_chuong_trinh.trim() || null,
+        diem_don_tra: form.diem_don_tra.trim() || null,
+        dieu_hanh_phu_trach: form.dieu_hanh_phu_trach.trim() || null,
+        dieu_hanh_dien_thoai: form.dieu_hanh_dien_thoai.trim() || null,
       }),
     })
     setSubmitting(false)
@@ -1465,6 +1476,29 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
             className={inputCls}
           />
         </Field>
+        <Field label="Điểm đón/trả khách">
+          <input
+            value={form.diem_don_tra}
+            onChange={(e) => setForm((f) => ({ ...f, diem_don_tra: e.target.value }))}
+            className={inputCls}
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Điều hành phụ trách">
+            <input
+              value={form.dieu_hanh_phu_trach}
+              onChange={(e) => setForm((f) => ({ ...f, dieu_hanh_phu_trach: e.target.value }))}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Điện thoại điều hành">
+            <input
+              value={form.dieu_hanh_dien_thoai}
+              onChange={(e) => setForm((f) => ({ ...f, dieu_hanh_dien_thoai: e.target.value }))}
+              className={inputCls}
+            />
+          </Field>
+        </div>
         {form.loai_doan === 'su_kien' && (
           <>
             <Field label="Tên chương trình">
@@ -1673,6 +1707,8 @@ function HoSoDetailModal({
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
   const [submitting, setSubmitting] = useState(false)
 
+  const [detailTab, setDetailTab] = useState<'info' | 'hopdong'>('info')
+
   // Panel trượt vào từ mép phải — bắt đầu ở trạng thái ẩn (translate-x-full)
   // rồi bật `visible` ngay sau khi mount (rAF, không phải effect chạy đồng
   // bộ) để trình duyệt kịp paint frame đầu tiên trước khi áp transition,
@@ -1856,7 +1892,26 @@ function HoSoDetailModal({
             </div>
           </div>
 
-          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="grid md:grid-cols-[40%_1fr] flex-1 min-h-0">
+          <div className="flex items-center gap-1 px-6 border-b border-gray-200 shrink-0">
+            {([
+              { key: 'info', label: 'Ảnh & thông tin' },
+              { key: 'hopdong', label: 'Hợp đồng' },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setDetailTab(t.key)}
+                className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                  detailTab === t.key ? 'border-accent-500 text-accent-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-hidden">
+            <div className={`grid md:grid-cols-[40%_1fr] h-full ${detailTab === 'info' ? '' : 'hidden'}`}>
             <div className="overflow-y-auto p-6 border-r border-gray-100">
               <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
             </div>
@@ -2019,7 +2074,10 @@ function HoSoDetailModal({
                     />
                   </div>
                 </div>
+            </div>
+            </div>
 
+            <div className={`h-full overflow-y-auto p-6 space-y-6 ${detailTab === 'hopdong' ? '' : 'hidden'}`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
                 <div className="grid sm:grid-cols-2 gap-4">
