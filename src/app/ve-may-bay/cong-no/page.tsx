@@ -480,12 +480,19 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
   )
 }
 
+// Hiện số có phân cách hàng nghìn (toLocaleString) khi không focus, đổi
+// sang chuỗi số thô khi focus để gõ/dán tự nhiên — không thể vừa gõ vừa
+// hiện dấu chấm phân cách bằng 1 giá trị input duy nhất.
 function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (v: number | null) => void }) {
   const [v, setV] = useState(value != null ? String(value) : '')
+  const [focused, setFocused] = useState(false)
   useEffect(() => setV(value != null ? String(value) : ''), [value])
   return (
-    <input value={v} onChange={e => setV(e.target.value)}
+    <input value={focused ? v : (value != null ? value.toLocaleString('vi-VN') : '')}
+      onFocus={() => setFocused(true)}
+      onChange={e => setV(e.target.value)}
       onBlur={() => {
+        setFocused(false)
         const parsed = v.trim() === '' ? null : parseVndNumber(v)
         if (parsed !== value) onSave(parsed)
       }}
@@ -1215,7 +1222,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
         </button>
       </div>
       <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
-      <table className="text-xs border-collapse" style={{ fontFamily: 'Calibri, Arial, sans-serif' }}>
+      <table className="text-xs border-collapse" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed' }}>
         <thead className="sticky top-0 z-10">
           <tr>
             {BANG_COLS.map(c => (
