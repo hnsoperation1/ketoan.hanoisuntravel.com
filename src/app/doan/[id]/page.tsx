@@ -1673,6 +1673,16 @@ function HoSoDetailModal({
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
   const [submitting, setSubmitting] = useState(false)
 
+  // Panel trượt vào từ mép phải — bắt đầu ở trạng thái ẩn (translate-x-full)
+  // rồi bật `visible` ngay sau khi mount (rAF, không phải effect chạy đồng
+  // bộ) để trình duyệt kịp paint frame đầu tiên trước khi áp transition,
+  // nếu không animation sẽ không chạy (đổi thẳng từ ẩn sang hiện cùng 1 frame).
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
   // Thẻ HDV chỉ có ý nghĩa với loại nhân sự HDV — xem chú thích ở AddNhanSuModal.
   // Lúc đang sửa lấy theo lựa chọn hiện tại (nhansu.loai_nhan_su_id), lúc chỉ xem
   // lấy theo n.loai_nhan_su đã load sẵn từ API.
@@ -1796,9 +1806,16 @@ function HoSoDetailModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
+      <div className="fixed inset-y-0 right-0 z-50 flex max-w-full">
+        <div
+          className={`bg-white shadow-2xl w-screen max-w-5xl h-full overflow-hidden flex flex-col transition-transform duration-300 ease-out ${
+            visible ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
