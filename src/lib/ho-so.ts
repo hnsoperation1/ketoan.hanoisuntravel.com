@@ -17,17 +17,22 @@ export async function upsertNhanSuFromExtract(
   fields: AiExtractedFields,
   loaiNhanSuId?: string,
 ): Promise<NhanSu> {
+  // Cột kiểu date (ngay_sinh/ngay_cap/han_the_hdv) không nhận chuỗi rỗng "" —
+  // Postgres báo lỗi "invalid input syntax for type date" — phải đổi thành
+  // null. Field text khác nhận "" bình thường nên không cần xử lý riêng.
+  const dateOrNull = (v: string | null | undefined) => v || null
+
   const insertPayload: Record<string, unknown> = {
     ho_ten: fields.ho_ten ?? '',
     so_cccd: fields.so_cccd ?? null,
-    ngay_sinh: fields.ngay_sinh ?? null,
-    ngay_cap: fields.ngay_cap ?? null,
+    ngay_sinh: dateOrNull(fields.ngay_sinh),
+    ngay_cap: dateOrNull(fields.ngay_cap),
     noi_cap: fields.noi_cap ?? null,
     dia_chi: fields.dia_chi ?? null,
     tinh_tp: fields.tinh_tp || deriveTinhTp(fields.dia_chi) || null,
     so_the_hdv: fields.so_the_hdv ?? null,
     loai_the_hdv: fields.loai_the_hdv ?? null,
-    han_the_hdv: fields.han_the_hdv ?? null,
+    han_the_hdv: dateOrNull(fields.han_the_hdv),
     sdt: fields.sdt ?? null,
     ma_so_thue_tncn: fields.ma_so_thue_tncn ?? null,
     stk: fields.stk ?? null,
