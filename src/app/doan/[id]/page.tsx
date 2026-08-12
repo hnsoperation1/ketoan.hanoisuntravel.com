@@ -957,6 +957,10 @@ function AddNhanSuModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần tự chọn 1 lần khi danh mục tải xong lần đầu
   }, [loaiNhanSu.list])
 
+  // Thẻ HDV chỉ có ý nghĩa với loại nhân sự HDV (hướng dẫn viên) — Nhóm múa/MC/NS...
+  // không có khái niệm thẻ này, ẩn hẳn 3 field cho gọn thay vì để trống gây hiểu nhầm.
+  const isHdv = (loaiNhanSu.list.find((l) => l.id === loaiNhanSuId)?.ma ?? '').toUpperCase() === 'HDV'
+
   // Trùng CCCD với người đã có sẵn trong CHÍNH đoàn này (không phải toàn hệ thống)
   // — kiểm tra ngay khi biết CCCD, không đợi đến lúc bấm Lưu mới báo.
   const duplicateInDoan = fields.so_cccd
@@ -1246,28 +1250,30 @@ function AddNhanSuModal({
                       <input value={fields.tinh_tp} onChange={(e) => setFields((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />
                     </Field>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <Field label="Số thẻ HDV">
-                      <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
-                    </Field>
-                    <Field label="Loại thẻ">
-                      <select
-                        value={fields.loai_the_hdv}
-                        onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))}
-                        className={inputCls}
-                      >
-                        <option value="">- Chọn -</option>
-                        {LOAI_THE_HDV_OPTIONS.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Hạn thẻ">
-                      <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
-                    </Field>
-                  </div>
+                  {isHdv && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <Field label="Số thẻ HDV">
+                        <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
+                      </Field>
+                      <Field label="Loại thẻ">
+                        <select
+                          value={fields.loai_the_hdv}
+                          onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))}
+                          className={inputCls}
+                        >
+                          <option value="">- Chọn -</option>
+                          {LOAI_THE_HDV_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Hạn thẻ">
+                        <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
+                      </Field>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-3">
                     <Field label="SĐT">
                       <input value={fields.sdt} onChange={(e) => setFields((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />
@@ -1667,6 +1673,12 @@ function HoSoDetailModal({
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
   const [submitting, setSubmitting] = useState(false)
 
+  // Thẻ HDV chỉ có ý nghĩa với loại nhân sự HDV — xem chú thích ở AddNhanSuModal.
+  // Lúc đang sửa lấy theo lựa chọn hiện tại (nhansu.loai_nhan_su_id), lúc chỉ xem
+  // lấy theo n.loai_nhan_su đã load sẵn từ API.
+  const selectedLoaiMa = (editing ? loaiNhanSu.list.find((l) => l.id === nhansu.loai_nhan_su_id)?.ma : n.loai_nhan_su?.ma) ?? ''
+  const isHdv = selectedLoaiMa.toUpperCase() === 'HDV'
+
   const loadFiles = useCallback(async () => {
     const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files`)
     if (res.ok) {
@@ -1906,42 +1918,44 @@ function HoSoDetailModal({
                     />
                   </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
-                  <div className="grid grid-cols-3 gap-4">
-                    <InfoField
-                      editing={editing}
-                      label="Số thẻ"
-                      value={n.so_the_hdv}
-                      input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
-                    />
-                    <InfoField
-                      editing={editing}
-                      label="Loại thẻ"
-                      value={n.loai_the_hdv}
-                      input={
-                        <select
-                          value={nhansu.loai_the_hdv}
-                          onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
-                          className={inputCls}
-                        >
-                          <option value="">- Chọn -</option>
-                          {LOAI_THE_HDV_OPTIONS.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      }
-                    />
-                    <InfoField
-                      editing={editing}
-                      label="Hạn thẻ"
-                      value={formatDateVN(n.han_the_hdv)}
-                      input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
-                    />
+                {isHdv && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <InfoField
+                        editing={editing}
+                        label="Số thẻ"
+                        value={n.so_the_hdv}
+                        input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Loại thẻ"
+                        value={n.loai_the_hdv}
+                        input={
+                          <select
+                            value={nhansu.loai_the_hdv}
+                            onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
+                            className={inputCls}
+                          >
+                            <option value="">- Chọn -</option>
+                            {LOAI_THE_HDV_OPTIONS.map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        }
+                      />
+                      <InfoField
+                        editing={editing}
+                        label="Hạn thẻ"
+                        value={formatDateVN(n.han_the_hdv)}
+                        input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ</p>
                   <div className="grid grid-cols-2 gap-4">
