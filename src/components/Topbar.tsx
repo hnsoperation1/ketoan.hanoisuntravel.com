@@ -53,13 +53,15 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
       >
         <RotateCw size={15} />
       </button>
-      <button
-        onClick={() => setTheme(theme === 'dense' ? 'default' : 'dense')}
-        title={theme === 'dense' ? 'Đổi sang giao diện mặc định' : 'Thử giao diện dày đặc (thử nghiệm)'}
-        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
-      >
-        {theme === 'dense' ? <LayoutGrid size={15} /> : <Table2 size={15} />}
-      </button>
+      {user?.is_super_admin && (
+        <button
+          onClick={() => setTheme(theme === 'dense' ? 'default' : 'dense')}
+          title={theme === 'dense' ? 'Đổi sang giao diện mặc định' : 'Thử giao diện dày đặc (thử nghiệm)'}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+        >
+          {theme === 'dense' ? <LayoutGrid size={15} /> : <Table2 size={15} />}
+        </button>
+      )}
       <NotificationBell />
 
       {user && (

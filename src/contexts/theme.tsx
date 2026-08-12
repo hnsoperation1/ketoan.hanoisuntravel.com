@@ -35,7 +35,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   // Có cache (đã từng chọn trước đó) → dùng ngay để tránh nháy giao diện
   // mặc định trước khi fetch xong; vẫn gọi API ngầm để xác nhận/đồng bộ.
-  const [theme, setThemeState] = useState<UiTheme>(() => readCache() ?? 'default')
+  // Mặc định 'dense' (giao diện mới) khi chưa có gì trong cache — khớp
+  // fallback ở GET /api/user-preferences.
+  const [theme, setThemeState] = useState<UiTheme>(() => readCache() ?? 'dense')
   const [loading, setLoading] = useState(() => readCache() === null)
 
   const refresh = useCallback(async () => {
@@ -43,7 +45,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/user-preferences')
       if (res.ok) {
         const { theme } = await res.json()
-        const resolved: UiTheme = theme === 'dense' ? 'dense' : 'default'
+        const resolved: UiTheme = theme === 'default' ? 'default' : 'dense'
         setThemeState(resolved)
         writeCache(resolved)
       }

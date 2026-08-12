@@ -21,8 +21,10 @@ export async function GET() {
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Mặc định là 'dense' (giao diện mới) — chỉ trả 'default' khi user đã
+  // TỪNG chủ động chọn lại (chỉ super_admin mới có nút chọn, xem Topbar.tsx).
   const theme = (data?.value as { theme?: ThemeValue } | null)?.theme
-  return NextResponse.json({ theme: theme === 'dense' ? 'dense' : 'default' })
+  return NextResponse.json({ theme: theme === 'default' ? 'default' : 'dense' })
 }
 
 export async function PATCH(req: NextRequest) {

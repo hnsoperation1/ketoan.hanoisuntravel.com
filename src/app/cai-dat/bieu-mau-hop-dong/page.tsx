@@ -2,11 +2,37 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Check, Copy, FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
+
+// Nút copy riêng cho từng placeholder — click là copy nguyên chuỗi
+// "{{tag}}" (đúng dạng cần gõ vào file Word) vào clipboard, không phải
+// chỉ mỗi "tag" trần.
+function PlaceholderTag({ tag }: { tag: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(`{{${tag}}}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch {}
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copy"
+      className="flex items-center gap-1 text-xs font-mono text-brand-600 hover:text-brand-700 transition-colors shrink-0"
+    >
+      {`{{${tag}}}`}
+      {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} className="text-gray-300" />}
+    </button>
+  )
+}
 
 const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string }[] }[] = [
   {
@@ -181,7 +207,7 @@ export default function BieuMauHopDongPage() {
                 <div className="space-y-1.5">
                   {g.fields.map((f) => (
                     <div key={f.tag} className="flex items-baseline justify-between gap-2">
-                      <code className="text-xs font-mono text-brand-600">{`{{${f.tag}}}`}</code>
+                      <PlaceholderTag tag={f.tag} />
                       <span className="text-[11px] text-gray-400 text-right">{f.label}</span>
                     </div>
                   ))}

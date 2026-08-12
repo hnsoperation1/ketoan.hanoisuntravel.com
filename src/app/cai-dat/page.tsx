@@ -6,8 +6,8 @@ import { useTheme } from '@/contexts/theme'
 import { useTopbar } from '@/contexts/topbar'
 
 const THEME_OPTIONS: { key: 'default' | 'dense'; label: string; desc: string }[] = [
-  { key: 'default', label: 'Mặc định', desc: 'Giao diện đang dùng hiện tại' },
-  { key: 'dense', label: 'Dày đặc (thử nghiệm)', desc: 'Bảng kẻ ô, gọn hàng — thử nghiệm theo kiểu Translead CRM' },
+  { key: 'dense', label: 'Dày đặc (mặc định)', desc: 'Bảng kẻ ô, gọn hàng — thử nghiệm theo kiểu Translead CRM' },
+  { key: 'default', label: 'Giao diện cũ', desc: 'Giao diện trước khi thử nghiệm' },
 ]
 
 export default function CaiDatPage() {
@@ -37,23 +37,25 @@ export default function CaiDatPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3 mt-4">
-        <p className="text-xs font-semibold text-gray-500">Giao diện</p>
-        <div className="flex flex-col sm:flex-row gap-2">
-          {THEME_OPTIONS.map(o => (
-            <button
-              key={o.key}
-              onClick={() => setTheme(o.key)}
-              className={`flex-1 text-left px-4 py-3 rounded-xl border transition-colors ${
-                theme === o.key ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className={`text-sm font-semibold ${theme === o.key ? 'text-brand-700' : 'text-gray-800'}`}>{o.label}</div>
-              <div className="text-xs text-gray-400 mt-0.5">{o.desc}</div>
-            </button>
-          ))}
+      {user?.is_super_admin && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3 mt-4">
+          <p className="text-xs font-semibold text-gray-500">Giao diện</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {THEME_OPTIONS.map(o => (
+              <button
+                key={o.key}
+                onClick={() => setTheme(o.key)}
+                className={`flex-1 text-left px-4 py-3 rounded-xl border transition-colors ${
+                  theme === o.key ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className={`text-sm font-semibold ${theme === o.key ? 'text-brand-700' : 'text-gray-800'}`}>{o.label}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{o.desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
