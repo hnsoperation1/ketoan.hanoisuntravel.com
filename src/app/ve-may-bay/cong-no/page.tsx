@@ -680,13 +680,17 @@ export default function CongNoVePage() {
   const headers = headerRowIndex == null ? [] : (rawGrid[headerRowIndex] ?? [])
 
   // Vị trí cột cố định theo đúng file mẫu Vietjet — xem findVietjetHeaderRow.
+  // Lưu ý tên cột trong file gốc GÂY NHẦM: cột "PAYMENT DATE" (r[2]) thực
+  // chất là ngày xuất vé của Vietjet, không phải ngày thanh toán (Vietjet
+  // không có khái niệm ngày thanh toán riêng trong file này) — còn ngày
+  // tách được từ SEGMENTS (r[3]) là ngày bay đi, không phải ngày xuất vé.
   const vietjetRows = !vietjetMode ? [] : dataRows.map(r => {
     const { flightDate, routing } = splitVietjetSegments(r[3] ?? '')
     return {
       ticket_no: r[0] ?? '',
       pax_name: r[1] ?? '',
-      payment_date: r[2] ?? '',
-      issued_date: flightDate,
+      issued_date: r[2] ?? '',
+      departure_date: flightDate,
       routing,
       gia_mua: parseVndNumber(r[7] ?? ''),
     }
@@ -948,7 +952,7 @@ export default function CongNoVePage() {
               <table className="text-xs w-full">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
-                    {['Mã vé (PNR)', 'Pax', 'Ngày thanh toán', 'Ngày bay', 'Hành trình', 'Giá mua'].map(h => (
+                    {['Mã vé (PNR)', 'Pax', 'Ngày xuất vé', 'Ngày bay đi', 'Hành trình', 'Giá mua'].map(h => (
                       <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -958,8 +962,8 @@ export default function CongNoVePage() {
                     <tr key={i} className="border-t border-gray-100">
                       <td className="px-2 py-1.5 whitespace-nowrap">{r.ticket_no || '—'}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap">{r.pax_name || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.payment_date || '—'}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap">{r.issued_date || '—'}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap">{r.departure_date || '—'}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap">{r.routing || '—'}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap text-right">{r.gia_mua != null ? r.gia_mua.toLocaleString('vi-VN') : '—'}</td>
                     </tr>
@@ -1145,10 +1149,10 @@ const BANG_COLS: ColDef[] = [
   { key: 'ncc', label: 'NCC', width: 70 },
   { key: 'ngay_xuat', label: 'Ngày xuất vé', width: 110 },
   { key: 'ngay_tt', label: 'Ngày thanh toán', width: 120 },
-  { key: 'ngay_di', label: 'Ngày bay đi', width: 100 },
-  { key: 'ngay_ve', label: 'Ngày bay về', width: 100 },
   { key: 'ma_ve', label: 'Mã vé', width: 100 },
   { key: 'pax', label: 'Pax', width: 150 },
+  { key: 'ngay_di', label: 'Ngày bay đi', width: 100 },
+  { key: 'ngay_ve', label: 'Ngày bay về', width: 100 },
   { key: 'hanh_trinh', label: 'Hành trình', width: 170 },
   { key: 'gia_mua', label: 'Giá mua', align: 'right', width: 100 },
   { key: 'cktm', label: 'CKTM', align: 'right', width: 80 },
@@ -1235,10 +1239,10 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   <td className={TD}>{r.ncc ?? '—'}</td>
                   <td className={TD}>{r.issued_date ?? '—'}</td>
                   <td className={TD}>{r.payment_date ?? '—'}</td>
-                  <td className={TD}>{r.departure_date ?? '—'}</td>
-                  <td className={TD}>{r.return_date ?? '—'}</td>
                   <td className={TD}>{r.ticket_no ?? '—'}</td>
                   <td className={TD}>{r.pax_name ?? '—'}</td>
+                  <td className={TD}>{r.departure_date ?? '—'}</td>
+                  <td className={TD}>{r.return_date ?? '—'}</td>
                   <td className={TD}>{r.routing ?? '—'}</td>
                   <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
                   <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
@@ -1283,10 +1287,10 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                     <td className={TD}>{r.ncc ?? '—'}</td>
                     <td className={TD}>{r.issued_date ?? '—'}</td>
                     <td className={TD}>{r.payment_date ?? '—'}</td>
-                    <td className={TD}>{r.departure_date ?? '—'}</td>
-                    <td className={TD}>{r.return_date ?? '—'}</td>
                     <td className={TD}>{r.ticket_no ?? '—'}</td>
                     <td className={`${TD} font-semibold`}>{name}</td>
+                    <td className={TD}>{r.departure_date ?? '—'}</td>
+                    <td className={TD}>{r.return_date ?? '—'}</td>
                     <td className={TD}>{r.routing ?? '—'}</td>
                     <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
                     <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
@@ -1318,11 +1322,11 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   </>
                 ) : (
                   <>
-                    {/* ncc, ngày xuất, ngày TT, ngày đi, ngày về, mã vé — để trống */}
-                    {Array.from({ length: 6 }).map((_, k) => <td key={`b1-${k}`} className={TD}></td>)}
+                    {/* ncc, ngày xuất, ngày TT, mã vé — để trống */}
+                    {Array.from({ length: 4 }).map((_, k) => <td key={`b1-${k}`} className={TD}></td>)}
                     <td className={`${TD} text-gray-500`}>↳ {name}</td>
-                    {/* hành trình + 23 cột công thức/tag/ghi chú/action còn lại — để trống */}
-                    {Array.from({ length: 24 }).map((_, k) => <td key={`b2-${k}`} className={TD}></td>)}
+                    {/* ngày đi, ngày về, hành trình + 23 cột công thức/tag/ghi chú/action còn lại — để trống */}
+                    {Array.from({ length: 26 }).map((_, k) => <td key={`b2-${k}`} className={TD}></td>)}
                   </>
                 )}
               </tr>
