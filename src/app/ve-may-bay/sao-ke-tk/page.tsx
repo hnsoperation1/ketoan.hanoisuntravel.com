@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { RefreshCw, Search, Download } from 'lucide-react'
+import { useTopbar } from '@/contexts/topbar'
 
 type SaoKeRow = {
   id: string
@@ -48,6 +49,7 @@ function stkNhanTien(taiKhoan: string): string {
 // không gọi API nữa. RIÊNG tháng hiện tại luôn gọi API mới mỗi lần chọn
 // (dữ liệu tháng này còn đang phát sinh/đồng bộ thêm), không dùng cache.
 export default function SaoKeTkPage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -98,6 +100,15 @@ export default function SaoKeTkPage() {
     loadMonth(selected.year, selected.month)
   }, [selected, loadMonth])
 
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Sao kê TK</span>)
+    setOnRefresh(() => loadMonth(selected.year, selected.month, true))
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadMonth, selected])
+
   const handleSync = useCallback(async () => {
     setSyncing(true)
     setSyncMsg(null)
@@ -134,8 +145,7 @@ export default function SaoKeTkPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-bold text-gray-900">Sao kê TK</h1>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}

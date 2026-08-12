@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, Download } from 'lucide-react'
+import { useTopbar } from '@/contexts/topbar'
 
 type SaoKeRow = {
   id: string
@@ -44,6 +45,7 @@ function toIsoDate(dateStr: string | null): string | null {
 }
 
 export default function SaoKePage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<SaoKeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -72,6 +74,15 @@ export default function SaoKePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào sao kê</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
 
   const handleSync = useCallback(async () => {
     setSyncing(true)
@@ -128,8 +139,7 @@ export default function SaoKePage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-bold text-gray-900">Đầu vào sao kê</h1>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}

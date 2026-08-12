@@ -82,6 +82,10 @@ export interface Doan {
   ngay_di: string
   ngay_ve: string | null
   sl_khach: number | null
+  loai_doan: 'tour' | 'su_kien'
+  ten_chuong_trinh: string | null
+  thoi_gian_chuong_trinh: string | null
+  dia_diem_chuong_trinh: string | null
   created_at: string
   deleted_at: string | null
 }

@@ -1343,12 +1343,20 @@ function DoanInfoTab({ doan, onSaved }: { doan: Doan; onSaved: () => void }) {
       <div className="max-w-xl">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
           <ViewField label="Tên đoàn" value={doan.ten_doan} />
+          <ViewField label="Loại đoàn" value={doan.loai_doan === 'su_kien' ? 'Sự kiện' : 'Tour'} />
           <ViewField label="Tuyến du lịch" value={doan.hanh_trinh} />
           <div className="grid grid-cols-2 gap-4">
             <ViewField label="Ngày đi" value={formatDateVN(doan.ngay_di)} />
             <ViewField label="Ngày về" value={formatDateVN(doan.ngay_ve)} />
           </div>
           <ViewField label="Số khách dự kiến" value={doan.sl_khach != null ? String(doan.sl_khach) : null} />
+          {doan.loai_doan === 'su_kien' && (
+            <>
+              <ViewField label="Tên chương trình" value={doan.ten_chuong_trinh} />
+              <ViewField label="Thời gian tổ chức" value={doan.thoi_gian_chuong_trinh} />
+              <ViewField label="Địa điểm tổ chức" value={doan.dia_diem_chuong_trinh} />
+            </>
+          )}
         </div>
         <button
           onClick={() => setEditing(true)}
@@ -1370,6 +1378,10 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
     ngay_di: doan.ngay_di,
     ngay_ve: doan.ngay_ve ?? '',
     sl_khach: doan.sl_khach?.toString() ?? '',
+    loai_doan: doan.loai_doan,
+    ten_chuong_trinh: doan.ten_chuong_trinh ?? '',
+    thoi_gian_chuong_trinh: doan.thoi_gian_chuong_trinh ?? '',
+    dia_diem_chuong_trinh: doan.dia_diem_chuong_trinh ?? '',
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -1386,6 +1398,10 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
         ngay_di: form.ngay_di,
         ngay_ve: form.ngay_ve || null,
         sl_khach: form.sl_khach ? Number(form.sl_khach) : null,
+        loai_doan: form.loai_doan,
+        ten_chuong_trinh: form.ten_chuong_trinh.trim() || null,
+        thoi_gian_chuong_trinh: form.thoi_gian_chuong_trinh.trim() || null,
+        dia_diem_chuong_trinh: form.dia_diem_chuong_trinh.trim() || null,
       }),
     })
     setSubmitting(false)
@@ -1402,6 +1418,22 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
             onChange={(e) => setForm((f) => ({ ...f, ten_doan: e.target.value }))}
             className={inputCls}
           />
+        </Field>
+        <Field label="Loại đoàn">
+          <div className="flex gap-2">
+            {(['tour', 'su_kien'] as const).map((lo) => (
+              <button
+                key={lo}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, loai_doan: lo }))}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                  form.loai_doan === lo ? 'bg-accent-50 border-accent-300 text-accent-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {lo === 'tour' ? 'Tour' : 'Sự kiện'}
+              </button>
+            ))}
+          </div>
         </Field>
         <Field label="Tuyến du lịch">
           <input
@@ -1427,6 +1459,31 @@ function DoanInfoForm({ doan, onCancel, onSaved }: { doan: Doan; onCancel: () =>
             className={inputCls}
           />
         </Field>
+        {form.loai_doan === 'su_kien' && (
+          <>
+            <Field label="Tên chương trình">
+              <input
+                value={form.ten_chuong_trinh}
+                onChange={(e) => setForm((f) => ({ ...f, ten_chuong_trinh: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Thời gian tổ chức">
+              <input
+                value={form.thoi_gian_chuong_trinh}
+                onChange={(e) => setForm((f) => ({ ...f, thoi_gian_chuong_trinh: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Địa điểm tổ chức">
+              <input
+                value={form.dia_diem_chuong_trinh}
+                onChange={(e) => setForm((f) => ({ ...f, dia_diem_chuong_trinh: e.target.value }))}
+                className={inputCls}
+              />
+            </Field>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-3 mt-4">
         <button

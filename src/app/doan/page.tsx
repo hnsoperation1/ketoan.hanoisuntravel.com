@@ -8,7 +8,17 @@ import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
 
-const EMPTY_FORM = { ten_doan: '', hanh_trinh: '', ngay_di: '', ngay_ve: '', sl_khach: '' }
+const EMPTY_FORM = {
+  ten_doan: '',
+  hanh_trinh: '',
+  ngay_di: '',
+  ngay_ve: '',
+  sl_khach: '',
+  loai_doan: 'tour' as 'tour' | 'su_kien',
+  ten_chuong_trinh: '',
+  thoi_gian_chuong_trinh: '',
+  dia_diem_chuong_trinh: '',
+}
 
 export default function QuyetToanTourPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -56,6 +66,10 @@ export default function QuyetToanTourPage() {
         ngay_di: form.ngay_di,
         ngay_ve: form.ngay_ve || null,
         sl_khach: form.sl_khach ? Number(form.sl_khach) : null,
+        loai_doan: form.loai_doan,
+        ten_chuong_trinh: form.ten_chuong_trinh.trim() || null,
+        thoi_gian_chuong_trinh: form.thoi_gian_chuong_trinh.trim() || null,
+        dia_diem_chuong_trinh: form.dia_diem_chuong_trinh.trim() || null,
       }),
     })
     const data = await res.json()
@@ -97,9 +111,12 @@ export default function QuyetToanTourPage() {
               href={`/doan/${d.id}`}
               className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-brand-300 transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">
+              <div className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                 <span className="text-gray-400 font-semibold">Đoàn: </span>
                 {d.ten_doan}
+                {d.loai_doan === 'su_kien' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent-50 text-accent-600">Sự kiện</span>
+                )}
               </div>
               <div className="space-y-1.5 text-sm text-gray-900">
                 {d.hanh_trinh && (
@@ -147,6 +164,22 @@ export default function QuyetToanTourPage() {
                     className={inputCls}
                   />
                 </Field>
+                <Field label="Loại đoàn">
+                  <div className="flex gap-2">
+                    {(['tour', 'su_kien'] as const).map((lo) => (
+                      <button
+                        key={lo}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, loai_doan: lo }))}
+                        className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                          form.loai_doan === lo ? 'bg-accent-50 border-accent-300 text-accent-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {lo === 'tour' ? 'Tour' : 'Sự kiện'}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
                 <Field label="Hành trình">
                   <input
                     type="text"
@@ -173,6 +206,37 @@ export default function QuyetToanTourPage() {
                     className={inputCls}
                   />
                 </Field>
+                {form.loai_doan === 'su_kien' && (
+                  <>
+                    <Field label="Tên chương trình">
+                      <input
+                        type="text"
+                        placeholder="VD: Biểu diễn múa khai mạc"
+                        value={form.ten_chuong_trinh}
+                        onChange={(e) => setForm((f) => ({ ...f, ten_chuong_trinh: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Thời gian tổ chức">
+                      <input
+                        type="text"
+                        placeholder="VD: 19h00 ngày 20/09/2026"
+                        value={form.thoi_gian_chuong_trinh}
+                        onChange={(e) => setForm((f) => ({ ...f, thoi_gian_chuong_trinh: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Địa điểm tổ chức">
+                      <input
+                        type="text"
+                        placeholder="VD: Trung tâm hội nghị quốc gia"
+                        value={form.dia_diem_chuong_trinh}
+                        onChange={(e) => setForm((f) => ({ ...f, dia_diem_chuong_trinh: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </Field>
+                  </>
+                )}
                 {error && <p className="text-xs text-red-500">{error}</p>}
                 <div className="flex gap-3 pt-2">
                   <button

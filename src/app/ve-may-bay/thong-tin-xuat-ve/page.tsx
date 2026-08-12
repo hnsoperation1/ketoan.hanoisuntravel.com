@@ -7,6 +7,7 @@ import DateInput from '@/components/DateInput'
 import { RoutingText } from '@/components/RoutingText'
 import FilterPicker from '@/components/FilterPicker'
 import { useAuth } from '@/contexts/auth'
+import { useTopbar } from '@/contexts/topbar'
 
 type MaKhachSource = 'chuan' | 'doi_chieu' | 'da_dung'
 type KhachOpt = { ma_khach: string; ten_khach: string | null; source: MaKhachSource }
@@ -340,6 +341,7 @@ type Booking = {
 
 export default function VeMayBayPage() {
   const { user } = useAuth()
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -383,6 +385,15 @@ export default function VeMayBayPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Thông tin xuất vé</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
 
   // Danh mục để chọn mã khách — hợp NHIỀU nguồn thay vì chỉ danh mục chuẩn
   // vmb_khach_hang (nhiều mã đã dùng thật ở công nợ/sao kê nhưng chưa kịp
@@ -535,15 +546,6 @@ export default function VeMayBayPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">Thông tin xuất vé</h1>
-        </div>
-        <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw size={16} />
-        </button>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -591,6 +593,9 @@ export default function VeMayBayPage() {
         <span className="ml-auto text-xs text-gray-400">
           {filtered.length} vé · lợi nhuận {formatGiaVe(tongLoiNhuan)}
         </span>
+        <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+          <RefreshCw size={16} />
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">

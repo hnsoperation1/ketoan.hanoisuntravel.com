@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, ChevronRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
+import { useTopbar } from '@/contexts/topbar'
 
 type ParsedBooking = { full_name?: string; routing?: string; ticket_no?: string; [k: string]: unknown }
 
@@ -71,6 +72,7 @@ function formatDateOnly(iso: string): string {
 
 export default function ParseLogsPage() {
   const { user } = useAuth()
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -97,6 +99,15 @@ export default function ParseLogsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Nhật ký bot vé</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
 
   const counts = useMemo(() => {
     const c = { confirmed: 0, loi_that: 0, khong_phai_ve: 0 }
@@ -156,8 +167,7 @@ export default function ParseLogsPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-bold text-gray-900">Nhật ký bot vé</h1>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
         </button>

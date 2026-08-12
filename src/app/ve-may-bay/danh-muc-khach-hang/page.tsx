@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, Plus, Loader2, Search } from 'lucide-react'
+import { useTopbar } from '@/contexts/topbar'
 
 type Khach = {
   id: string
@@ -36,6 +37,7 @@ const emptyForm = { nhom: 'khach_le', ma_khach: '', ten_khach: '', doi_tuong_quy
 // Dùng để tra cứu/đối chiếu mã khách gõ tay ở "Đầu vào công nợ"/"Đầu vào
 // sao kê"/tin nhắn Telegram — CHƯA nối tự động, chỉ là danh mục xem/quản lý.
 export default function DanhMucKhachHangPage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<Khach[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -65,6 +67,15 @@ export default function DanhMucKhachHangPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Danh mục khách hàng</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
@@ -121,10 +132,7 @@ export default function DanhMucKhachHangPage() {
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">Danh mục khách hàng VMB</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
-        </div>
+        <p className="text-sm text-gray-400">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
         <div className="flex items-center gap-2">
           <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <RefreshCw size={16} />

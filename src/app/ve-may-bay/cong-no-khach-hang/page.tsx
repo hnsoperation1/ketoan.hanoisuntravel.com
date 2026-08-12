@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
 import { RefreshCw, Search, ChevronDown, ChevronRight } from 'lucide-react'
 import { useTheme } from '@/contexts/theme'
+import { useTopbar } from '@/contexts/topbar'
 
 type PhatSinhRow = { ticket_no: string | null; pax_name: string | null; issued_date: string | null; routing: string | null; gia_ban: number | null }
 type DaThuRow = { ngay: string | null; dien_giai: string | null; thu: number | null; tai_khoan: string | null }
@@ -104,6 +105,7 @@ function DetailPanels({ row }: { row: KhRow }) {
 // trong tháng đó bị ẩn khỏi bảng, đỡ rác mắt (xem filtered bên dưới).
 export default function CongNoKhachHangPage() {
   const { theme } = useTheme()
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -163,6 +165,15 @@ export default function CongNoKhachHangPage() {
     loadMonth(selected.year, selected.month)
   }, [selected, loadMonth])
 
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Công nợ KH</span>)
+    setOnRefresh(() => loadMonth(selected.year, selected.month, true))
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadMonth, selected])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
@@ -178,8 +189,7 @@ export default function CongNoKhachHangPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-bold text-gray-900">Công nợ KH</h1>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={() => loadMonth(selected.year, selected.month, true)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
         </button>

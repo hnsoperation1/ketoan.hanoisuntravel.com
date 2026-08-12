@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Upload, RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { useTopbar } from '@/contexts/topbar'
 
 type DebtRow = {
   id: string
@@ -503,6 +504,7 @@ function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (
 type ViewMode = 'bang' | 'list' | 'card'
 
 export default function CongNoVePage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [rows, setRows] = useState<DebtRow[]>([])
@@ -548,6 +550,15 @@ export default function CongNoVePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Công nợ NCC</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
 
   // Danh mục để gợi ý autocomplete cho "Tìm mã khách/TKT/sale chính" — kéo
   // từ nguồn CHUẨN thay vì chỉ suy ra từ các dòng đã gắn tay trong chính
@@ -872,8 +883,7 @@ export default function CongNoVePage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Công nợ NCC</h1>
+      <div className="flex items-center justify-end">
         <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
         </button>

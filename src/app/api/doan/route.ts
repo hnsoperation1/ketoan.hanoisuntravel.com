@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (unauthorized) return unauthorized
 
   const body = await req.json()
-  const { ten_doan, hanh_trinh, ngay_di, ngay_ve, sl_khach } = body
+  const { ten_doan, hanh_trinh, ngay_di, ngay_ve, sl_khach, loai_doan, ten_chuong_trinh, thoi_gian_chuong_trinh, dia_diem_chuong_trinh } = body
   if (!ten_doan || !ngay_di) {
     return NextResponse.json({ error: 'Thiếu tên đoàn hoặc ngày đi' }, { status: 400 })
   }
@@ -31,7 +31,17 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('doan')
-    .insert({ ten_doan, hanh_trinh: hanh_trinh ?? null, ngay_di, ngay_ve: ngay_ve ?? null, sl_khach: sl_khach ?? null })
+    .insert({
+      ten_doan,
+      hanh_trinh: hanh_trinh ?? null,
+      ngay_di,
+      ngay_ve: ngay_ve ?? null,
+      sl_khach: sl_khach ?? null,
+      loai_doan: loai_doan === 'su_kien' ? 'su_kien' : 'tour',
+      ten_chuong_trinh: ten_chuong_trinh ?? null,
+      thoi_gian_chuong_trinh: thoi_gian_chuong_trinh ?? null,
+      dia_diem_chuong_trinh: dia_diem_chuong_trinh ?? null,
+    })
     .select('*')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

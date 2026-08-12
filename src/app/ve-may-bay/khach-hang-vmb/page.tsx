@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
+import { useTopbar } from '@/contexts/topbar'
 
 type TrangThai = 'khop' | 'chi_cong_no' | 'chi_sao_ke'
 type KhRow = {
@@ -34,6 +35,7 @@ function formatTien(n: number): string {
 // sao kê" (ten_du_an/Dự án) — công cụ dọn dữ liệu, không phải màn tính công
 // nợ (xem /ve-may-bay/cong-no-khach-hang cho việc đó).
 export default function KhachHangVmbPage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<KhRow[]>([])
   const [counts, setCounts] = useState({ khop: 0, chi_cong_no: 0, chi_sao_ke: 0 })
   const [loading, setLoading] = useState(true)
@@ -62,6 +64,15 @@ export default function KhachHangVmbPage() {
     loadData()
   }, [loadData])
 
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Khách hàng VMB</span>)
+    setOnRefresh(loadData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadData])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
@@ -73,8 +84,7 @@ export default function KhachHangVmbPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-bold text-gray-900">Khách hàng VMB</h1>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
         </button>

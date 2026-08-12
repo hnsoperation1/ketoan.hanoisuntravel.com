@@ -62,6 +62,9 @@ const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string 
       { tag: 'ngay_di', label: 'Ngày đi' },
       { tag: 'ngay_ve', label: 'Ngày về' },
       { tag: 'sl_khach', label: 'Số khách dự kiến' },
+      { tag: 'ten_chuong_trinh', label: 'Tên chương trình (chỉ đoàn loại Sự kiện)' },
+      { tag: 'thoi_gian_chuong_trinh', label: 'Thời gian tổ chức (chỉ đoàn loại Sự kiện)' },
+      { tag: 'dia_diem_chuong_trinh', label: 'Địa điểm tổ chức (chỉ đoàn loại Sự kiện)' },
     ],
   },
   {
@@ -74,8 +77,10 @@ const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string 
       { tag: 'so_ngay_cong_tac', label: 'Số ngày công tác' },
       { tag: 'don_gia_ngay', label: 'Đơn giá/ngày' },
       { tag: 'so_tien_chi_tra', label: 'Tổng giá trị hợp đồng' },
+      { tag: 'so_tien_chi_tra_bang_chu', label: 'Tổng giá trị hợp đồng (bằng chữ)' },
       { tag: 'thue_nop', label: 'Thuế TNCN' },
       { tag: 'chi_tra', label: 'Thu nhập thực nhận' },
+      { tag: 'chi_tra_bang_chu', label: 'Thu nhập thực nhận (bằng chữ)' },
     ],
   },
 ]

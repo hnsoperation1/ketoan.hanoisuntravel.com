@@ -1,7 +1,7 @@
 import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import type { Doan, HoSoWithNhanSu } from '@/types'
-import { formatDateVN, formatDateVNFull } from '@/lib/format'
+import { formatDateVN, formatDateVNFull, soTienBangChu } from '@/lib/format'
 export { buildContractFileName } from '@/lib/contract-file-name'
 
 /** Gom field từ nhansu + doan + ho_so thành object phẳng khớp đúng danh sách
@@ -31,6 +31,9 @@ export function buildMergeData(doan: Doan, hoSo: HoSoWithNhanSu): Record<string,
     ngay_di: formatDateVN(doan.ngay_di),
     ngay_ve: formatDateVN(doan.ngay_ve),
     sl_khach: doan.sl_khach != null ? String(doan.sl_khach) : '',
+    ten_chuong_trinh: doan.ten_chuong_trinh ?? '',
+    thoi_gian_chuong_trinh: doan.thoi_gian_chuong_trinh ?? '',
+    dia_diem_chuong_trinh: doan.dia_diem_chuong_trinh ?? '',
 
     so_hop_dong: hoSo.so_hop_dong ?? '',
     ngay_ky: formatDateVNFull(hoSo.ngay_ky),
@@ -39,8 +42,10 @@ export function buildMergeData(doan: Doan, hoSo: HoSoWithNhanSu): Record<string,
     so_ngay_cong_tac: hoSo.so_ngay_cong_tac != null ? String(hoSo.so_ngay_cong_tac) : '',
     don_gia_ngay: money(hoSo.don_gia_ngay),
     so_tien_chi_tra: money(hoSo.so_tien_chi_tra),
+    so_tien_chi_tra_bang_chu: soTienBangChu(hoSo.so_tien_chi_tra),
     thue_nop: money(hoSo.thue_nop),
     chi_tra: money(hoSo.chi_tra),
+    chi_tra_bang_chu: soTienBangChu(hoSo.chi_tra),
   }
 }
 
