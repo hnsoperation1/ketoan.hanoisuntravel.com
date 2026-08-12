@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, LogOut, Menu, RotateCw, UserCog } from 'lucide-react'
+import { ChevronDown, LayoutGrid, LogOut, Menu, RotateCw, Table2, UserCog } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
+import { useTheme } from '@/contexts/theme'
 import { UserAvatar } from '@/components/UserAvatar'
 import NotificationBell from '@/components/NotificationBell'
 
 export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggle?: () => void }) {
   const { breadcrumb, onRefresh } = useTopbar()
   const { user, logout } = useAuth()
+  const { theme, setTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -50,6 +52,13 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
       >
         <RotateCw size={15} />
+      </button>
+      <button
+        onClick={() => setTheme(theme === 'dense' ? 'default' : 'dense')}
+        title={theme === 'dense' ? 'Đổi sang giao diện mặc định' : 'Thử giao diện dày đặc (thử nghiệm)'}
+        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+      >
+        {theme === 'dense' ? <LayoutGrid size={15} /> : <Table2 size={15} />}
       </button>
       <NotificationBell />
 

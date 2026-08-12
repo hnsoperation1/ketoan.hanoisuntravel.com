@@ -202,9 +202,9 @@ export default function DanhMucKhachHangPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (

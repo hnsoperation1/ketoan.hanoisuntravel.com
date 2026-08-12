@@ -175,9 +175,9 @@ export default function SaoKePage() {
         <span className="text-red-500 font-semibold">Chi: {formatTien(tongChi)}</span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['Ngày', 'Tài khoản', 'Mã', 'Tag', 'Đơn vị', 'Diễn giải', 'Thu', 'Chi', 'Dư cuối kỳ', 'Dự án'].map(h => (

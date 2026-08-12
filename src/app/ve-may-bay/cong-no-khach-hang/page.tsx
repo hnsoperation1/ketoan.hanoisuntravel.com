@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
 import { RefreshCw, Search, ChevronDown, ChevronRight } from 'lucide-react'
+import { useTheme } from '@/contexts/theme'
 
 type PhatSinhRow = { ticket_no: string | null; pax_name: string | null; issued_date: string | null; routing: string | null; gia_ban: number | null }
 type DaThuRow = { ngay: string | null; dien_giai: string | null; thu: number | null; tai_khoan: string | null }
@@ -18,6 +19,76 @@ function formatTien(n: number): string {
   return Math.round(n).toLocaleString('vi-VN')
 }
 
+// Dùng chung cho cả 2 cách hiển thị chi tiết 1 khách: accordion inline
+// (giao diện mặc định) và panel tách đôi bên dưới bảng (giao diện dày đặc
+// — xem contexts/theme.tsx) — cùng 1 dữ liệu, chỉ khác VỊ TRÍ render.
+function DetailPanels({ row }: { row: KhRow }) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <div className="text-[11px] font-semibold text-gray-400 uppercase mb-1.5">Bookings ({row.phat_sinh_rows.length})</div>
+        {row.phat_sinh_rows.length === 0 ? (
+          <p className="text-xs text-gray-300">Không có dòng nào.</p>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Ngày xuất</th>
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Số vé</th>
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Hành khách</th>
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Hành trình</th>
+                  <th className="text-right px-3 py-1.5 font-semibold text-gray-400">Giá bán</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {[...row.phat_sinh_rows].sort((a, b) => (a.issued_date ?? '').localeCompare(b.issued_date ?? '')).map((d, i) => (
+                  <tr key={i}>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.issued_date ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.ticket_no ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.pax_name ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.routing ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap text-right">{formatTien(d.gia_ban ?? 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <div>
+        <div className="text-[11px] font-semibold text-gray-400 uppercase mb-1.5">Đã thu ({row.da_thu_rows.length})</div>
+        {row.da_thu_rows.length === 0 ? (
+          <p className="text-xs text-gray-300">Không có dòng nào.</p>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Ngày</th>
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Nội dung CK</th>
+                  <th className="text-left px-3 py-1.5 font-semibold text-gray-400">STK nhận</th>
+                  <th className="text-right px-3 py-1.5 font-semibold text-gray-400">Số tiền</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {[...row.da_thu_rows].sort((a, b) => (a.ngay ?? '').localeCompare(b.ngay ?? '')).map((d, i) => (
+                  <tr key={i}>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.ngay ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-600 max-w-[220px] truncate" title={d.dien_giai ?? ''}>{d.dien_giai ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.tai_khoan ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-emerald-600 whitespace-nowrap text-right">{formatTien(d.thu ?? 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Báo cáo tổng hợp — không phải nơi nhập liệu. Tổng phát sinh cộng dồn từ
 // gia_ban trong "Đầu vào công nợ" (/ve-may-bay/cong-no, lọc theo
 // issued_date), tổng đã thu cộng dồn từ thu trong "Đầu vào sao kê"
@@ -32,6 +103,7 @@ function formatTien(n: number): string {
 // Chỉ hiện khách CÒN công nợ (cong_no != 0) — khách đã tất toán đúng 0đ
 // trong tháng đó bị ẩn khỏi bảng, đỡ rác mắt (xem filtered bên dưới).
 export default function CongNoKhachHangPage() {
+  const { theme } = useTheme()
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -47,6 +119,9 @@ export default function CongNoKhachHangPage() {
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Chỉ dùng khi theme === 'dense' — chọn 1 khách để hiện panel chi tiết
+  // tách đôi bên dưới bảng, thay cho accordion inline (theme mặc định).
+  const [selectedMaKhach, setSelectedMaKhach] = useState<string | null>(null)
 
   function toggleExpand(maKhach: string) {
     setExpanded(prev => {
@@ -137,7 +212,7 @@ export default function CongNoKhachHangPage() {
         <span className={`font-semibold ${tongCongNo > 0 ? 'text-red-500' : 'text-emerald-600'}`}>Công nợ: {formatTien(tongCongNo)}</span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         {/* Trước đây bọc thêm maxHeight: calc(100vh - 320px) + scroll dọc
             riêng cho div này — tạo ra 2 vùng scroll dọc lồng nhau (vùng này
             và <main> ở AppShell.tsx, vốn đã overflow-y-auto cho toàn trang).
@@ -146,7 +221,7 @@ export default function CongNoKhachHangPage() {
             cuộn dọc lồng bị lệch/ngắn bất thường. Bỏ scroll dọc riêng, chỉ
             giữ overflow-x-auto cho bảng rộng — để duy nhất <main> cuộn dọc. */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['Mã khách', 'Tổng giá bán', 'Tổng đã thu', 'Công nợ'].map(h => (
@@ -165,13 +240,22 @@ export default function CongNoKhachHangPage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={4} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
               ) : filtered.map(r => {
-                const isOpen = expanded.has(r.ma_khach)
+                // Giao diện mặc định: accordion inline (expanded). Giao
+                // diện dày đặc: chọn dòng (selectedMaKhach), chi tiết hiện
+                // ở panel riêng bên dưới bảng — xem khối render phía sau.
+                const isOpen = theme === 'default' && expanded.has(r.ma_khach)
+                const isSelected = theme === 'dense' && selectedMaKhach === r.ma_khach
                 return (
                   <Fragment key={r.ma_khach}>
-                    <tr className="hover:bg-gray-50/70 transition-colors cursor-pointer" onClick={() => toggleExpand(r.ma_khach)}>
+                    <tr
+                      className={`hover:bg-gray-50/70 transition-colors cursor-pointer ${isSelected ? 'bg-brand-50' : ''}`}
+                      onClick={() => theme === 'dense'
+                        ? setSelectedMaKhach(prev => prev === r.ma_khach ? null : r.ma_khach)
+                        : toggleExpand(r.ma_khach)}
+                    >
                       <td className="px-4 py-2 text-gray-700 font-medium whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          {isOpen ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+                          {theme === 'default' && (isOpen ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />)}
                           {r.ma_khach}
                         </div>
                       </td>
@@ -182,68 +266,7 @@ export default function CongNoKhachHangPage() {
                     {isOpen && (
                       <tr className="bg-gray-50/60">
                         <td colSpan={4} className="px-4 py-3">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <div className="text-[11px] font-semibold text-gray-400 uppercase mb-1.5">Bookings ({r.phat_sinh_rows.length})</div>
-                              {r.phat_sinh_rows.length === 0 ? (
-                                <p className="text-xs text-gray-300">Không có dòng nào.</p>
-                              ) : (
-                                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                  <table className="w-full text-xs">
-                                    <thead>
-                                      <tr className="bg-gray-50 border-b border-gray-100">
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Ngày xuất</th>
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Số vé</th>
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Hành khách</th>
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Hành trình</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold text-gray-400">Giá bán</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                      {[...r.phat_sinh_rows].sort((a, b) => (a.issued_date ?? '').localeCompare(b.issued_date ?? '')).map((d, i) => (
-                                        <tr key={i}>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.issued_date ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.ticket_no ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.pax_name ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.routing ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap text-right">{formatTien(d.gia_ban ?? 0)}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-[11px] font-semibold text-gray-400 uppercase mb-1.5">Đã thu ({r.da_thu_rows.length})</div>
-                              {r.da_thu_rows.length === 0 ? (
-                                <p className="text-xs text-gray-300">Không có dòng nào.</p>
-                              ) : (
-                                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                  <table className="w-full text-xs">
-                                    <thead>
-                                      <tr className="bg-gray-50 border-b border-gray-100">
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Ngày</th>
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">Nội dung CK</th>
-                                        <th className="text-left px-3 py-1.5 font-semibold text-gray-400">STK nhận</th>
-                                        <th className="text-right px-3 py-1.5 font-semibold text-gray-400">Số tiền</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                      {[...r.da_thu_rows].sort((a, b) => (a.ngay ?? '').localeCompare(b.ngay ?? '')).map((d, i) => (
-                                        <tr key={i}>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.ngay ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-600 max-w-[220px] truncate" title={d.dien_giai ?? ''}>{d.dien_giai ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.tai_khoan ?? '—'}</td>
-                                          <td className="px-3 py-1.5 text-emerald-600 whitespace-nowrap text-right">{formatTien(d.thu ?? 0)}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          <DetailPanels row={r} />
                         </td>
                       </tr>
                     )}
@@ -254,6 +277,20 @@ export default function CongNoKhachHangPage() {
           </table>
         </div>
       </div>
+
+      {theme === 'dense' && selectedMaKhach && (() => {
+        const selectedRow = filtered.find(r => r.ma_khach === selectedMaKhach)
+        if (!selectedRow) return null
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 list-table-container">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-800">{selectedRow.ma_khach}</h3>
+              <button onClick={() => setSelectedMaKhach(null)} className="text-xs text-gray-400 hover:text-gray-600">Đóng</button>
+            </div>
+            <DetailPanels row={selectedRow} />
+          </div>
+        )
+      })()}
     </div>
   )
 }

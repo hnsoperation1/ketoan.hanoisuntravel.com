@@ -198,7 +198,7 @@ export default function NhomTelegramPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 list-table-container">
             <h2 className="font-bold text-gray-900 mb-3">Nhóm đã gán ({loading ? '…' : daGan.length})</h2>
             {loading ? (
               <p className="text-sm text-gray-400">Đang tải...</p>
@@ -206,7 +206,7 @@ export default function NhomTelegramPage() {
               <p className="text-sm text-gray-400">Chưa có nhóm nào được gán TKT.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm list-table">
                   <thead>
                     <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wide">
                       <th className="px-3 py-2 font-semibold">Nhóm</th>

@@ -135,9 +135,9 @@ export default function TktPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['Mã TKT', 'Nhân viên phụ trách', 'Trạng thái', ''].map(h => (

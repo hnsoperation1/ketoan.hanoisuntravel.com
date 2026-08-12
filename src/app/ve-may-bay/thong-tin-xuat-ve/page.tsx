@@ -593,9 +593,9 @@ export default function VeMayBayPage() {
         </span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
                 {user?.is_super_admin && (

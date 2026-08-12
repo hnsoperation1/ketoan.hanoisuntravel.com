@@ -120,8 +120,8 @@ export default function BieuMauHopDongPage() {
             Chưa có biểu mẫu nào. Nhấn &quot;Thêm biểu mẫu&quot; để tải lên file .docx đầu tiên.
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden list-table-container">
+            <table className="w-full text-sm list-table">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {['Tên biểu mẫu', 'Loại', 'File', 'Ngày tạo', ''].map((h) => (

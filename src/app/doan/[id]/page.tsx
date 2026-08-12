@@ -24,6 +24,7 @@ import {
   Plus,
 } from 'lucide-react'
 import { tinhGrossTuNet } from '@/lib/tax'
+import FilterPicker from '@/components/FilterPicker'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
@@ -399,18 +400,12 @@ export default function DoanDetailPage() {
                     <UserPlus size={13} />
                     Thêm nhân sự
                   </button>
-                  <select
+                  <FilterPicker
+                    label="Loại nhân sự"
                     value={filterLoaiId}
-                    onChange={(e) => setFilterLoaiId(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 bg-white text-gray-600"
-                  >
-                    <option value="">Tất cả loại nhân sự</option>
-                    {loaiNhanSu.list.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.ten}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setFilterLoaiId}
+                    options={loaiNhanSu.list.map((l) => ({ value: l.id, label: l.ten }))}
+                  />
                   <button
                     type="button"
                     onClick={() => setCreatingLoai(true)}

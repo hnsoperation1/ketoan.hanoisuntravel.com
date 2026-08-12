@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/auth'
+import { useTheme } from '@/contexts/theme'
 import { TopbarProvider } from '@/contexts/topbar'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const { theme } = useTheme()
   const router = useRouter()
   const pathname = usePathname()
   const isLoginPage = pathname === '/login'
@@ -47,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TopbarProvider>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden" data-ui-theme={theme}>
         {mobileOpen && (
           <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)} />
         )}

@@ -1205,7 +1205,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
   // viewport (flex-1) nên thanh cuộn ngang luôn nằm cố định ở đáy màn
   // hình thật. Header sticky top-0 để bám lại khi cuộn dọc bên trong.
   const content = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col' : 'bg-white border border-gray-300'}>
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-300 list-table-container'}>
       <style jsx>{`
         .cong-no-scroll::-webkit-scrollbar { height: 18px; width: 18px; }
         .cong-no-scroll::-webkit-scrollbar-track { background: #f3f4f6; }
@@ -1222,7 +1222,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
         </button>
       </div>
       <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
-      <table className="text-xs border-collapse" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed' }}>
+      <table className="text-xs border-collapse list-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed' }}>
         <thead className="sticky top-0 z-10">
           <tr>
             {BANG_COLS.map(c => (

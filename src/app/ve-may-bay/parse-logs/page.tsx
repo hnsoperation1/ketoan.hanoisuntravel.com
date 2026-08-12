@@ -182,9 +182,9 @@ export default function ParseLogsPage() {
 
       <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</p>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 {['', 'Thời gian', 'TKT', 'Nhóm', 'Người gửi', 'Trạng thái', 'Nội dung gốc'].map(h => (
