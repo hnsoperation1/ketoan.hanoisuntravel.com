@@ -1,28 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireUser } from '@/lib/auth'
+import { fetchAllRows } from '@/lib/supabase/fetch-all'
 
 // Trang này đối chiếu TOÀN BỘ lịch sử (không lọc theo tháng, khác
 // /api/ve-may-bay/cong-no-khach-hang) — .limit(20000)/.limit(5000) cũ
 // KHÔNG có .order() đi kèm nên Postgres không đảm bảo giữ lại đúng
 // 20000/5000 dòng nào khi bảng vượt ngưỡng đó; từng khiến giao dịch có
 // thật (thấy được ở /sao-ke-tk lọc theo tháng) biến mất hoàn toàn khỏi
-// trang này dù search đúng chuỗi. Phân trang lấy hết thay vì áp trần cứng.
-async function fetchAllRows<T>(
-  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-): Promise<T[]> {
-  const PAGE = 1000
-  const all: T[] = []
-  let from = 0
-  for (;;) {
-    const { data, error } = await query(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    all.push(...(data ?? []))
-    if (!data || data.length < PAGE) break
-    from += PAGE
-  }
-  return all
-}
+// trang này dù search đúng chuỗi. Phân trang lấy hết thay vì áp trần cứng
+// (xem @/lib/supabase/fetch-all).
 
 // Đối chiếu danh mục mã khách giữa 2 nguồn nhập tay KHÔNG có FK chung —
 // ve_debt_records.ma_khach ("Đầu vào công nợ") và sao_ke_giao_dich.ten_du_an
