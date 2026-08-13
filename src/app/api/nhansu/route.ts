@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 
 // GET — danh mục TOÀN BỘ nhân sự thuê ngoài (HDV/MC/...) từng làm việc,
-// không giới hạn theo đoàn — phục vụ trang /nhan-su (danh sách tra cứu
-// nhanh, khác hẳn tab "Nhân sự" trong 1 đoàn cụ thể). Kèm số đoàn đã tham
-// gia (đếm qua bảng ho_so) để biết ai đang hoạt động thường xuyên.
+// không giới hạn theo đoàn — phục vụ tab "Tổng hợp" ở trang /nhan-su.
+// Số đoàn tham gia (có thể lọc theo khoảng ngày) tính riêng ở client từ
+// GET /api/nhansu/ho-so-list, không đếm sẵn ở đây nữa.
 export async function GET() {
   const { unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
@@ -13,7 +13,7 @@ export async function GET() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('nhansu')
-    .select('*, loai_nhan_su:loai_nhan_su_id(*), ho_so(count)')
+    .select('*, loai_nhan_su:loai_nhan_su_id(*)')
     .order('ho_ten')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
