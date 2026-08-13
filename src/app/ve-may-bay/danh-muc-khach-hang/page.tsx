@@ -29,6 +29,7 @@ type Khach = {
   contact_id: string | null
   contact: Contact | null
   ghi_chu: string | null
+  dia_chi: string | null
   doanh_thu: number
   loi_nhuan: number
 }
@@ -184,10 +185,14 @@ function ContactAssignModal({
 }: {
   khach: Khach
   onClose: () => void
-  onAssigned: (contact: Contact) => Promise<boolean>
+  onAssigned: (contact: Contact, diaChi: string) => Promise<boolean>
 }) {
   const [name, setName] = useState(khach.contact?.name ?? '')
   const [phone, setPhone] = useState(khach.contact?.phone ?? '')
+  const [email, setEmail] = useState(khach.contact?.email ?? '')
+  const [company, setCompany] = useState(khach.contact?.company ?? '')
+  const [taxCode, setTaxCode] = useState(khach.contact?.tax_code ?? '')
+  const [diaChi, setDiaChi] = useState(khach.dia_chi ?? '')
   const [note, setNote] = useState(khach.contact?.note ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -201,14 +206,22 @@ function ContactAssignModal({
       const res = await fetch('/api/ve-may-bay/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() || null, note: note.trim() || null }),
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          company: company.trim() || null,
+          tax_code: taxCode.trim() || null,
+          dia_chi: diaChi.trim() || null,
+          note: note.trim() || null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Có lỗi, thử lại giúp em ạ.')
         return
       }
-      const ok = await onAssigned(data.contact as Contact)
+      const ok = await onAssigned(data.contact as Contact, diaChi.trim())
       if (!ok) {
         setError('Lưu liên hệ vào mã khách thất bại, thử lại giúp em ạ.')
         return
@@ -225,7 +238,7 @@ function ContactAssignModal({
 
   return (
     <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <h2 className="font-bold text-gray-900">Liên hệ phụ trách</h2>
         <p className="text-xs text-gray-400 mb-3">{khach.ma_khach}</p>
 
@@ -244,6 +257,22 @@ function ContactAssignModal({
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">SĐT</label>
                 <input value={phone} onChange={e => setPhone(e.target.value)} className={INPUT} placeholder="VD: 0912345678" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+                <input value={email} onChange={e => setEmail(e.target.value)} className={INPUT} placeholder="VD: ten@congty.com" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Tên công ty</label>
+                <input value={company} onChange={e => setCompany(e.target.value)} className={INPUT} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">MST</label>
+                <input value={taxCode} onChange={e => setTaxCode(e.target.value)} className={INPUT} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Địa chỉ</label>
+                <textarea rows={2} value={diaChi} onChange={e => setDiaChi(e.target.value)} className={INPUT} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Ghi chú</label>
@@ -360,6 +389,7 @@ function CustomerDetailPanel({
     { label: 'Tên công ty', value: c?.company ?? '—' },
     { label: 'Email', value: c?.email ?? '—' },
     { label: 'MST', value: c?.tax_code ?? '—' },
+    { label: 'Địa chỉ', value: khach.dia_chi ?? '—' },
     { label: 'Ghi chú', value: c?.note ?? '—' },
   ]
 
@@ -491,7 +521,6 @@ function CustomerDetailPanel({
                           <p className="text-sm text-gray-800">{r.value}</p>
                         </div>
                       ))}
-                      <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
                     </div>
                   )}
                 </div>
@@ -639,6 +668,7 @@ export default function DanhMucKhachHangPage() {
         active: merged.active,
         contact_id: merged.contact_id,
         ghi_chu: merged.ghi_chu,
+        dia_chi: merged.dia_chi,
       }),
     })
     if (!res.ok) return false
@@ -788,7 +818,7 @@ export default function DanhMucKhachHangPage() {
     <ContactAssignModal
       khach={assigningContactFor}
       onClose={() => setAssigningContactFor(null)}
-      onAssigned={c => saveKhach(assigningContactFor.id, { contact_id: c.id, contact: c })}
+      onAssigned={(c, diaChi) => saveKhach(assigningContactFor.id, { contact_id: c.id, contact: c, dia_chi: diaChi || null })}
     />
   )
 

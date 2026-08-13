@@ -10,3 +10,11 @@ ALTER TABLE vmb_khach_hang ADD COLUMN IF NOT EXISTS contact_id UUID REFERENCES c
 -- hinh_thuc_cong_no vốn là mô tả chính sách CẤP NHÓM) — hiện & sửa ở slide
 -- over "Chi tiết liên hệ" bên phải màn Danh mục khách hàng, chế độ Đầy đủ.
 ALTER TABLE vmb_khach_hang ADD COLUMN IF NOT EXISTS ghi_chu TEXT;
+
+-- Địa chỉ công ty — CỐ TÌNH lưu thẳng ở đây (không join sang
+-- organizations.address bên CRM) để đọc/hiện ra khỏi cần join, theo đúng
+-- yêu cầu 2026-08-13. Khi tạo/đổi liên hệ qua modal "Liên hệ phụ trách"
+-- (POST /api/ve-may-bay/contacts), giá trị này được ghi ĐỒNG THỜI ở cả 2
+-- nơi: cột này (đọc nhanh, không join) và organizations.address bên CRM
+-- (để dữ liệu CRM không bị lệch) — xem comment trong route đó.
+ALTER TABLE vmb_khach_hang ADD COLUMN IF NOT EXISTS dia_chi TEXT;

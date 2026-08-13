@@ -76,13 +76,16 @@ export async function GET() {
   return NextResponse.json({ data: enriched })
 }
 
-// POST — { id?, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id?, ghi_chu? }
+// POST — { id?, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id?, ghi_chu?, dia_chi? }
 // có id thì update, không thì tạo mới. contact_id = liên hệ CRM đã gán (null để bỏ gán).
+// dia_chi lưu thẳng ở đây (không join organizations) — xem
+// migration_vmb_khach_hang_contact.sql; route /api/ve-may-bay/contacts lo
+// phần đồng bộ giá trị này sang organizations.address bên CRM.
 export async function POST(req: NextRequest) {
   const { unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
 
-  const { id, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id, ghi_chu } = await req.json().catch(() => ({}))
+  const { id, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id, ghi_chu, dia_chi } = await req.json().catch(() => ({}))
   if (!nhom || !ma_khach || !String(ma_khach).trim()) {
     return NextResponse.json({ error: 'Thiếu nhóm hoặc mã khách' }, { status: 400 })
   }
@@ -98,6 +101,7 @@ export async function POST(req: NextRequest) {
     active: active ?? true,
     contact_id: contact_id ? String(contact_id) : null,
     ghi_chu: ghi_chu ? String(ghi_chu).trim() : null,
+    dia_chi: dia_chi ? String(dia_chi).trim() : null,
   }
 
   const query = id
