@@ -135,7 +135,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           <NavLink href="/ve-may-bay/cong-no" label="Công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TK" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục khách hàng" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục KH" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           {/* "/ve-may-bay/sao-ke" (Đầu vào sao kê) CỐ Ý không có link ở đây
               — chỉ vào được bằng gõ thẳng URL, giống quy ước bên hns-crm. */}
           {user?.is_super_admin && (

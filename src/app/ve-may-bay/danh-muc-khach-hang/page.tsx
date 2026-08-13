@@ -401,7 +401,7 @@ function CustomerDetailPanel({
 
             <div className="pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Người phụ trách (liên hệ CRM)</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Người phụ trách</p>
                 <button type="button" onClick={onOpenAssignContact} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
                   {c ? 'Đổi liên hệ' : 'Thêm liên hệ'}
                 </button>
@@ -432,7 +432,6 @@ function CustomerDetailPanel({
                 rows={4}
                 value={ghiChu}
                 onChange={e => setGhiChu(e.target.value)}
-                placeholder="Ghi chú riêng cho mã khách này..."
                 className={INPUT}
               />
               <button
