@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -22,6 +22,7 @@ import {
   Eye,
   Trash2,
   Plus,
+  Search,
 } from 'lucide-react'
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
@@ -1563,6 +1564,9 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
   const withFile = hoSo.filter((r) => r.file_hop_dong_url)
   const withFileIds = withFile.map((r) => r.id).join(',')
   const [latestFileId, setLatestFileId] = useState<Record<string, string>>({})
+  const [filterLoaiId, setFilterLoaiId] = useState('')
+  const [search, setSearch] = useState('')
+  const loaiNhanSu = useLoaiNhanSuList()
 
   useEffect(() => {
     let cancelled = false
@@ -1590,42 +1594,106 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
     return <p className="text-sm text-gray-400 text-center py-14">Chưa có hợp đồng nào được tạo.</p>
   }
 
+  const filtered = withFile.filter((r) => {
+    if (filterLoaiId && r.nhansu.loai_nhan_su_id !== filterLoaiId) return false
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      const matches = r.nhansu.ho_ten.toLowerCase().includes(q) || (r.so_hop_dong ?? '').toLowerCase().includes(q)
+      if (!matches) return false
+    }
+    return true
+  })
+  // Nhóm theo loại nhân sự (sắp xếp lại) để dòng phân cách nhóm bên dưới ăn khớp,
+  // thay vì phụ thuộc thứ tự thêm người ngẫu nhiên như trước.
+  const sorted = [...filtered].sort((a, b) => {
+    const la = a.nhansu.loai_nhan_su?.ten ?? 'Khác'
+    const lb = b.nhansu.loai_nhan_su?.ten ?? 'Khác'
+    return la !== lb ? la.localeCompare(lb) : a.nhansu.ho_ten.localeCompare(b.nhansu.ho_ten)
+  })
+  const groupCounts = new Map<string, number>()
+  for (const r of sorted) {
+    const key = r.nhansu.loai_nhan_su?.ten ?? 'Khác'
+    groupCounts.set(key, (groupCounts.get(key) ?? 0) + 1)
+  }
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            {['Người', 'Số hợp đồng', 'Ngày ký', ''].map((h) => (
-              <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {withFile.map((r) => (
-            <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-              <td className="px-4 py-3 font-semibold text-gray-900">{r.nhansu.ho_ten}</td>
-              <td className="px-4 py-3 text-gray-600">{r.so_hop_dong || '—'}</td>
-              <td className="px-4 py-3 text-gray-600">{formatDateVN(r.ngay_ky)}</td>
-              <td className="px-4 py-3">
-                {latestFileId[r.id] ? (
-                  <a
-                    href={`/api/ho-so/${r.id}/hop-dong-files/${latestFileId[r.id]}/download`}
-                    className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
-                  >
-                    <FileText size={13} /> {buildContractFileName(doan, r)}
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
-                    <FileText size={13} /> {buildContractFileName(doan, r)}
-                  </span>
-                )}
-              </td>
+    <div>
+      <div className="flex gap-2 mb-4">
+        <div className="relative w-64">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm tên, số hợp đồng..."
+            className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200"
+          />
+        </div>
+        <FilterPicker
+          label="Loại nhân sự"
+          value={filterLoaiId}
+          onChange={setFilterLoaiId}
+          options={loaiNhanSu.list.map((l) => ({ value: l.id, label: l.ten }))}
+        />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              {['Người', 'Số hợp đồng', 'Ngày ký', ''].map((h) => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {sorted.map((r, i) => {
+              const loaiTen = r.nhansu.loai_nhan_su?.ten ?? 'Khác'
+              const prevLoaiTen = i > 0 ? (sorted[i - 1].nhansu.loai_nhan_su?.ten ?? 'Khác') : null
+              return (
+                <Fragment key={r.id}>
+                  {loaiTen !== prevLoaiTen && (
+                    <tr className="bg-gray-50">
+                      <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        {loaiTen}{' '}
+                        <span className="font-normal normal-case text-gray-300">({groupCounts.get(loaiTen)})</span>
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-900">{r.nhansu.ho_ten}</td>
+                    <td className="px-4 py-3 text-gray-600">{r.so_hop_dong || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatDateVN(r.ngay_ky)}</td>
+                    <td className="px-4 py-3">
+                      {latestFileId[r.id] ? (
+                        <a
+                          href={`/api/ho-so/${r.id}/hop-dong-files/${latestFileId[r.id]}/download`}
+                          className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
+                        >
+                          <FileText size={13} /> {buildContractFileName(doan, r)}
+                        </a>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                          <FileText size={13} /> {buildContractFileName(doan, r)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                </Fragment>
+              )
+            })}
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-14 text-center text-gray-400">
+                  Không tìm thấy hợp đồng nào khớp.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
