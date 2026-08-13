@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -115,6 +115,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             href="/doan"
             label="Quyết toán tour"
             icon={FileSpreadsheet}
+            pathname={pathname}
+            collapsed={collapsed}
+            onClick={onMobileClose}
+          />
+          <NavLink
+            href="/nhan-su"
+            label="Nhân sự thuê ngoài"
+            icon={Contact}
             pathname={pathname}
             collapsed={collapsed}
             onClick={onMobileClose}
