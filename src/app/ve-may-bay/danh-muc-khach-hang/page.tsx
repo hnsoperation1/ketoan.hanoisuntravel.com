@@ -1,8 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, Plus, Loader2, Search } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { RefreshCw, Plus, Loader2, Search, X, User } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+
+type Contact = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  company: string | null
+  tax_code: string | null
+  source: string | null
+}
 
 type Khach = {
   id: string
@@ -14,6 +24,10 @@ type Khach = {
   phi_xuat_ve: string | null
   active: boolean
   created_at: string
+  contact_id: string | null
+  contact: Contact | null
+  doanh_thu: number
+  loi_nhuan: number
 }
 
 const NHOM_LABELS: Record<string, string> = {
@@ -28,9 +42,117 @@ const NHOM_LABELS: Record<string, string> = {
 }
 const NHOM_OPTIONS = Object.keys(NHOM_LABELS)
 
+// Khớp đúng SOURCE_LABELS bên CRM (bảng contacts.source) — copy vì 2 repo
+// riêng, không import chéo được.
+const SOURCE_LABELS: Record<string, string> = {
+  mkt: 'Marketing',
+  sale: 'Sale',
+  partner: 'Đối tác',
+  bod: 'Ban Giám đốc',
+  referral: 'Giới thiệu',
+  cskh: 'CSKH',
+  test: 'Test',
+}
+
 const INPUT = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white placeholder:text-gray-300'
 
-const emptyForm = { nhom: 'khach_le', ma_khach: '', ten_khach: '', doi_tuong_quy_tac: '', hinh_thuc_cong_no: '', phi_xuat_ve: '' }
+const emptyForm = { nhom: 'khach_le', ma_khach: '', ten_khach: '', doi_tuong_quy_tac: '', hinh_thuc_cong_no: '', phi_xuat_ve: '', contact_id: '' as string | null }
+
+function formatVND(n: number): string {
+  return n === 0 ? '—' : `${n.toLocaleString('vi-VN')} đ`
+}
+
+// Ô tìm + chọn liên hệ CRM (bảng contacts, cùng Supabase project) — gán
+// contact_id cho 1 mã khách VMB. Tạm 1 chiều (xem migration_vmb_khach_hang_contact.sql),
+// chưa đồng bộ 2 bảng khách hàng.
+function ContactPicker({
+  selected,
+  onSelect,
+}: {
+  selected: Contact | null
+  onSelect: (c: Contact | null) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Contact[]>([])
+  const [open, setOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([])
+      return
+    }
+    setSearching(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ve-may-bay/contacts-search?q=${encodeURIComponent(query.trim())}`)
+        if (res.ok) {
+          const { data } = await res.json()
+          setResults(Array.isArray(data) ? data : [])
+        }
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [query])
+
+  if (selected) {
+    return (
+      <div className="flex items-center justify-between gap-2 border border-gray-200 rounded-xl px-3.5 py-2.5 bg-gray-50">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-800 truncate">{selected.name}</p>
+          <p className="text-xs text-gray-400 truncate">{[selected.company, selected.phone].filter(Boolean).join(' · ') || '—'}</p>
+        </div>
+        <button type="button" onClick={() => onSelect(null)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 shrink-0">
+          <X size={14} />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        placeholder="Tìm tên, công ty, SĐT liên hệ CRM..."
+        className={INPUT}
+      />
+      {open && query.trim().length >= 2 && (
+        <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+          {searching ? (
+            <p className="px-3.5 py-3 text-xs text-gray-400">Đang tìm...</p>
+          ) : results.length === 0 ? (
+            <p className="px-3.5 py-3 text-xs text-gray-400">Không tìm thấy liên hệ nào khớp.</p>
+          ) : (
+            results.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { onSelect(c); setQuery(''); setOpen(false) }}
+                className="w-full text-left px-3.5 py-2 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+              >
+                <p className="text-sm font-semibold text-gray-800">{c.name}</p>
+                <p className="text-xs text-gray-400">{[c.company, c.phone].filter(Boolean).join(' · ') || '—'}</p>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Danh mục mã khách chuẩn (kế toán VMB) — import từ file "Link nhập _
 // Phòng vé HNS (Năm 2026).xlsx" (170 mã, xem migration_vmb_khach_hang.sql).
@@ -46,7 +168,9 @@ export default function DanhMucKhachHangPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [formContact, setFormContact] = useState<Contact | null>(null)
   const [saving, setSaving] = useState(false)
+  const [viewMode, setViewMode] = useState<'co_ban' | 'day_du'>('co_ban')
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -95,6 +219,7 @@ export default function DanhMucKhachHangPage() {
   function openAdd() {
     setEditingId(null)
     setForm(emptyForm)
+    setFormContact(null)
     setFormOpen(true)
   }
 
@@ -107,7 +232,9 @@ export default function DanhMucKhachHangPage() {
       doi_tuong_quy_tac: k.doi_tuong_quy_tac ?? '',
       hinh_thuc_cong_no: k.hinh_thuc_cong_no ?? '',
       phi_xuat_ve: k.phi_xuat_ve ?? '',
+      contact_id: k.contact_id,
     })
+    setFormContact(k.contact)
     setFormOpen(true)
   }
 
@@ -165,7 +292,19 @@ export default function DanhMucKhachHangPage() {
         ))}
       </div>
 
-      <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</p>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          <button onClick={() => setViewMode('co_ban')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'co_ban' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>
+            Cơ bản
+          </button>
+          <button onClick={() => setViewMode('day_du')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'day_du' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>
+            Đầy đủ
+          </button>
+        </div>
+      </div>
 
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
@@ -198,6 +337,13 @@ export default function DanhMucKhachHangPage() {
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Phí xuất vé</label>
                 <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Người làm việc (liên hệ CRM)</label>
+                <ContactPicker
+                  selected={formContact}
+                  onSelect={c => { setFormContact(c); setForm(f => ({ ...f, contact_id: c?.id ?? null })) }}
+                />
+              </div>
             </div>
             <div className="flex items-center gap-2 mt-4">
               <button onClick={() => setFormOpen(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
@@ -212,39 +358,86 @@ export default function DanhMucKhachHangPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm list-table">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
-              ) : loadError ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center">
-                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(k => (
-                <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
-                  <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.doi_tuong_quy_tac ?? ''}>{k.doi_tuong_quy_tac ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.hinh_thuc_cong_no ?? ''}>{k.hinh_thuc_cong_no ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.phi_xuat_ve ?? ''}>{k.phi_xuat_ve ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
-                  </td>
+          {viewMode === 'co_ban' ? (
+            <table className="w-full text-sm list-table">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                ) : loadError ? (
+                  <tr><td colSpan={7} className="px-5 py-14 text-center">
+                    <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                    <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                  </td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+                ) : filtered.map(k => (
+                  <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
+                    <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.doi_tuong_quy_tac ?? ''}>{k.doi_tuong_quy_tac ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.hinh_thuc_cong_no ?? ''}>{k.hinh_thuc_cong_no ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.phi_xuat_ve ?? ''}>{k.phi_xuat_ve ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-sm list-table">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'SĐT', 'Tên cty', 'Email', 'Địa chỉ', 'MST', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
+                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  <tr><td colSpan={12} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                ) : loadError ? (
+                  <tr><td colSpan={12} className="px-5 py-14 text-center">
+                    <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                    <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                  </td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={12} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+                ) : filtered.map(k => (
+                  <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">
+                      {k.contact ? (
+                        <span className="inline-flex items-center gap-1"><User size={12} className="text-gray-300" />{k.contact.name}</span>
+                      ) : (
+                        <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Gán liên hệ</button>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.phone ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.company ?? ''}>{k.contact?.company ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.email ?? ''}>{k.contact?.email ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate">—</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.tax_code ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
