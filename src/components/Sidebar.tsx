@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -136,8 +136,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TK" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục KH" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          {/* "/ve-may-bay/sao-ke" (Đầu vào sao kê) CỐ Ý không có link ở đây
-              — chỉ vào được bằng gõ thẳng URL, giống quy ước bên hns-crm. */}
+          {(user?.is_super_admin || user?.is_boss) && (
+            <NavLink href="/ve-may-bay/sao-ke" label="Đầu vào sao kê" icon={Landmark} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          )}
           {user?.is_super_admin && (
             <>
               <NavLink href="/ve-may-bay/parse-logs" label="Nhật ký bot vé" icon={ScrollText} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />

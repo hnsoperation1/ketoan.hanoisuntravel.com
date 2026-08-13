@@ -6,6 +6,7 @@ interface AuthUser {
   id: string
   email: string
   is_super_admin: boolean
+  is_boss: boolean
 }
 
 interface AuthContextValue {
