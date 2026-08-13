@@ -9,11 +9,29 @@ type PhatSinhRow = { ticket_no: string | null; pax_name: string | null; issued_d
 type DaThuRow = { ngay: string | null; dien_giai: string | null; thu: number | null; tai_khoan: string | null }
 type KhRow = {
   ma_khach: string
+  nhom: string | null
   tong_phat_sinh: number
   tong_da_thu: number
   cong_no: number
   phat_sinh_rows: PhatSinhRow[]
   da_thu_rows: DaThuRow[]
+}
+
+// Khớp đúng NHOM_LABELS ở /ve-may-bay/danh-muc-khach-hang — copy vì mỗi
+// trang tự đứng riêng, không import chéo giữa 2 page.
+const NHOM_LABELS: Record<string, string> = {
+  nhan_su: 'Nhân sự HNS',
+  dai_ly: 'Đại lý',
+  doanh_nghiep: 'Khách hàng DN',
+  ag_series: 'AG - mua vé series',
+  khach_le: 'Khách lẻ',
+  doan_tour: 'Đoàn đi tour',
+  series_vj: 'Vé Seri Vietjet',
+  series_sao_do: 'Vé Seri Sao Đỏ',
+}
+const CHUA_PHAN_LOAI = 'Chưa phân loại'
+function nhomLabel(nhom: string | null): string {
+  return nhom ? (NHOM_LABELS[nhom] ?? nhom) : CHUA_PHAN_LOAI
 }
 
 function formatTien(n: number): string {
@@ -120,6 +138,7 @@ export default function CongNoKhachHangPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
+  const [filterNhom, setFilterNhom] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   // Chỉ dùng khi theme === 'dense' — chọn 1 khách để hiện panel chi tiết
   // tách đôi bên dưới bảng, thay cho accordion inline (theme mặc định).
@@ -174,14 +193,30 @@ export default function CongNoKhachHangPage() {
     }
   }, [setBreadcrumb, setOnRefresh, loadMonth, selected])
 
+  const withDebt = useMemo(() => rows.filter(r => r.cong_no !== 0), [rows]) // đã tất toán = 0 thì ẩn
+
+  const nhomCounts = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const r of withDebt) c[r.nhom ?? ''] = (c[r.nhom ?? ''] ?? 0) + 1
+    return c
+  }, [withDebt])
+
+  // Nhóm theo phân loại (sắp xếp lại) rồi mới sắp công nợ giảm dần TRONG
+  // từng nhóm — để dòng phân cách nhóm bên dưới ăn khớp.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return rows.filter(r => {
-      if (r.cong_no === 0) return false // chỉ hiện khách còn công nợ (đã tất toán = 0 thì ẩn)
-      if (q && !r.ma_khach.toLowerCase().includes(q)) return false
-      return true
-    })
-  }, [rows, search])
+    return withDebt
+      .filter(r => {
+        if (filterNhom && (r.nhom ?? '') !== filterNhom) return false
+        if (q && !r.ma_khach.toLowerCase().includes(q)) return false
+        return true
+      })
+      .sort((a, b) => {
+        const la = nhomLabel(a.nhom)
+        const lb = nhomLabel(b.nhom)
+        return la !== lb ? la.localeCompare(lb) : b.cong_no - a.cong_no
+      })
+  }, [withDebt, filterNhom, search])
 
   const tongPhatSinh = useMemo(() => filtered.reduce((s, r) => s + r.tong_phat_sinh, 0), [filtered])
   const tongDaThu = useMemo(() => filtered.reduce((s, r) => s + r.tong_da_thu, 0), [filtered])
@@ -213,6 +248,19 @@ export default function CongNoKhachHangPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã khách..."
             className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
         </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button onClick={() => setFilterNhom('')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterNhom ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Tất cả <span className="opacity-70">{withDebt.length}</span>
+        </button>
+        {[...Object.keys(NHOM_LABELS), ''].filter(n => nhomCounts[n]).map(n => (
+          <button key={n || 'chua-phan-loai'} onClick={() => setFilterNhom(filterNhom === n ? '' : n)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNhom === n ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+            {nhomLabel(n || null)} <span className="opacity-70">{nhomCounts[n] ?? 0}</span>
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center gap-4 text-sm flex-wrap">
@@ -249,14 +297,23 @@ export default function CongNoKhachHangPage() {
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={4} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(r => {
+              ) : filtered.map((r, i) => {
                 // Giao diện mặc định: accordion inline (expanded). Giao
                 // diện dày đặc: chọn dòng (selectedMaKhach), chi tiết hiện
                 // ở panel riêng bên dưới bảng — xem khối render phía sau.
                 const isOpen = theme === 'default' && expanded.has(r.ma_khach)
                 const isSelected = theme === 'dense' && selectedMaKhach === r.ma_khach
+                const groupLabel = nhomLabel(r.nhom)
+                const showGroupHeader = i === 0 || groupLabel !== nhomLabel(filtered[i - 1].nhom)
                 return (
                   <Fragment key={r.ma_khach}>
+                    {showGroupHeader && (
+                      <tr className="bg-gray-50">
+                        <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          {groupLabel} <span className="font-normal normal-case text-gray-300">({nhomCounts[r.nhom ?? ''] ?? 0})</span>
+                        </td>
+                      </tr>
+                    )}
                     <tr
                       className={`hover:bg-gray-50/70 transition-colors cursor-pointer ${isSelected ? 'bg-brand-50' : ''}`}
                       onClick={() => theme === 'dense'

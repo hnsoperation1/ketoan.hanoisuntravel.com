@@ -24,6 +24,7 @@ type PhatSinhRow = { ticket_no: string | null; pax_name: string | null; issued_d
 type DaThuRow = { ngay: string | null; dien_giai: string | null; thu: number | null; tai_khoan: string | null }
 type Agg = {
   ma_khach: string
+  nhom: string | null
   tong_phat_sinh: number
   tong_da_thu: number
   phat_sinh_rows: PhatSinhRow[]
@@ -31,7 +32,7 @@ type Agg = {
 }
 
 function emptyAgg(ma_khach: string): Agg {
-  return { ma_khach, tong_phat_sinh: 0, tong_da_thu: 0, phat_sinh_rows: [], da_thu_rows: [] }
+  return { ma_khach, nhom: null, tong_phat_sinh: 0, tong_da_thu: 0, phat_sinh_rows: [], da_thu_rows: [] }
 }
 
 // GET ?year=2026&month=8 — bắt buộc truyền, cùng cách lọc theo tháng với
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  const [debtRes, bookingsRes, saoKeRes] = await Promise.all([
+  const [debtRes, bookingsRes, saoKeRes, khachHangRes] = await Promise.all([
     admin.from('ve_debt_records').select('ma_khach, gia_ban, ticket_no, pax_name, issued_date, routing').like('issued_date', suffix).limit(5000),
     admin.from('ve_bookings').select('ma_khach, gia_ban, ticket_no, full_name, issued_date, routing').like('issued_date', suffix).limit(5000),
     // ma_2='TC' — chỉ lấy dòng thuộc Toàn Cầu/vé máy bay, CÙNG bộ lọc với
@@ -66,11 +67,21 @@ export async function GET(req: NextRequest) {
     // thu" cộng luôn mọi khoản thu trong tháng (không riêng gì vé), ra số
     // lớn bất thường so với "Sao kê TK" cùng tháng.
     admin.from('sao_ke_giao_dich').select('ten_du_an, thu, ngay, dien_giai, tai_khoan').eq('ma_2', 'TC').like('ngay', suffix).limit(20000),
+    // Chỉ để tra "nhóm" (phân loại) theo mã khách cho UI group/filter —
+    // KHÔNG dùng để lọc/loại bỏ mã khách nào (mã chưa có trong danh mục
+    // chuẩn vẫn hiện bình thường, chỉ là nhom = null → "Chưa phân loại").
+    admin.from('vmb_khach_hang').select('ma_khach, nhom'),
   ])
 
   if (debtRes.error) return NextResponse.json({ error: debtRes.error.message }, { status: 400 })
   if (bookingsRes.error) return NextResponse.json({ error: bookingsRes.error.message }, { status: 400 })
   if (saoKeRes.error) return NextResponse.json({ error: saoKeRes.error.message }, { status: 400 })
+
+  const nhomByMaKhach = new Map<string, string>()
+  for (const r of khachHangRes.data ?? []) {
+    const key = normKey(r.ma_khach)
+    if (key) nhomByMaKhach.set(key, r.nhom)
+  }
 
   const map = new Map<string, Agg>()
   const seenTicketNo = new Set<string>()
@@ -107,7 +118,7 @@ export async function GET(req: NextRequest) {
   }
 
   const data = Array.from(map.values())
-    .map(e => ({ ...e, cong_no: e.tong_phat_sinh - e.tong_da_thu }))
+    .map(e => ({ ...e, nhom: nhomByMaKhach.get(normKey(e.ma_khach) ?? '') ?? null, cong_no: e.tong_phat_sinh - e.tong_da_thu }))
     .sort((a, b) => b.cong_no - a.cong_no)
 
   return NextResponse.json({ data })

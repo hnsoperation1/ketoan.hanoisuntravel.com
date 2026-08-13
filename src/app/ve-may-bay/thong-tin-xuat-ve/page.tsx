@@ -547,7 +547,7 @@ export default function VeMayBayPage() {
   return (
     <div className="p-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-64 shrink-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên pax, số vé, TKT..."
             className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
