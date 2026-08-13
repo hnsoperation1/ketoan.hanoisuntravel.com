@@ -61,7 +61,7 @@ export async function GET() {
   const contactIds = Array.from(new Set(rows.map(r => r.contact_id).filter((id): id is string => !!id)))
   const [contactsRes, revenueByMaKhach] = await Promise.all([
     contactIds.length > 0
-      ? admin.from('contacts').select('id, name, phone, email, company, tax_code, source').in('id', contactIds)
+      ? admin.from('contacts').select('id, name, phone, email, company, tax_code, source, note').in('id', contactIds)
       : Promise.resolve({ data: [] as unknown[] }),
     loadRevenueByMaKhach(admin),
   ])

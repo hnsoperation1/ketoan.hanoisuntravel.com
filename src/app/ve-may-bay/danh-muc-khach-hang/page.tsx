@@ -13,6 +13,7 @@ type Contact = {
   company: string | null
   tax_code: string | null
   source: string | null
+  note: string | null
 }
 
 type Khach = {
@@ -171,10 +172,11 @@ function ContactPicker({
   )
 }
 
-// Modal nhỏ RIÊNG BIỆT — chỉ để tìm/gán 1 liên hệ CRM cho 1 mã khách,
-// không lẫn với các field chính sách khác (nhóm/mã khách/quy tắc...) như
-// modal "Sửa khách hàng" cũ. Mở từ nút "Thêm/Đổi liên hệ" ở cột "Người làm
-// việc" hoặc từ trong CustomerDetailPanel.
+// Modal nhỏ RIÊNG BIỆT — nhập tay tên/SĐT để tạo 1 liên hệ CRM mới và gán
+// cho 1 mã khách, không lẫn với các field chính sách khác (nhóm/mã khách/
+// quy tắc...) như modal "Thêm khách hàng". Cố tình KHÔNG có ô tìm — bấm Lưu
+// là tạo luôn, chỉ khi trùng SĐT với 1 liên hệ có sẵn thì dùng lại liên hệ
+// đó (không tạo trùng) + báo cho kế toán biết (yêu cầu 2026-08-13).
 function ContactAssignModal({
   khach,
   onClose,
@@ -182,16 +184,40 @@ function ContactAssignModal({
 }: {
   khach: Khach
   onClose: () => void
-  onAssigned: (contact: Contact | null) => Promise<boolean>
+  onAssigned: (contact: Contact) => Promise<boolean>
 }) {
-  const [selected, setSelected] = useState<Contact | null>(khach.contact)
+  const [name, setName] = useState(khach.contact?.name ?? '')
+  const [phone, setPhone] = useState(khach.contact?.phone ?? '')
+  const [note, setNote] = useState(khach.contact?.note ?? '')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [duplicateMsg, setDuplicateMsg] = useState('')
 
   async function save() {
+    if (!name.trim()) return
     setSaving(true)
+    setError('')
     try {
-      const ok = await onAssigned(selected)
-      if (ok) onClose()
+      const res = await fetch('/api/ve-may-bay/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim() || null, note: note.trim() || null }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Có lỗi, thử lại giúp em ạ.')
+        return
+      }
+      const ok = await onAssigned(data.contact as Contact)
+      if (!ok) {
+        setError('Lưu liên hệ vào mã khách thất bại, thử lại giúp em ạ.')
+        return
+      }
+      if (data.duplicate) {
+        setDuplicateMsg(`Đã có sẵn liên hệ trùng SĐT — dùng lại: ${data.contact.name}`)
+        return
+      }
+      onClose()
     } finally {
       setSaving(false)
     }
@@ -202,14 +228,38 @@ function ContactAssignModal({
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
         <h2 className="font-bold text-gray-900">Liên hệ phụ trách</h2>
         <p className="text-xs text-gray-400 mb-3">{khach.ma_khach}</p>
-        <ContactPicker selected={selected} onSelect={setSelected} />
-        <div className="flex items-center gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
-          <button onClick={save} disabled={saving}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-colors">
-            {saving && <Loader2 size={14} className="animate-spin" />} Lưu
-          </button>
-        </div>
+
+        {duplicateMsg ? (
+          <>
+            <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-3.5 py-2.5">{duplicateMsg}</p>
+            <button onClick={onClose} className="w-full mt-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors">Đóng</button>
+          </>
+        ) : (
+          <>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Họ tên *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={INPUT} placeholder="VD: Nguyễn Văn A" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">SĐT</label>
+                <input value={phone} onChange={e => setPhone(e.target.value)} className={INPUT} placeholder="VD: 0912345678" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Ghi chú</label>
+                <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} className={INPUT} />
+              </div>
+            </div>
+            {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+            <div className="flex items-center gap-2 mt-4">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
+              <button onClick={save} disabled={saving || !name.trim()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-colors">
+                {saving && <Loader2 size={14} className="animate-spin" />} Lưu
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -310,6 +360,7 @@ function CustomerDetailPanel({
     { label: 'Tên công ty', value: c?.company ?? '—' },
     { label: 'Email', value: c?.email ?? '—' },
     { label: 'MST', value: c?.tax_code ?? '—' },
+    { label: 'Ghi chú', value: c?.note ?? '—' },
   ]
 
   return createPortal(
@@ -737,7 +788,7 @@ export default function DanhMucKhachHangPage() {
     <ContactAssignModal
       khach={assigningContactFor}
       onClose={() => setAssigningContactFor(null)}
-      onAssigned={c => saveKhach(assigningContactFor.id, { contact_id: c?.id ?? null, contact: c })}
+      onAssigned={c => saveKhach(assigningContactFor.id, { contact_id: c.id, contact: c })}
     />
   )
 

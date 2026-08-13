@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('contacts')
-    .select('id, name, phone, email, company, tax_code, source')
+    .select('id, name, phone, email, company, tax_code, source, note')
     .or(`name.ilike.%${q}%,company.ilike.%${q}%,phone.ilike.%${q}%`)
     .limit(20)
 
