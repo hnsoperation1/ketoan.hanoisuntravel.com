@@ -1692,7 +1692,12 @@ function HoSoDetailModal({
 }) {
   const n = hoSo.nhansu
   const { user } = useAuth()
-  const [editing, setEditing] = useState(false)
+  // Tách riêng trạng thái sửa của từng tab — Sửa/Huỷ/Lưu ở tab "Ảnh & thông
+  // tin" chỉ ghi nhansu, ở tab "Hợp đồng" chỉ ghi ho_so, không đụng nhau.
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [editingHopDong, setEditingHopDong] = useState(false)
+  const [submittingInfo, setSubmittingInfo] = useState(false)
+  const [submittingHopDong, setSubmittingHopDong] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
@@ -1705,7 +1710,6 @@ function HoSoDetailModal({
 
   const [nhansu, setNhansu] = useState(() => nhansuFormFrom(hoSo))
   const [hs, setHs] = useState(() => hsFormFrom(hoSo, doan))
-  const [submitting, setSubmitting] = useState(false)
 
   const [detailTab, setDetailTab] = useState<'info' | 'hopdong'>('info')
 
@@ -1722,7 +1726,7 @@ function HoSoDetailModal({
   // Thẻ HDV chỉ có ý nghĩa với loại nhân sự HDV — xem chú thích ở AddNhanSuModal.
   // Lúc đang sửa lấy theo lựa chọn hiện tại (nhansu.loai_nhan_su_id), lúc chỉ xem
   // lấy theo n.loai_nhan_su đã load sẵn từ API.
-  const selectedLoaiMa = (editing ? loaiNhanSu.list.find((l) => l.id === nhansu.loai_nhan_su_id)?.ma : n.loai_nhan_su?.ma) ?? ''
+  const selectedLoaiMa = (editingInfo ? loaiNhanSu.list.find((l) => l.id === nhansu.loai_nhan_su_id)?.ma : n.loai_nhan_su?.ma) ?? ''
   const isHdv = selectedLoaiMa.toUpperCase() === 'HDV'
   // Nhóm múa đi theo sự kiện (có "Thời gian tổ chức" riêng ở cấp đoàn, xem
   // ten_chuong_trinh/thoi_gian_chuong_trinh/dia_diem_chuong_trinh ở Doan),
@@ -1776,10 +1780,14 @@ function HoSoDetailModal({
     loadFiles()
   }
 
-  function startEditing() {
+  function startEditingInfo() {
     setNhansu(nhansuFormFrom(hoSo))
+    setEditingInfo(true)
+  }
+
+  function startEditingHopDong() {
     setHs(hsFormFrom(hoSo, doan))
-    setEditing(true)
+    setEditingHopDong(true)
   }
 
   // Kế toán chỉ gõ công tác phí thực nhận/ngày (a1, vd 800k) — các cột còn lại
@@ -1793,10 +1801,10 @@ function HoSoDetailModal({
   const thueNop = soTienChiTra - chiTra
   const donGiaNgay = soNgay > 0 ? Math.round(soTienChiTra / soNgay) : 0
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmitInfo(e: React.FormEvent) {
     e.preventDefault()
-    if (submitting) return
-    setSubmitting(true)
+    if (submittingInfo) return
+    setSubmittingInfo(true)
     const res = await fetch(`/api/ho-so/${hoSo.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -1818,6 +1826,24 @@ function HoSoDetailModal({
           ten_ngan_hang: nhansu.ten_ngan_hang || null,
           loai_nhan_su_id: nhansu.loai_nhan_su_id || null,
         },
+      }),
+    })
+    const data = await res.json()
+    setSubmittingInfo(false)
+    if (res.ok) {
+      setEditingInfo(false)
+      onSaved(data.ho_so)
+    }
+  }
+
+  async function handleSubmitHopDong(e: React.FormEvent) {
+    e.preventDefault()
+    if (submittingHopDong) return
+    setSubmittingHopDong(true)
+    const res = await fetch(`/api/ho-so/${hoSo.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         ho_so: {
           so_hop_dong: hs.so_hop_dong || null,
           ngay_ky: hs.ngay_ky || null,
@@ -1833,9 +1859,9 @@ function HoSoDetailModal({
       }),
     })
     const data = await res.json()
-    setSubmitting(false)
+    setSubmittingHopDong(false)
     if (res.ok) {
-      setEditing(false)
+      setEditingHopDong(false)
       onSaved(data.ho_so)
     }
   }
@@ -1858,38 +1884,9 @@ function HoSoDetailModal({
                 <span className="text-gray-400 font-semibold">{n.loai_nhan_su?.ma || 'NS'}:</span> {n.ho_ten}
               </h2>
             </div>
-            <div className="flex items-center gap-2">
-              {editing ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
-                  >
-                    Huỷ
-                  </button>
-                  <button
-                    type="submit"
-                    form="ho-so-edit-form"
-                    disabled={submitting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
-                  >
-                    {submitting && <Loader2 size={13} className="animate-spin" />}
-                    Lưu
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={startEditing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil size={13} /> Sửa
-                </button>
-              )}
-              <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
-                <X size={18} />
-              </button>
-            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+              <X size={18} />
+            </button>
           </div>
 
           <div className="flex items-center gap-1 px-6 border-b border-gray-200 shrink-0">
@@ -1910,8 +1907,8 @@ function HoSoDetailModal({
             ))}
           </div>
 
-          <form id="ho-so-edit-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-hidden">
-            <div className={`grid md:grid-cols-[40%_1fr] h-full ${detailTab === 'info' ? '' : 'hidden'}`}>
+          <form onSubmit={handleSubmitInfo} className={`flex-1 min-h-0 flex flex-col ${detailTab === 'info' ? '' : 'hidden'}`}>
+            <div className="grid md:grid-cols-[40%_1fr] flex-1 min-h-0">
             <div className="overflow-y-auto p-6 border-r border-gray-100">
               <ImagePanel hoSo={hoSo} onUploaded={onSaved} />
             </div>
@@ -1920,7 +1917,7 @@ function HoSoDetailModal({
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Phân loại</p>
                   <InfoField
-                    editing={editing}
+                    editing={editingInfo}
                     label="Loại nhân sự"
                     value={loaiNhanSu.list.find((l) => l.id === n.loai_nhan_su_id)?.ten ?? null}
                     input={
@@ -1953,14 +1950,14 @@ function HoSoDetailModal({
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-4">
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Số CCCD"
                         value={n.so_cccd}
                         mono
                         input={<input value={nhansu.so_cccd} onChange={(e) => setNhansu((f) => ({ ...f, so_cccd: e.target.value }))} className={inputCls} />}
                       />
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Ngày sinh"
                         value={formatDateVN(n.ngay_sinh)}
                         input={<DateInput value={nhansu.ngay_sinh} onChange={(v) => setNhansu((f) => ({ ...f, ngay_sinh: v }))} className="w-full" />}
@@ -1968,26 +1965,26 @@ function HoSoDetailModal({
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Ngày cấp"
                         value={formatDateVN(n.ngay_cap)}
                         input={<DateInput value={nhansu.ngay_cap} onChange={(v) => setNhansu((f) => ({ ...f, ngay_cap: v }))} className="w-full" />}
                       />
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Nơi cấp"
                         value={n.noi_cap}
                         input={<input value={nhansu.noi_cap} onChange={(e) => setNhansu((f) => ({ ...f, noi_cap: e.target.value }))} className={inputCls} />}
                       />
                     </div>
                     <InfoField
-                      editing={editing}
+                      editing={editingInfo}
                       label="Địa chỉ"
                       value={n.dia_chi}
                       input={<input value={nhansu.dia_chi} onChange={(e) => setNhansu((f) => ({ ...f, dia_chi: e.target.value }))} className={inputCls} />}
                     />
                     <InfoField
-                      editing={editing}
+                      editing={editingInfo}
                       label="Tỉnh/TP"
                       value={n.tinh_tp}
                       input={<input value={nhansu.tinh_tp} onChange={(e) => setNhansu((f) => ({ ...f, tinh_tp: e.target.value }))} className={inputCls} />}
@@ -1999,13 +1996,13 @@ function HoSoDetailModal({
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Thẻ HDV</p>
                     <div className="grid grid-cols-3 gap-4">
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Số thẻ"
                         value={n.so_the_hdv}
                         input={<input value={nhansu.so_the_hdv} onChange={(e) => setNhansu((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />}
                       />
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Loại thẻ"
                         value={n.loai_the_hdv}
                         input={
@@ -2024,7 +2021,7 @@ function HoSoDetailModal({
                         }
                       />
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Hạn thẻ"
                         value={formatDateVN(n.han_the_hdv)}
                         input={<DateInput value={nhansu.han_the_hdv} onChange={(v) => setNhansu((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />}
@@ -2036,13 +2033,13 @@ function HoSoDetailModal({
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Liên hệ</p>
                   <div className="grid grid-cols-2 gap-4">
                     <InfoField
-                      editing={editing}
+                      editing={editingInfo}
                       label="SĐT"
                       value={n.sdt}
                       input={<input value={nhansu.sdt} onChange={(e) => setNhansu((f) => ({ ...f, sdt: e.target.value }))} className={inputCls} />}
                     />
                     <InfoField
-                      editing={editing}
+                      editing={editingInfo}
                       label="Email"
                       value={n.email}
                       input={<input value={nhansu.email} onChange={(e) => setNhansu((f) => ({ ...f, email: e.target.value }))} className={inputCls} />}
@@ -2054,20 +2051,20 @@ function HoSoDetailModal({
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-4">
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="STK"
                         value={n.stk}
                         input={<input value={nhansu.stk} onChange={(e) => setNhansu((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />}
                       />
                       <InfoField
-                        editing={editing}
+                        editing={editingInfo}
                         label="Ngân hàng"
                         value={n.ten_ngan_hang}
                         input={<input value={nhansu.ten_ngan_hang} onChange={(e) => setNhansu((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />}
                       />
                     </div>
                     <InfoField
-                      editing={editing}
+                      editing={editingInfo}
                       label="MS thuế TNCN"
                       value={n.ma_so_thue_tncn}
                       input={<input value={nhansu.ma_so_thue_tncn} onChange={(e) => setNhansu((f) => ({ ...f, ma_so_thue_tncn: e.target.value }))} className={inputCls} />}
@@ -2076,20 +2073,51 @@ function HoSoDetailModal({
                 </div>
             </div>
             </div>
+            <div className="shrink-0 border-t border-gray-200 px-6 py-3 flex items-center justify-end gap-2">
+              {editingInfo ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditingInfo(false)}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingInfo}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                  >
+                    {submittingInfo && <Loader2 size={13} className="animate-spin" />}
+                    Lưu
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEditingInfo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Pencil size={13} /> Sửa
+                </button>
+              )}
+            </div>
+          </form>
 
-            <div className={`h-full overflow-y-auto p-6 space-y-6 ${detailTab === 'hopdong' ? '' : 'hidden'}`}>
+          <form onSubmit={handleSubmitHopDong} className={`flex-1 min-h-0 flex flex-col ${detailTab === 'hopdong' ? '' : 'hidden'}`}>
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Hợp đồng</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     label="Số hợp đồng"
                     value={hoSo.so_hop_dong}
                     input={<input placeholder="VD: 015/2026/HĐHDV" value={hs.so_hop_dong} onChange={(e) => setHs((f) => ({ ...f, so_hop_dong: e.target.value }))} className={inputCls} />}
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     label="Ngày ký"
                     value={formatDateVN(hoSo.ngay_ky)}
@@ -2099,14 +2127,14 @@ function HoSoDetailModal({
                 {!isNhomMua && (
                   <div className="grid sm:grid-cols-2 gap-4 mt-4">
                     <InfoField
-                      editing={editing}
+                      editing={editingHopDong}
                       stacked
                       label="Ngày đi"
                       value={formatDateVN(hoSo.ngay_dich_vu)}
                       input={<DateInput value={hs.ngay_dich_vu} onChange={(v) => setHs((f) => ({ ...f, ngay_dich_vu: v }))} className="w-full" />}
                     />
                     <InfoField
-                      editing={editing}
+                      editing={editingHopDong}
                       stacked
                       label="Ngày về"
                       value={formatDateVN(hoSo.ngay_ket_thuc)}
@@ -2116,7 +2144,7 @@ function HoSoDetailModal({
                 )}
                 <div className="grid sm:grid-cols-3 gap-4 mt-4">
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="CTP/ngày (thực nhận)"
@@ -2130,7 +2158,7 @@ function HoSoDetailModal({
                     }
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="Số ngày công tác"
@@ -2143,7 +2171,7 @@ function HoSoDetailModal({
                     }
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="Tổng thực nhận"
@@ -2158,7 +2186,7 @@ function HoSoDetailModal({
                     }
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="CTP/ngày"
@@ -2166,7 +2194,7 @@ function HoSoDetailModal({
                     input={<input readOnly value={donGiaNgay > 0 ? donGiaNgay.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="Thuế TNCN"
@@ -2174,7 +2202,7 @@ function HoSoDetailModal({
                     input={<input readOnly value={soTienChiTra > 0 ? thueNop.toLocaleString('vi-VN') : ''} className={readOnlyInputCls} />}
                   />
                   <InfoField
-                    editing={editing}
+                    editing={editingHopDong}
                     stacked
                     right
                     label="Tổng CTP"
@@ -2244,6 +2272,35 @@ function HoSoDetailModal({
                   </div>
                 )}
               </div>
+            </div>
+            <div className="shrink-0 border-t border-gray-200 px-6 py-3 flex items-center justify-end gap-2">
+              {editingHopDong ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditingHopDong(false)}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingHopDong}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                  >
+                    {submittingHopDong && <Loader2 size={13} className="animate-spin" />}
+                    Lưu
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEditingHopDong}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Pencil size={13} /> Sửa
+                </button>
+              )}
             </div>
           </form>
         </div>
