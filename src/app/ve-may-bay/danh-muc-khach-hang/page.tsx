@@ -420,7 +420,7 @@ export default function DanhMucKhachHangPage() {
                       {k.contact ? (
                         <span className="inline-flex items-center gap-1"><User size={12} className="text-gray-300" />{k.contact.name}</span>
                       ) : (
-                        <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Gán liên hệ</button>
+                        <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Thêm liên hệ</button>
                       )}
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.phone ?? '—'}</td>
