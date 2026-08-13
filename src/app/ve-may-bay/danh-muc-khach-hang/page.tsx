@@ -407,7 +407,7 @@ function CustomerDetailPanel({
                 </button>
               </div>
               {!c ? (
-                <p className="text-sm text-gray-400">Chưa gán liên hệ CRM nào cho mã khách này.</p>
+                <p className="text-sm text-gray-400">Chưa có liên hệ nào cho mã khách này.</p>
               ) : (
                 <div className="space-y-3">
                   {contactRows.map(r => (
