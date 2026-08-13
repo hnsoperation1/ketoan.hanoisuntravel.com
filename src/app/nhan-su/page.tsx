@@ -171,7 +171,7 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
               {rows.map(r => (
                 <div key={r.label}>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
-                  <p className="text-sm text-gray-800">{r.value}</p>
+                  <p className="text-sm text-gray-900">{r.value}</p>
                 </div>
               ))}
             </div>
@@ -189,7 +189,7 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
                       className="block p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/40 transition-colors group"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{h.doan?.ten_doan ?? '(đoàn đã xoá)'}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{h.doan?.ten_doan ?? '(đoàn đã xoá)'}</p>
                         <ArrowRight size={13} className="text-gray-300 group-hover:text-brand-500 transition-colors shrink-0" />
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">
@@ -466,7 +466,7 @@ export default function NhanSuPage() {
                       <td className="px-4 py-2.5">
                         <button onClick={() => setViewingId(r.id)} className="text-left hover:text-brand-600 transition-colors">
                           <div className="whitespace-nowrap">
-                            <span className="font-semibold text-gray-800">{r.ho_ten}</span>
+                            <span className="font-semibold text-gray-900">{r.ho_ten}</span>
                             <span className="text-gray-400"> · {r.loai_nhan_su?.ma ?? r.loai_nhan_su?.ten ?? '—'}</span>
                             {maybeDup && (
                               <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold align-middle">có thể trùng</span>
@@ -475,12 +475,12 @@ export default function NhanSuPage() {
                           <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {r.so_cccd ?? '—'}</div>
                         </button>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-800">
+                      <td className="px-4 py-2.5 text-gray-900">
                         <div>{r.sdt ?? '—'}</div>
                         {r.email && <div className="text-xs text-gray-400">{r.email}</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-gray-800">{r.stk ? `${r.stk} - ${r.ten_ngan_hang ?? ''}` : '—'}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-700 font-semibold">{countsByNhanSu.get(r.id) ?? 0}</td>
+                      <td className="px-4 py-2.5 text-gray-900">{r.stk ? `${r.stk} - ${r.ten_ngan_hang ?? ''}` : '—'}</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-900 font-semibold">{countsByNhanSu.get(r.id) ?? 0}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <button onClick={() => setViewingId(r.id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
                           <Eye size={15} />
@@ -522,18 +522,18 @@ export default function NhanSuPage() {
                     <tr key={h.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
-                          <span className="font-semibold text-gray-800">{h.nhansu?.ho_ten ?? '—'}</span>
+                          <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
                           <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
                         </button>
                       </td>
                       <td className="px-4 py-2.5">
                         {h.doan ? (
-                          <Link href={`/doan/${h.doan.id}`} className="text-gray-800 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
+                          <Link href={`/doan/${h.doan.id}`} className="text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
                         ) : '(đoàn đã xoá)'}
                       </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-800">{formatDateVN(effectiveDate(h)) || '—'}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatTien(h.chi_tra)}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">{TRANG_THAI_LABELS[h.trang_thai]}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{formatDateVN(effectiveDate(h)) || '—'}</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-900">{formatTien(h.chi_tra)}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{TRANG_THAI_LABELS[h.trang_thai]}</td>
                     </tr>
                   ))}
                 </tbody>
