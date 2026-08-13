@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2 } from 'lucide-react'
+import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2, Eye, Pencil } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 
 type Contact = {
@@ -171,24 +171,92 @@ function ContactPicker({
   )
 }
 
-// Slide over bên phải — xem chi tiết liên hệ CRM đã gán cho 1 mã khách +
-// sửa ghi chú riêng của kế toán. Đổi/gán lại liên hệ vẫn làm ở modal "Sửa"
-// (đã có ContactPicker sẵn) — panel này chỉ tập trung xem + ghi chú, tránh
-// 2 nơi cùng sửa 1 việc.
-function ContactSlideOver({
+// Modal nhỏ RIÊNG BIỆT — chỉ để tìm/gán 1 liên hệ CRM cho 1 mã khách,
+// không lẫn với các field chính sách khác (nhóm/mã khách/quy tắc...) như
+// modal "Sửa khách hàng" cũ. Mở từ nút "Thêm/Đổi liên hệ" ở cột "Người làm
+// việc" hoặc từ trong CustomerDetailPanel.
+function ContactAssignModal({
   khach,
   onClose,
-  onEdit,
-  onSaveGhiChu,
+  onAssigned,
 }: {
   khach: Khach
   onClose: () => void
-  onEdit: () => void
-  onSaveGhiChu: (id: string, ghiChu: string) => Promise<void>
+  onAssigned: (contact: Contact | null) => Promise<boolean>
+}) {
+  const [selected, setSelected] = useState<Contact | null>(khach.contact)
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      const ok = await onAssigned(selected)
+      if (ok) onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+        <h2 className="font-bold text-gray-900">Liên hệ phụ trách</h2>
+        <p className="text-xs text-gray-400 mb-3">{khach.ma_khach}</p>
+        <ContactPicker selected={selected} onSelect={setSelected} />
+        <div className="flex items-center gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
+          <button onClick={save} disabled={saving}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-colors">
+            {saving && <Loader2 size={14} className="animate-spin" />} Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+type PolicyForm = {
+  nhom: string
+  ma_khach: string
+  ten_khach: string
+  doi_tuong_quy_tac: string
+  hinh_thuc_cong_no: string
+  phi_xuat_ve: string
+}
+
+function policyFormFrom(k: Khach): PolicyForm {
+  return {
+    nhom: k.nhom,
+    ma_khach: k.ma_khach,
+    ten_khach: k.ten_khach ?? '',
+    doi_tuong_quy_tac: k.doi_tuong_quy_tac ?? '',
+    hinh_thuc_cong_no: k.hinh_thuc_cong_no ?? '',
+    phi_xuat_ve: k.phi_xuat_ve ?? '',
+  }
+}
+
+// Slide over bên phải — "Thông tin khách hàng" đầy đủ cho 1 mã khách: các
+// field chính sách (nhóm/mã khách/tên khách/quy tắc/công nợ/phí xuất vé,
+// sửa được qua nút Sửa/Huỷ/Lưu ngay trong panel), liên hệ CRM phụ trách
+// (chỉ xem — đổi/gán qua ContactAssignModal riêng, không trộn vào đây),
+// doanh thu/lợi nhuận, và ghi chú (lưu riêng).
+function CustomerDetailPanel({
+  khach,
+  onClose,
+  onSave,
+  onOpenAssignContact,
+}: {
+  khach: Khach
+  onClose: () => void
+  onSave: (id: string, patch: Partial<Khach>) => Promise<boolean>
+  onOpenAssignContact: () => void
 }) {
   const [visible, setVisible] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState<PolicyForm>(() => policyFormFrom(khach))
   const [ghiChu, setGhiChu] = useState(khach.ghi_chu ?? '')
-  const [saving, setSaving] = useState(false)
+  const [savingGhiChu, setSavingGhiChu] = useState(false)
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true))
@@ -200,22 +268,41 @@ function ContactSlideOver({
     setTimeout(onClose, 200)
   }
 
-  async function save() {
-    setSaving(true)
+  function startEditing() {
+    setForm(policyFormFrom(khach))
+    setEditing(true)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.ma_khach.trim()) return
+    setSubmitting(true)
     try {
-      await onSaveGhiChu(khach.id, ghiChu.trim())
+      const ok = await onSave(khach.id, {
+        nhom: form.nhom,
+        ma_khach: form.ma_khach.trim(),
+        ten_khach: form.ten_khach.trim() || null,
+        doi_tuong_quy_tac: form.doi_tuong_quy_tac.trim() || null,
+        hinh_thuc_cong_no: form.hinh_thuc_cong_no.trim() || null,
+        phi_xuat_ve: form.phi_xuat_ve.trim() || null,
+      })
+      if (ok) setEditing(false)
     } finally {
-      setSaving(false)
+      setSubmitting(false)
+    }
+  }
+
+  async function saveGhiChu() {
+    setSavingGhiChu(true)
+    try {
+      await onSave(khach.id, { ghi_chu: ghiChu.trim() || null })
+    } finally {
+      setSavingGhiChu(false)
     }
   }
 
   const c = khach.contact
-  // "Người làm việc" (liên hệ CRM) chỉ là 1 MỤC trong thông tin khách hàng
-  // này, không phải toàn bộ nội dung panel — panel đại diện cho cả mã
-  // khách (khach), sau này còn thêm mục khác (doanh thu/lợi nhuận đã hiện
-  // ở bảng, ghi chú ở dưới...), nên không đặt tên/tiêu đề xoay quanh riêng
-  // "liên hệ".
-  const rows: { label: string; value: string }[] = [
+  const contactRows: { label: string; value: string }[] = [
     { label: 'Nguồn', value: c?.source ? (SOURCE_LABELS[c.source] ?? c.source) : '—' },
     { label: 'Người làm việc', value: c?.name ?? '—' },
     { label: 'SĐT', value: c?.phone ?? '—' },
@@ -244,50 +331,121 @@ function ContactSlideOver({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Người phụ trách (liên hệ CRM)</p>
-            {!c ? (
-              <div className="text-center py-6 bg-gray-50 rounded-xl">
-                <p className="text-sm text-gray-400 mb-3">Chưa gán liên hệ CRM nào cho mã khách này.</p>
-                <button onClick={onEdit} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">
-                  Thêm liên hệ
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Nhóm</p>
+                {editing ? (
+                  <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
+                    {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
+                  </select>
+                ) : (
+                  <p className="text-sm text-gray-800">{NHOM_LABELS[khach.nhom] ?? khach.nhom}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Mã khách</p>
+                {editing ? (
+                  <input value={form.ma_khach} onChange={e => setForm(f => ({ ...f, ma_khach: e.target.value }))} className={INPUT} />
+                ) : (
+                  <p className="text-sm font-semibold text-gray-800">{khach.ma_khach}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Tên khách</p>
+                {editing ? (
+                  <input value={form.ten_khach} onChange={e => setForm(f => ({ ...f, ten_khach: e.target.value }))} className={INPUT} />
+                ) : (
+                  <p className="text-sm text-gray-800">{khach.ten_khach ?? '—'}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Đối tượng áp dụng / Quy tắc đặt mã</p>
+                {editing ? (
+                  <textarea rows={3} value={form.doi_tuong_quy_tac} onChange={e => setForm(f => ({ ...f, doi_tuong_quy_tac: e.target.value }))} className={INPUT} />
+                ) : (
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.doi_tuong_quy_tac ?? '—'}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Hình thức công nợ</p>
+                {editing ? (
+                  <textarea rows={2} value={form.hinh_thuc_cong_no} onChange={e => setForm(f => ({ ...f, hinh_thuc_cong_no: e.target.value }))} className={INPUT} />
+                ) : (
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.hinh_thuc_cong_no ?? '—'}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Phí xuất vé</p>
+                {editing ? (
+                  <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
+                ) : (
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.phi_xuat_ve ?? '—'}</p>
+                )}
+              </div>
+            </div>
+
+            {editing ? (
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors">Huỷ</button>
+                <button type="submit" disabled={submitting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors">
+                  {submitting && <Loader2 size={13} className="animate-spin" />} Lưu
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {rows.map(r => (
-                  <div key={r.label}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
-                    <p className="text-sm text-gray-800">{r.value}</p>
-                  </div>
-                ))}
-                <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
-                <button onClick={onEdit} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                  Đổi liên hệ
+              <button type="button" onClick={startEditing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                <Pencil size={13} /> Sửa
+              </button>
+            )}
+
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Người phụ trách (liên hệ CRM)</p>
+                <button type="button" onClick={onOpenAssignContact} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                  {c ? 'Đổi liên hệ' : 'Thêm liên hệ'}
                 </button>
               </div>
-            )}
-          </div>
+              {!c ? (
+                <p className="text-sm text-gray-400">Chưa gán liên hệ CRM nào cho mã khách này.</p>
+              ) : (
+                <div className="space-y-3">
+                  {contactRows.map(r => (
+                    <div key={r.label}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
+                      <p className="text-sm text-gray-800">{r.value}</p>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
+                </div>
+              )}
+            </div>
 
-          <div className="pt-4 border-t border-gray-100">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Ghi chú</p>
-            <textarea
-              rows={4}
-              value={ghiChu}
-              onChange={e => setGhiChu(e.target.value)}
-              placeholder="Ghi chú riêng cho mã khách này..."
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white placeholder:text-gray-300"
-            />
-            <button
-              onClick={save}
-              disabled={saving || ghiChu.trim() === (khach.ghi_chu ?? '')}
-              className="mt-2 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
-            >
-              {saving && <Loader2 size={13} className="animate-spin" />} Lưu ghi chú
-            </button>
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Doanh thu / Lợi nhuận</p>
+              <p className="text-sm text-gray-800">{formatVND(khach.doanh_thu)} / <span className="text-emerald-600 font-semibold">{formatVND(khach.loi_nhuan)}</span></p>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Ghi chú</p>
+              <textarea
+                rows={4}
+                value={ghiChu}
+                onChange={e => setGhiChu(e.target.value)}
+                placeholder="Ghi chú riêng cho mã khách này..."
+                className={INPUT}
+              />
+              <button
+                type="button"
+                onClick={saveGhiChu}
+                disabled={savingGhiChu || ghiChu.trim() === (khach.ghi_chu ?? '')}
+                className="mt-2 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+              >
+                {savingGhiChu && <Loader2 size={13} className="animate-spin" />} Lưu ghi chú
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </>,
     document.body,
@@ -313,7 +471,8 @@ export default function DanhMucKhachHangPage() {
   const [viewMode, setViewMode] = useState<'co_ban' | 'day_du'>('co_ban')
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [viewingContact, setViewingContact] = useState<Khach | null>(null)
+  const [viewingKhach, setViewingKhach] = useState<Khach | null>(null)
+  const [assigningContactFor, setAssigningContactFor] = useState<Khach | null>(null)
   useEffect(() => setMounted(true), [])
 
   const loadData = useCallback(async () => {
@@ -400,32 +559,34 @@ export default function DanhMucKhachHangPage() {
     }
   }
 
-  // Lưu riêng ghi_chu từ slide over — gửi lại NGUYÊN các field hiện có của
-  // dòng đó (POST cùng 1 endpoint với modal Sửa) để không làm mất dữ liệu
-  // đã nhập ở các field khác.
-  async function saveGhiChu(id: string, ghiChu: string) {
+  // Lưu tổng quát cho CustomerDetailPanel/ContactAssignModal — patch chỉ
+  // cần chứa field muốn đổi, hàm tự gộp với dòng hiện có rồi gửi NGUYÊN cả
+  // dòng lên API (route yêu cầu đủ nhom/ma_khach), tránh làm mất dữ liệu ở
+  // các field không đổi.
+  async function saveKhach(id: string, patch: Partial<Khach>): Promise<boolean> {
     const k = rows.find(r => r.id === id)
-    if (!k) return
+    if (!k) return false
+    const merged: Khach = { ...k, ...patch }
     const res = await fetch('/api/ve-may-bay/vmb-khach-hang', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: k.id,
-        nhom: k.nhom,
-        ma_khach: k.ma_khach,
-        ten_khach: k.ten_khach,
-        doi_tuong_quy_tac: k.doi_tuong_quy_tac,
-        hinh_thuc_cong_no: k.hinh_thuc_cong_no,
-        phi_xuat_ve: k.phi_xuat_ve,
-        active: k.active,
-        contact_id: k.contact_id,
-        ghi_chu: ghiChu,
+        id: merged.id,
+        nhom: merged.nhom,
+        ma_khach: merged.ma_khach,
+        ten_khach: merged.ten_khach,
+        doi_tuong_quy_tac: merged.doi_tuong_quy_tac,
+        hinh_thuc_cong_no: merged.hinh_thuc_cong_no,
+        phi_xuat_ve: merged.phi_xuat_ve,
+        active: merged.active,
+        contact_id: merged.contact_id,
+        ghi_chu: merged.ghi_chu,
       }),
     })
-    if (res.ok) {
-      setRows(prev => prev.map(r => (r.id === id ? { ...r, ghi_chu: ghiChu || null } : r)))
-      setViewingContact(prev => (prev && prev.id === id ? { ...prev, ghi_chu: ghiChu || null } : prev))
-    }
+    if (!res.ok) return false
+    setRows(prev => prev.map(r => (r.id === id ? merged : r)))
+    setViewingKhach(prev => (prev && prev.id === id ? merged : prev))
+    return true
   }
 
   // "Phóng to": render qua Portal thẳng vào document.body, giống cách
@@ -481,37 +642,48 @@ export default function DanhMucKhachHangPage() {
           <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
+                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận'].map(h => (
                   <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
               ) : loadError ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center">
+                <tr><td colSpan={6} className="px-5 py-14 text-center">
                   <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                   <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+                <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
               ) : filtered.map(k => (
                 <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
                   <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-gray-500" title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">
+                    <span className="inline-flex items-center gap-1.5">
+                      {k.ma_khach}
+                      <button
+                        onClick={() => setViewingKhach(k)}
+                        title="Xem chi tiết"
+                        className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                      >
+                        <Eye size={13} />
+                      </button>
+                    </span>
+                  </td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     {k.contact ? (
                       <button
-                        onClick={() => setViewingContact(k)}
+                        onClick={() => setAssigningContactFor(k)}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:border-brand-300 hover:text-brand-600 transition-colors"
                       >
                         <User size={12} className="text-gray-400" />{k.contact.name}
                       </button>
                     ) : (
                       <button
-                        onClick={() => setViewingContact(k)}
+                        onClick={() => setAssigningContactFor(k)}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
                       >
                         <Plus size={12} />
@@ -521,9 +693,6 @@ export default function DanhMucKhachHangPage() {
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -583,12 +752,20 @@ export default function DanhMucKhachHangPage() {
     </div>
   )
 
-  const contactSlideOver = viewingContact && (
-    <ContactSlideOver
-      khach={viewingContact}
-      onClose={() => setViewingContact(null)}
-      onEdit={() => { const k = viewingContact; setViewingContact(null); openEdit(k) }}
-      onSaveGhiChu={saveGhiChu}
+  const customerDetailPanel = viewingKhach && (
+    <CustomerDetailPanel
+      khach={viewingKhach}
+      onClose={() => setViewingKhach(null)}
+      onSave={saveKhach}
+      onOpenAssignContact={() => setAssigningContactFor(viewingKhach)}
+    />
+  )
+
+  const contactAssignModal = assigningContactFor && (
+    <ContactAssignModal
+      khach={assigningContactFor}
+      onClose={() => setAssigningContactFor(null)}
+      onAssigned={c => saveKhach(assigningContactFor.id, { contact_id: c?.id ?? null, contact: c })}
     />
   )
 
@@ -597,7 +774,8 @@ export default function DanhMucKhachHangPage() {
       <>
         {tableSection}
         {formModal}
-        {contactSlideOver}
+        {customerDetailPanel}
+        {contactAssignModal}
       </>,
       document.body,
     )
@@ -606,7 +784,8 @@ export default function DanhMucKhachHangPage() {
   return (
     <div className="p-5 space-y-4">
       {formModal}
-      {contactSlideOver}
+      {customerDetailPanel}
+      {contactAssignModal}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-gray-400">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
         <div className="flex items-center gap-2">
