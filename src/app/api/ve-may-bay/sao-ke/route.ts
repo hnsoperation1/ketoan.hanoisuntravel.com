@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireSuperAdminUser } from '@/lib/auth'
+import { requireSuperAdminOrBossUser } from '@/lib/auth'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 
-// GET — toàn bộ dòng sao kê đã đồng bộ. Tạm thời chỉ super_admin xem được
-// (khác các route /ve-may-bay/* khác vốn mở cho cả ke_toan_allowlist/boss)
-// — xem chú thích quyền trong migration_sao_ke_giao_dich.sql (repo
-// hns-crm). Lọc/tìm kiếm xử lý phía client vì tổng dữ liệu (~4.7k dòng)
-// vẫn nhẹ để tải 1 lần — nhưng PHẢI lấy hết bằng .range() phân trang,
-// .limit(N) đơn lẻ trước đây từng âm thầm cắt mất dòng mới nhất khi bảng
-// vượt trần mặc định của PostgREST (xem @/lib/supabase/fetch-all).
+// GET — toàn bộ dòng sao kê đã đồng bộ. Trước đây chỉ super_admin xem
+// được; mở thêm cho boss theo yêu cầu 2026-08-13, khớp đúng route tương
+// ứng bên hns-crm — vẫn KHÔNG mở cho ke_toan_allowlist thường vì đây là sổ
+// quỹ/ngân hàng tổng công ty, nhạy cảm hơn dữ liệu vé máy bay thông
+// thường (xem migration_sao_ke_giao_dich.sql, repo hns-crm). Lọc/tìm kiếm
+// xử lý phía client vì tổng dữ liệu (~4.7k dòng) vẫn nhẹ để tải 1 lần —
+// nhưng PHẢI lấy hết bằng .range() phân trang, .limit(N) đơn lẻ trước đây
+// từng âm thầm cắt mất dòng mới nhất khi bảng vượt trần mặc định của
+// PostgREST (xem @/lib/supabase/fetch-all).
 export async function GET() {
-  const { unauthorized } = await requireSuperAdminUser()
+  const { unauthorized } = await requireSuperAdminOrBossUser()
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

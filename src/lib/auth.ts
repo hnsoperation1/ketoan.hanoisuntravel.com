@@ -48,3 +48,29 @@ export async function requireSuperAdminUser() {
   }
   return { user: data.user, unauthorized: null }
 }
+
+/**
+ * Dùng riêng cho GET /api/ve-may-bay/sao-ke (đọc TOÀN BỘ sổ quỹ/ngân hàng
+ * tổng công ty, không riêng vé máy bay) — mở cho boss theo yêu cầu
+ * 2026-08-13, khớp đúng route tương ứng bên hns-crm
+ * (requireSuperAdminOrBoss() trong lib/require-ke-toan.ts). role đọc thẳng
+ * từ bảng users (không qua RPC như is_super_admin) — cùng bảng users dùng
+ * chung Supabase project với hns-crm, cùng cách đọc.
+ */
+export async function requireSuperAdminOrBossUser() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) {
+    return { user: null, unauthorized: NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 }) }
+  }
+  const { data: isSuperAdmin } = await supabase.rpc('is_super_admin')
+  if (isSuperAdmin) return { user: data.user, unauthorized: null }
+  const { data: profile } = await supabase.from('users').select('role').eq('id', data.user.id).single()
+  if (profile?.role !== 'boss') {
+    return {
+      user: null,
+      unauthorized: NextResponse.json({ error: 'Chỉ Super Admin hoặc Boss mới có quyền truy cập' }, { status: 403 }),
+    }
+  }
+  return { user: data.user, unauthorized: null }
+}

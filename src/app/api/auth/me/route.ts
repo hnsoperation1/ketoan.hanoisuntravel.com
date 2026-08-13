@@ -6,6 +6,16 @@ export async function GET() {
   const { user, unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
   const supabase = await createClient()
-  const { data: isSuperAdmin } = await supabase.rpc('is_super_admin')
-  return NextResponse.json({ user: { id: user.id, email: user.email, is_super_admin: isSuperAdmin ?? false } })
+  const [{ data: isSuperAdmin }, { data: profile }] = await Promise.all([
+    supabase.rpc('is_super_admin'),
+    supabase.from('users').select('role').eq('id', user.id).single(),
+  ])
+  return NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      is_super_admin: isSuperAdmin ?? false,
+      is_boss: profile?.role === 'boss',
+    },
+  })
 }
