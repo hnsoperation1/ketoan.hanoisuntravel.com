@@ -252,6 +252,7 @@ function CustomerDetailPanel({
   onOpenAssignContact: () => void
 }) {
   const [visible, setVisible] = useState(false)
+  const [tab, setTab] = useState<'info' | 'policy'>('info')
   const [editing, setEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<PolicyForm>(() => policyFormFrom(khach))
@@ -331,60 +332,81 @@ function CustomerDetailPanel({
           </button>
         </div>
 
+        <div className="flex items-center gap-1 px-5 border-b border-gray-200 shrink-0">
+          {([
+            { key: 'info', label: 'Thông tin' },
+            { key: 'policy', label: 'Chính sách' },
+          ] as const).map(t => (
+            <button key={t.key} type="button" onClick={() => setTab(t.key)}
+              className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                tab === t.key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
-            <div className="space-y-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Nhóm</p>
-                {editing ? (
-                  <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
-                    {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
-                  </select>
-                ) : (
-                  <p className="text-sm text-gray-800">{NHOM_LABELS[khach.nhom] ?? khach.nhom}</p>
-                )}
+            {tab === 'info' && (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Nhóm</p>
+                  {editing ? (
+                    <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
+                      {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
+                    </select>
+                  ) : (
+                    <p className="text-sm text-gray-800">{NHOM_LABELS[khach.nhom] ?? khach.nhom}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Mã khách</p>
+                  {editing ? (
+                    <input value={form.ma_khach} onChange={e => setForm(f => ({ ...f, ma_khach: e.target.value }))} className={INPUT} />
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-800">{khach.ma_khach}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Tên khách</p>
+                  {editing ? (
+                    <input value={form.ten_khach} onChange={e => setForm(f => ({ ...f, ten_khach: e.target.value }))} className={INPUT} />
+                  ) : (
+                    <p className="text-sm text-gray-800">{khach.ten_khach ?? '—'}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Mã khách</p>
-                {editing ? (
-                  <input value={form.ma_khach} onChange={e => setForm(f => ({ ...f, ma_khach: e.target.value }))} className={INPUT} />
-                ) : (
-                  <p className="text-sm font-semibold text-gray-800">{khach.ma_khach}</p>
-                )}
+            )}
+
+            {tab === 'policy' && (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Đối tượng áp dụng / Quy tắc đặt mã</p>
+                  {editing ? (
+                    <textarea rows={3} value={form.doi_tuong_quy_tac} onChange={e => setForm(f => ({ ...f, doi_tuong_quy_tac: e.target.value }))} className={INPUT} />
+                  ) : (
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.doi_tuong_quy_tac ?? '—'}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Hình thức công nợ</p>
+                  {editing ? (
+                    <textarea rows={2} value={form.hinh_thuc_cong_no} onChange={e => setForm(f => ({ ...f, hinh_thuc_cong_no: e.target.value }))} className={INPUT} />
+                  ) : (
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.hinh_thuc_cong_no ?? '—'}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Phí xuất vé</p>
+                  {editing ? (
+                    <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
+                  ) : (
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.phi_xuat_ve ?? '—'}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Tên khách</p>
-                {editing ? (
-                  <input value={form.ten_khach} onChange={e => setForm(f => ({ ...f, ten_khach: e.target.value }))} className={INPUT} />
-                ) : (
-                  <p className="text-sm text-gray-800">{khach.ten_khach ?? '—'}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Đối tượng áp dụng / Quy tắc đặt mã</p>
-                {editing ? (
-                  <textarea rows={3} value={form.doi_tuong_quy_tac} onChange={e => setForm(f => ({ ...f, doi_tuong_quy_tac: e.target.value }))} className={INPUT} />
-                ) : (
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.doi_tuong_quy_tac ?? '—'}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Hình thức công nợ</p>
-                {editing ? (
-                  <textarea rows={2} value={form.hinh_thuc_cong_no} onChange={e => setForm(f => ({ ...f, hinh_thuc_cong_no: e.target.value }))} className={INPUT} />
-                ) : (
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.hinh_thuc_cong_no ?? '—'}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Phí xuất vé</p>
-                {editing ? (
-                  <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
-                ) : (
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{khach.phi_xuat_ve ?? '—'}</p>
-                )}
-              </div>
-            </div>
+            )}
 
             {editing ? (
               <div className="flex items-center gap-2">
@@ -399,50 +421,54 @@ function CustomerDetailPanel({
               </button>
             )}
 
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Người phụ trách</p>
-                <button type="button" onClick={onOpenAssignContact} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                  {c ? 'Đổi liên hệ' : 'Thêm liên hệ'}
-                </button>
-              </div>
-              {!c ? (
-                <p className="text-sm text-gray-400">Chưa có liên hệ nào cho mã khách này.</p>
-              ) : (
-                <div className="space-y-3">
-                  {contactRows.map(r => (
-                    <div key={r.label}>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
-                      <p className="text-sm text-gray-800">{r.value}</p>
+            {tab === 'info' && (
+              <>
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Người phụ trách</p>
+                    <button type="button" onClick={onOpenAssignContact} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                      {c ? 'Đổi liên hệ' : 'Thêm liên hệ'}
+                    </button>
+                  </div>
+                  {!c ? (
+                    <p className="text-sm text-gray-400">Chưa có liên hệ nào cho mã khách này.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {contactRows.map(r => (
+                        <div key={r.label}>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
+                          <p className="text-sm text-gray-800">{r.value}</p>
+                        </div>
+                      ))}
+                      <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
                     </div>
-                  ))}
-                  <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Doanh thu / Lợi nhuận</p>
-              <p className="text-sm text-gray-800">{formatVND(khach.doanh_thu)} / <span className="text-emerald-600 font-semibold">{formatVND(khach.loi_nhuan)}</span></p>
-            </div>
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Doanh thu / Lợi nhuận</p>
+                  <p className="text-sm text-gray-800">{formatVND(khach.doanh_thu)} / <span className="text-emerald-600 font-semibold">{formatVND(khach.loi_nhuan)}</span></p>
+                </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Ghi chú</p>
-              <textarea
-                rows={4}
-                value={ghiChu}
-                onChange={e => setGhiChu(e.target.value)}
-                className={INPUT}
-              />
-              <button
-                type="button"
-                onClick={saveGhiChu}
-                disabled={savingGhiChu || ghiChu.trim() === (khach.ghi_chu ?? '')}
-                className="mt-2 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
-              >
-                {savingGhiChu && <Loader2 size={13} className="animate-spin" />} Lưu ghi chú
-              </button>
-            </div>
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Ghi chú</p>
+                  <textarea
+                    rows={4}
+                    value={ghiChu}
+                    onChange={e => setGhiChu(e.target.value)}
+                    className={INPUT}
+                  />
+                  <button
+                    type="button"
+                    onClick={saveGhiChu}
+                    disabled={savingGhiChu || ghiChu.trim() === (khach.ghi_chu ?? '')}
+                    className="mt-2 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+                  >
+                    {savingGhiChu && <Loader2 size={13} className="animate-spin" />} Lưu ghi chú
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </form>
       </div>
@@ -463,11 +489,9 @@ export default function DanhMucKhachHangPage() {
   const [search, setSearch] = useState('')
   const [filterNhom, setFilterNhom] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [formContact, setFormContact] = useState<Contact | null>(null)
   const [saving, setSaving] = useState(false)
-  const [viewMode, setViewMode] = useState<'co_ban' | 'day_du'>('co_ban')
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [viewingKhach, setViewingKhach] = useState<Khach | null>(null)
@@ -519,24 +543,8 @@ export default function DanhMucKhachHangPage() {
   }, [rows, filterNhom, search])
 
   function openAdd() {
-    setEditingId(null)
     setForm(emptyForm)
     setFormContact(null)
-    setFormOpen(true)
-  }
-
-  function openEdit(k: Khach) {
-    setEditingId(k.id)
-    setForm({
-      nhom: k.nhom,
-      ma_khach: k.ma_khach,
-      ten_khach: k.ten_khach ?? '',
-      doi_tuong_quy_tac: k.doi_tuong_quy_tac ?? '',
-      hinh_thuc_cong_no: k.hinh_thuc_cong_no ?? '',
-      phi_xuat_ve: k.phi_xuat_ve ?? '',
-      contact_id: k.contact_id,
-    })
-    setFormContact(k.contact)
     setFormOpen(true)
   }
 
@@ -547,7 +555,7 @@ export default function DanhMucKhachHangPage() {
       const res = await fetch('/api/ve-may-bay/vmb-khach-hang', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId, ...form, active: true }),
+        body: JSON.stringify({ ...form, active: true }),
       })
       if (res.ok) {
         setFormOpen(false)
@@ -603,100 +611,65 @@ export default function DanhMucKhachHangPage() {
         </button>
       </div>
       <div className={expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'}>
-        {viewMode === 'co_ban' ? (
-          <table className="w-full text-sm list-table">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
-              ) : loadError ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center">
-                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(k => (
-                <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
-                  <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.doi_tuong_quy_tac ?? ''}>{k.doi_tuong_quy_tac ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.hinh_thuc_cong_no ?? ''}>{k.hinh_thuc_cong_no ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.phi_xuat_ve ?? ''}>{k.phi_xuat_ve ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
-                  </td>
-                </tr>
+        <table className="w-full text-sm list-table">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              {['Nguồn', 'Phân loại', 'Mã khách', 'Tên khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận'].map(h => (
+                <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
               ))}
-            </tbody>
-          </table>
-        ) : (
-          <table className="w-full text-sm list-table">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận'].map(h => (
-                  <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
-                ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan={7} className="px-5 py-14 text-center">
+                <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+              </td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+            ) : filtered.map(k => (
+              <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
+                <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap text-gray-500" title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">
+                  <span className="inline-flex items-center gap-1.5">
+                    {k.ma_khach}
+                    <button
+                      onClick={() => setViewingKhach(k)}
+                      title="Xem chi tiết"
+                      className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    >
+                      <Eye size={13} />
+                    </button>
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-gray-700 max-w-[200px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  {k.contact ? (
+                    <button
+                      onClick={() => setAssigningContactFor(k)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:border-brand-300 hover:text-brand-600 transition-colors"
+                    >
+                      <User size={12} className="text-gray-400" />{k.contact.name}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setAssigningContactFor(k)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                    >
+                      <Plus size={12} />
+                      Thêm liên hệ
+                    </button>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
+                <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
-              ) : loadError ? (
-                <tr><td colSpan={6} className="px-5 py-14 text-center">
-                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(k => (
-                <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500" title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">
-                    <span className="inline-flex items-center gap-1.5">
-                      {k.ma_khach}
-                      <button
-                        onClick={() => setViewingKhach(k)}
-                        title="Xem chi tiết"
-                        className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                      >
-                        <Eye size={13} />
-                      </button>
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    {k.contact ? (
-                      <button
-                        onClick={() => setAssigningContactFor(k)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:border-brand-300 hover:text-brand-600 transition-colors"
-                      >
-                        <User size={12} className="text-gray-400" />{k.contact.name}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setAssigningContactFor(k)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
-                      >
-                        <Plus size={12} />
-                        Thêm liên hệ
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -704,7 +677,7 @@ export default function DanhMucKhachHangPage() {
   const formModal = formOpen && (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
-        <h2 className="font-bold text-gray-900 mb-3">{editingId ? 'Sửa khách hàng' : 'Thêm khách hàng'}</h2>
+        <h2 className="font-bold text-gray-900 mb-3">Thêm khách hàng</h2>
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Nhóm *</label>
@@ -819,19 +792,7 @@ export default function DanhMucKhachHangPage() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</p>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-          <button onClick={() => setViewMode('co_ban')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'co_ban' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>
-            Cơ bản
-          </button>
-          <button onClick={() => setViewMode('day_du')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'day_du' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>
-            Đầy đủ
-          </button>
-        </div>
-      </div>
+      <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</p>
 
       {tableSection}
     </div>
