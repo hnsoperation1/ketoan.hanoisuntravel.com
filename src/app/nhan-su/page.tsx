@@ -475,11 +475,11 @@ export default function NhanSuPage() {
                           <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {r.so_cccd ?? '—'}</div>
                         </button>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-600">
+                      <td className="px-4 py-2.5 text-gray-800">
                         <div>{r.sdt ?? '—'}</div>
                         {r.email && <div className="text-xs text-gray-400">{r.email}</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-gray-600">{r.stk ? `${r.stk} - ${r.ten_ngan_hang ?? ''}` : '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-800">{r.stk ? `${r.stk} - ${r.ten_ngan_hang ?? ''}` : '—'}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-700 font-semibold">{countsByNhanSu.get(r.id) ?? 0}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <button onClick={() => setViewingId(r.id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
@@ -528,12 +528,12 @@ export default function NhanSuPage() {
                       </td>
                       <td className="px-4 py-2.5">
                         {h.doan ? (
-                          <Link href={`/doan/${h.doan.id}`} className="text-gray-700 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
+                          <Link href={`/doan/${h.doan.id}`} className="text-gray-800 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
                         ) : '(đoàn đã xoá)'}
                       </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{formatDateVN(effectiveDate(h)) || '—'}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-700">{formatTien(h.chi_tra)}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{TRANG_THAI_LABELS[h.trang_thai]}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-800">{formatDateVN(effectiveDate(h)) || '—'}</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatTien(h.chi_tra)}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">{TRANG_THAI_LABELS[h.trang_thai]}</td>
                     </tr>
                   ))}
                 </tbody>
