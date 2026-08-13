@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, Loader2, Search, X, User } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2 } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 
 type Contact = {
@@ -41,6 +42,21 @@ const NHOM_LABELS: Record<string, string> = {
   series_sao_do: 'Vé Seri Sao Đỏ',
 }
 const NHOM_OPTIONS = Object.keys(NHOM_LABELS)
+
+// Mã viết tắt cột "Phân loại" ở chế độ Đầy đủ — đọc từ đúng file gốc "Link
+// nhập _ Phòng vé HNS (Năm 2026).xlsx" sheet "MÃ KHÁCH VÉ" cột A: chỉ 4 nhóm
+// dai_ly/doanh_nghiep/ag_series/khach_le có mã thật (DLY/DN/AG/KLE), 4 nhóm
+// còn lại file để trống nên tự đặt mã ngắn hợp lý.
+const NHOM_SHORT_LABELS: Record<string, string> = {
+  nhan_su: 'NS',
+  dai_ly: 'DLY',
+  doanh_nghiep: 'DN',
+  ag_series: 'AG',
+  khach_le: 'KLE',
+  doan_tour: 'ĐOÀN',
+  series_vj: 'SERI VJ',
+  series_sao_do: 'SERI SĐ',
+}
 
 // Khớp đúng SOURCE_LABELS bên CRM (bảng contacts.source) — copy vì 2 repo
 // riêng, không import chéo được.
@@ -171,6 +187,9 @@ export default function DanhMucKhachHangPage() {
   const [formContact, setFormContact] = useState<Contact | null>(null)
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'co_ban' | 'day_du'>('co_ban')
+  const [expanded, setExpanded] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -256,8 +275,168 @@ export default function DanhMucKhachHangPage() {
     }
   }
 
+  // "Phóng to": render qua Portal thẳng vào document.body, giống cách
+  // /ve-may-bay/cong-no đang làm — thoát hẳn khỏi layout trang (Sidebar/
+  // Topbar) để bảng nhiều cột ở chế độ "Đầy đủ" chiếm trọn màn hình. Chỉ
+  // phóng to riêng khối bảng, KHÔNG kèm thanh tìm kiếm/bộ lọc phía trên.
+  const tableSection = (
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col' : 'bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container'}>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
+        <span className="text-xs text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</span>
+        <button onClick={() => setExpanded(e => !e)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
+          {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          {expanded ? 'Thu nhỏ' : 'Phóng to'}
+        </button>
+      </div>
+      <div className={expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'}>
+        {viewMode === 'co_ban' ? (
+          <table className="w-full text-sm list-table">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+              ) : loadError ? (
+                <tr><td colSpan={7} className="px-5 py-14 text-center">
+                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                </td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+              ) : filtered.map(k => (
+                <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
+                  <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.doi_tuong_quy_tac ?? ''}>{k.doi_tuong_quy_tac ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.hinh_thuc_cong_no ?? ''}>{k.hinh_thuc_cong_no ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.phi_xuat_ve ?? ''}>{k.phi_xuat_ve ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-sm list-table">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'SĐT', 'Tên cty', 'Email', 'Địa chỉ', 'MST', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
+                  <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr><td colSpan={12} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+              ) : loadError ? (
+                <tr><td colSpan={12} className="px-5 py-14 text-center">
+                  <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                  <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                </td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={12} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+              ) : filtered.map(k => (
+                <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500" title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">
+                    {k.contact ? (
+                      <span className="inline-flex items-center gap-1"><User size={12} className="text-gray-300" />{k.contact.name}</span>
+                    ) : (
+                      <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Thêm liên hệ</button>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.phone ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.company ?? ''}>{k.contact?.company ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.email ?? ''}>{k.contact?.email ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate">—</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.tax_code ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+
+  const formModal = formOpen && (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+        <h2 className="font-bold text-gray-900 mb-3">{editingId ? 'Sửa khách hàng' : 'Thêm khách hàng'}</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Nhóm *</label>
+            <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
+              {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Mã khách *</label>
+            <input value={form.ma_khach} onChange={e => setForm(f => ({ ...f, ma_khach: e.target.value }))} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Tên khách</label>
+            <input value={form.ten_khach} onChange={e => setForm(f => ({ ...f, ten_khach: e.target.value }))} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Đối tượng áp dụng / Quy tắc đặt mã</label>
+            <textarea rows={3} value={form.doi_tuong_quy_tac} onChange={e => setForm(f => ({ ...f, doi_tuong_quy_tac: e.target.value }))} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Hình thức công nợ</label>
+            <textarea rows={2} value={form.hinh_thuc_cong_no} onChange={e => setForm(f => ({ ...f, hinh_thuc_cong_no: e.target.value }))} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Phí xuất vé</label>
+            <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Người làm việc (liên hệ CRM)</label>
+            <ContactPicker
+              selected={formContact}
+              onSelect={c => { setFormContact(c); setForm(f => ({ ...f, contact_id: c?.id ?? null })) }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-4">
+          <button onClick={() => setFormOpen(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
+          <button onClick={save} disabled={saving || !form.ma_khach.trim()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-colors">
+            {saving && <Loader2 size={14} className="animate-spin" />} Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  if (expanded && mounted) {
+    return createPortal(
+      <>
+        {tableSection}
+        {formModal}
+      </>,
+      document.body,
+    )
+  }
+
   return (
     <div className="p-5 space-y-4">
+      {formModal}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-gray-400">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
         <div className="flex items-center gap-2">
@@ -306,140 +485,7 @@ export default function DanhMucKhachHangPage() {
         </div>
       </div>
 
-      {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
-            <h2 className="font-bold text-gray-900 mb-3">{editingId ? 'Sửa khách hàng' : 'Thêm khách hàng'}</h2>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Nhóm *</label>
-                <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
-                  {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Mã khách *</label>
-                <input value={form.ma_khach} onChange={e => setForm(f => ({ ...f, ma_khach: e.target.value }))} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Tên khách</label>
-                <input value={form.ten_khach} onChange={e => setForm(f => ({ ...f, ten_khach: e.target.value }))} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Đối tượng áp dụng / Quy tắc đặt mã</label>
-                <textarea rows={3} value={form.doi_tuong_quy_tac} onChange={e => setForm(f => ({ ...f, doi_tuong_quy_tac: e.target.value }))} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Hình thức công nợ</label>
-                <textarea rows={2} value={form.hinh_thuc_cong_no} onChange={e => setForm(f => ({ ...f, hinh_thuc_cong_no: e.target.value }))} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Phí xuất vé</label>
-                <textarea rows={2} value={form.phi_xuat_ve} onChange={e => setForm(f => ({ ...f, phi_xuat_ve: e.target.value }))} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Người làm việc (liên hệ CRM)</label>
-                <ContactPicker
-                  selected={formContact}
-                  onSelect={c => { setFormContact(c); setForm(f => ({ ...f, contact_id: c?.id ?? null })) }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-4">
-              <button onClick={() => setFormOpen(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Huỷ</button>
-              <button onClick={save} disabled={saving || !form.ma_khach.trim()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-colors">
-                {saving && <Loader2 size={14} className="animate-spin" />} Lưu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto">
-          {viewMode === 'co_ban' ? (
-            <table className="w-full text-sm list-table">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Nhóm', 'Mã khách', 'Tên khách', 'Đối tượng & quy tắc', 'Hình thức công nợ', 'Phí xuất vé', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
-                ) : loadError ? (
-                  <tr><td colSpan={7} className="px-5 py-14 text-center">
-                    <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-                    <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-                  </td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-                ) : filtered.map(k => (
-                  <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
-                    <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.doi_tuong_quy_tac ?? ''}>{k.doi_tuong_quy_tac ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.hinh_thuc_cong_no ?? ''}>{k.hinh_thuc_cong_no ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[240px] truncate" title={k.phi_xuat_ve ?? ''}>{k.phi_xuat_ve ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full text-sm list-table">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'SĐT', 'Tên cty', 'Email', 'Địa chỉ', 'MST', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
-                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  <tr><td colSpan={12} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
-                ) : loadError ? (
-                  <tr><td colSpan={12} className="px-5 py-14 text-center">
-                    <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-                    <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-                  </td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={12} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-                ) : filtered.map(k => (
-                  <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{NHOM_LABELS[k.nhom] ?? k.nhom}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">
-                      {k.contact ? (
-                        <span className="inline-flex items-center gap-1"><User size={12} className="text-gray-300" />{k.contact.name}</span>
-                      ) : (
-                        <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Thêm liên hệ</button>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.phone ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.company ?? ''}>{k.contact?.company ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.email ?? ''}>{k.contact?.email ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate">—</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.tax_code ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => openEdit(k)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">Sửa</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+      {tableSection}
     </div>
   )
 }
