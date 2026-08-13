@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Loader2, X, MapPin, Users, CalendarDays } from 'lucide-react'
+import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid } from 'lucide-react'
 import type { Doan } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
@@ -24,6 +24,7 @@ export default function QuyetToanTourPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -86,7 +87,20 @@ export default function QuyetToanTourPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn tour</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn tour</h1>
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+            {([
+              { key: 'card', icon: LayoutGrid, title: 'Thẻ' },
+              { key: 'table', icon: Table2, title: 'Bảng (giống Excel)' },
+            ] as const).map(v => (
+              <button key={v.key} type="button" title={v.title} onClick={() => setViewMode(v.key)}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === v.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                <v.icon size={14} />
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm"
@@ -102,6 +116,38 @@ export default function QuyetToanTourPage() {
       ) : doanList.length === 0 ? (
         <div className="text-center py-20 text-gray-400 text-sm">
           Chưa có đoàn nào. Nhấn &quot;Thêm đoàn&quot; để bắt đầu.
+        </div>
+      ) : viewMode === 'table' ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm list-table">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['Đoàn', 'Tuyến du lịch', 'Ngày đi', 'Ngày về', 'Số khách dự kiến'].map(h => (
+                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Số khách dự kiến' ? 'text-right' : 'text-left'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {doanList.map((d) => (
+                  <tr key={d.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <Link href={`/doan/${d.id}`} className="flex items-center gap-2 font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">
+                        {d.ten_doan}
+                        {d.loai_doan === 'su_kien' && (
+                          <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent-50 text-accent-600 shrink-0">Sự kiện</span>
+                        )}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-600 max-w-[280px] truncate" title={d.hanh_trinh ?? ''}>{d.hanh_trinh ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatDateVN(d.ngay_di)}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{d.ngay_ve ? formatDateVN(d.ngay_ve) : '—'}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-700 font-semibold">{d.sl_khach ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

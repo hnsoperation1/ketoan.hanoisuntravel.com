@@ -278,37 +278,39 @@ export default function NhanSuPage() {
           <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nhân sự', 'CCCD', 'Liên hệ', 'Ngân hàng', 'Số đoàn', ''].map(h => (
+                {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Số đoàn', ''].map(h => (
                   <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Số đoàn' ? 'text-right' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
               ) : loadError ? (
-                <tr><td colSpan={6} className="px-5 py-14 text-center">
+                <tr><td colSpan={5} className="px-5 py-14 text-center">
                   <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                   <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có nhân sự nào khớp bộ lọc.</td></tr>
+                <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-400">Không có nhân sự nào khớp bộ lọc.</td></tr>
               ) : filtered.map((r, i) => {
                 const nameKey = normalizeName(r.ho_ten)
                 const maybeDup = (i > 0 && normalizeName(filtered[i - 1].ho_ten) === nameKey)
                   || (i < filtered.length - 1 && normalizeName(filtered[i + 1].ho_ten) === nameKey)
                 return (
                 <tr key={r.id} className={`hover:bg-gray-50/70 transition-colors ${maybeDup ? 'bg-amber-50/60' : ''}`}>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
+                  <td className="px-4 py-2.5">
                     <button onClick={() => setViewingId(r.id)} className="text-left hover:text-brand-600 transition-colors">
-                      <span className="font-semibold text-gray-800">{r.ho_ten}</span>
-                      <span className="text-gray-400"> · {r.loai_nhan_su?.ma ?? r.loai_nhan_su?.ten ?? '—'}</span>
-                      {maybeDup && (
-                        <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold align-middle">có thể trùng</span>
-                      )}
+                      <div className="whitespace-nowrap">
+                        <span className="font-semibold text-gray-800">{r.ho_ten}</span>
+                        <span className="text-gray-400"> · {r.loai_nhan_su?.ma ?? r.loai_nhan_su?.ten ?? '—'}</span>
+                        {maybeDup && (
+                          <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold align-middle">có thể trùng</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {r.so_cccd ?? '—'}</div>
                     </button>
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-600 font-mono">{r.so_cccd ?? '—'}</td>
                   <td className="px-4 py-2.5 text-gray-600">
                     <div>{r.sdt ?? '—'}</div>
                     {r.email && <div className="text-xs text-gray-400">{r.email}</div>}
