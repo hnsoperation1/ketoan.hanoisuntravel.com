@@ -137,6 +137,9 @@ export default function QuyetToanTourPage() {
                         {d.loai_doan === 'su_kien' && (
                           <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent-50 text-accent-600 shrink-0">Sự kiện</span>
                         )}
+                        {d.opportunity_id && (
+                          <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 shrink-0">Từ CRM</span>
+                        )}
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-gray-600 max-w-[280px] truncate" title={d.hanh_trinh ?? ''}>{d.hanh_trinh ?? '—'}</td>
@@ -162,6 +165,9 @@ export default function QuyetToanTourPage() {
                 {d.ten_doan}
                 {d.loai_doan === 'su_kien' && (
                   <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent-50 text-accent-600">Sự kiện</span>
+                )}
+                {d.opportunity_id && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600">Từ CRM</span>
                 )}
               </div>
               <div className="space-y-1.5 text-sm text-gray-900">

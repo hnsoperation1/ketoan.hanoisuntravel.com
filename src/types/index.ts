@@ -89,6 +89,9 @@ export interface Doan {
   diem_don_tra: string | null
   dieu_hanh_phu_trach: string | null
   dieu_hanh_dien_thoai: string | null
+  /** Có giá trị = đoàn này TỰ SINH từ 1 đơn hàng đã chốt bên CRM (xem
+   *  migration_sync_doan_from_opportunity.sql, repo hns-crm) — null = tạo tay như trước. */
+  opportunity_id: string | null
   created_at: string
   deleted_at: string | null
 }
