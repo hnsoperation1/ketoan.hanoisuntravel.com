@@ -113,7 +113,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
           <NavLink
             href="/doan"
-            label="Quyết toán tour"
+            label="Danh sách đoàn"
             icon={FileSpreadsheet}
             pathname={pathname}
             collapsed={collapsed}

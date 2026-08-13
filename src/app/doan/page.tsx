@@ -24,7 +24,7 @@ export default function QuyetToanTourPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('table')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -45,7 +45,7 @@ export default function QuyetToanTourPage() {
   }, [load])
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Quyết toán tour</span>)
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Danh sách đoàn</span>)
     setOnRefresh(load)
     return () => {
       setBreadcrumb(null)
