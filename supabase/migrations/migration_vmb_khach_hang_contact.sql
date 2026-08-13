@@ -5,3 +5,8 @@
 -- contacts/organizations) làm 1 — quyết định 2026-08-13, để giai đoạn sau
 -- tính tiếp cách đồng bộ 2 bảng, hiện tại chỉ tham chiếu 1 chiều để hiển thị.
 ALTER TABLE vmb_khach_hang ADD COLUMN IF NOT EXISTS contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL;
+
+-- Ghi chú riêng của kế toán cho từng mã khách (khác hẳn doi_tuong_quy_tac/
+-- hinh_thuc_cong_no vốn là mô tả chính sách CẤP NHÓM) — hiện & sửa ở slide
+-- over "Chi tiết liên hệ" bên phải màn Danh mục khách hàng, chế độ Đầy đủ.
+ALTER TABLE vmb_khach_hang ADD COLUMN IF NOT EXISTS ghi_chu TEXT;

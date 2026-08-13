@@ -76,13 +76,13 @@ export async function GET() {
   return NextResponse.json({ data: enriched })
 }
 
-// POST — { id?, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id? }
+// POST — { id?, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id?, ghi_chu? }
 // có id thì update, không thì tạo mới. contact_id = liên hệ CRM đã gán (null để bỏ gán).
 export async function POST(req: NextRequest) {
   const { unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
 
-  const { id, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id } = await req.json().catch(() => ({}))
+  const { id, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id, ghi_chu } = await req.json().catch(() => ({}))
   if (!nhom || !ma_khach || !String(ma_khach).trim()) {
     return NextResponse.json({ error: 'Thiếu nhóm hoặc mã khách' }, { status: 400 })
   }
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
     phi_xuat_ve: phi_xuat_ve ? String(phi_xuat_ve).trim() : null,
     active: active ?? true,
     contact_id: contact_id ? String(contact_id) : null,
+    ghi_chu: ghi_chu ? String(ghi_chu).trim() : null,
   }
 
   const query = id

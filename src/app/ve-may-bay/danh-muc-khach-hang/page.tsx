@@ -27,6 +27,7 @@ type Khach = {
   created_at: string
   contact_id: string | null
   contact: Contact | null
+  ghi_chu: string | null
   doanh_thu: number
   loi_nhuan: number
 }
@@ -170,6 +171,120 @@ function ContactPicker({
   )
 }
 
+// Slide over bên phải — xem chi tiết liên hệ CRM đã gán cho 1 mã khách +
+// sửa ghi chú riêng của kế toán. Đổi/gán lại liên hệ vẫn làm ở modal "Sửa"
+// (đã có ContactPicker sẵn) — panel này chỉ tập trung xem + ghi chú, tránh
+// 2 nơi cùng sửa 1 việc.
+function ContactSlideOver({
+  khach,
+  onClose,
+  onEdit,
+  onSaveGhiChu,
+}: {
+  khach: Khach
+  onClose: () => void
+  onEdit: () => void
+  onSaveGhiChu: (id: string, ghiChu: string) => Promise<void>
+}) {
+  const [visible, setVisible] = useState(false)
+  const [ghiChu, setGhiChu] = useState(khach.ghi_chu ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  function close() {
+    setVisible(false)
+    setTimeout(onClose, 200)
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await onSaveGhiChu(khach.id, ghiChu.trim())
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const c = khach.contact
+  const rows: { label: string; value: string }[] = [
+    { label: 'Nguồn', value: c?.source ? (SOURCE_LABELS[c.source] ?? c.source) : '—' },
+    { label: 'Người làm việc', value: c?.name ?? '—' },
+    { label: 'SĐT', value: c?.phone ?? '—' },
+    { label: 'Tên công ty', value: c?.company ?? '—' },
+    { label: 'Email', value: c?.email ?? '—' },
+    { label: 'MST', value: c?.tax_code ?? '—' },
+  ]
+
+  return createPortal(
+    <>
+      <div
+        className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={close}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-160 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Chi tiết liên hệ</p>
+            <p className="font-bold text-gray-900 truncate">{khach.ma_khach}</p>
+          </div>
+          <button onClick={close} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {!c ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-400 mb-3">Chưa gán liên hệ CRM nào cho mã khách này.</p>
+              <button onClick={onEdit} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">
+                Gán liên hệ
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map(r => (
+                <div key={r.label}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{r.label}</p>
+                  <p className="text-sm text-gray-800">{r.value}</p>
+                </div>
+              ))}
+              <p className="text-xs text-gray-400">Địa chỉ chưa hỗ trợ (nằm ở bảng Công ty bên CRM, chưa nối tới đây).</p>
+              <button onClick={onEdit} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                Đổi liên hệ
+              </button>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Ghi chú</p>
+            <textarea
+              rows={4}
+              value={ghiChu}
+              onChange={e => setGhiChu(e.target.value)}
+              placeholder="Ghi chú riêng cho mã khách này..."
+              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white placeholder:text-gray-300"
+            />
+            <button
+              onClick={save}
+              disabled={saving || ghiChu.trim() === (khach.ghi_chu ?? '')}
+              className="mt-2 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+            >
+              {saving && <Loader2 size={13} className="animate-spin" />} Lưu ghi chú
+            </button>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body,
+  )
+}
+
 // Danh mục mã khách chuẩn (kế toán VMB) — import từ file "Link nhập _
 // Phòng vé HNS (Năm 2026).xlsx" (170 mã, xem migration_vmb_khach_hang.sql).
 // Dùng để tra cứu/đối chiếu mã khách gõ tay ở "Đầu vào công nợ"/"Đầu vào
@@ -189,6 +304,7 @@ export default function DanhMucKhachHangPage() {
   const [viewMode, setViewMode] = useState<'co_ban' | 'day_du'>('co_ban')
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [viewingContact, setViewingContact] = useState<Khach | null>(null)
   useEffect(() => setMounted(true), [])
 
   const loadData = useCallback(async () => {
@@ -275,6 +391,34 @@ export default function DanhMucKhachHangPage() {
     }
   }
 
+  // Lưu riêng ghi_chu từ slide over — gửi lại NGUYÊN các field hiện có của
+  // dòng đó (POST cùng 1 endpoint với modal Sửa) để không làm mất dữ liệu
+  // đã nhập ở các field khác.
+  async function saveGhiChu(id: string, ghiChu: string) {
+    const k = rows.find(r => r.id === id)
+    if (!k) return
+    const res = await fetch('/api/ve-may-bay/vmb-khach-hang', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: k.id,
+        nhom: k.nhom,
+        ma_khach: k.ma_khach,
+        ten_khach: k.ten_khach,
+        doi_tuong_quy_tac: k.doi_tuong_quy_tac,
+        hinh_thuc_cong_no: k.hinh_thuc_cong_no,
+        phi_xuat_ve: k.phi_xuat_ve,
+        active: k.active,
+        contact_id: k.contact_id,
+        ghi_chu: ghiChu,
+      }),
+    })
+    if (res.ok) {
+      setRows(prev => prev.map(r => (r.id === id ? { ...r, ghi_chu: ghiChu || null } : r)))
+      setViewingContact(prev => (prev && prev.id === id ? { ...prev, ghi_chu: ghiChu || null } : prev))
+    }
+  }
+
   // "Phóng to": render qua Portal thẳng vào document.body, giống cách
   // /ve-may-bay/cong-no đang làm — thoát hẳn khỏi layout trang (Sidebar/
   // Topbar) để bảng nhiều cột ở chế độ "Đầy đủ" chiếm trọn màn hình. Chỉ
@@ -328,21 +472,21 @@ export default function DanhMucKhachHangPage() {
           <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'SĐT', 'Tên cty', 'Email', 'Địa chỉ', 'MST', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
+                {['Nguồn', 'Phân loại', 'Mã khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận', ''].map(h => (
                   <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={12} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
               ) : loadError ? (
-                <tr><td colSpan={12} className="px-5 py-14 text-center">
+                <tr><td colSpan={7} className="px-5 py-14 text-center">
                   <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                   <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={12} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
               ) : filtered.map(k => (
                 <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
                   <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
@@ -350,16 +494,13 @@ export default function DanhMucKhachHangPage() {
                   <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">{k.ma_khach}</td>
                   <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">
                     {k.contact ? (
-                      <span className="inline-flex items-center gap-1"><User size={12} className="text-gray-300" />{k.contact.name}</span>
+                      <button onClick={() => setViewingContact(k)} className="inline-flex items-center gap-1 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">
+                        <User size={12} className="text-gray-300" />{k.contact.name}
+                      </button>
                     ) : (
-                      <button onClick={() => openEdit(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Thêm liên hệ</button>
+                      <button onClick={() => setViewingContact(k)} className="text-gray-300 hover:text-brand-600 text-xs">+ Thêm liên hệ</button>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.phone ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.company ?? ''}>{k.contact?.company ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={k.contact?.email ?? ''}>{k.contact?.email ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate">—</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.tax_code ?? '—'}</td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
@@ -424,11 +565,21 @@ export default function DanhMucKhachHangPage() {
     </div>
   )
 
+  const contactSlideOver = viewingContact && (
+    <ContactSlideOver
+      khach={viewingContact}
+      onClose={() => setViewingContact(null)}
+      onEdit={() => { const k = viewingContact; setViewingContact(null); openEdit(k) }}
+      onSaveGhiChu={saveGhiChu}
+    />
+  )
+
   if (expanded && mounted) {
     return createPortal(
       <>
         {tableSection}
         {formModal}
+        {contactSlideOver}
       </>,
       document.body,
     )
@@ -437,6 +588,7 @@ export default function DanhMucKhachHangPage() {
   return (
     <div className="p-5 space-y-4">
       {formModal}
+      {contactSlideOver}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-gray-400">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
         <div className="flex items-center gap-2">
