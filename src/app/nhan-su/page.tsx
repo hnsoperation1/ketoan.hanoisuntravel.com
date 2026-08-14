@@ -365,6 +365,10 @@ export default function NhanSuPage() {
     const q = search.trim().toLowerCase()
     return hoSoList
       .filter(h => set.has(h.trang_thai))
+      // "Cần thanh toán" chỉ hiện khi ĐÃ tick đủ cả 2 checkbox duyệt tay ở
+      // tab Tổng hợp (đủ hồ sơ/chứng từ + đã trả đồ đoàn) — chưa đủ 2 cái
+      // thì coi như chưa sẵn sàng xử lý thanh toán, chỉ thấy ở Tổng hợp.
+      .filter(h => tab !== 'can_thanh_toan' || (h.du_ho_so_chung_tu && h.da_tra_do_doan))
       .filter(h => {
         if (!q) return true
         const hay = `${h.nhansu?.ho_ten ?? ''} ${h.doan?.ten_doan ?? ''}`.toLowerCase()
