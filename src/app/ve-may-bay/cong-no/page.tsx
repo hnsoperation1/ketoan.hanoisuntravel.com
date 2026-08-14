@@ -1370,9 +1370,18 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
   }
   function copySelection() {
     if (!selBounds) return
+    // Ô SEGMENTS (và có thể vài cột khác) chứa xuống dòng thật trong dữ
+    // liệu gốc — nếu để nguyên, Excel hiểu nhầm ký tự xuống dòng đó là bắt
+    // đầu 1 dòng bảng tính mới, làm lệch hẳn các cột phía sau khi dán. Bọc
+    // trong dấu ngoặc kép (đúng chuẩn escape CSV/TSV) để Excel giữ nguyên
+    // trong 1 ô như khi copy thật từ Excel ra.
+    const esc = (v: string) => {
+      const s = v ?? ''
+      return /[\t\n\r"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
     const tsv = rows.slice(selBounds.r0, selBounds.r1 + 1)
-      .map(r => r.slice(selBounds.c0, selBounds.c1 + 1).join('\t'))
-      .join('\n')
+      .map(r => r.slice(selBounds.c0, selBounds.c1 + 1).map(c => esc(c)).join('\t'))
+      .join('\r\n')
     navigator.clipboard.writeText(tsv).catch(() => {})
   }
 
