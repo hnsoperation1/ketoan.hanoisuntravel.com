@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { RefreshCw, Search, Download } from 'lucide-react'
+import { RefreshCw, Search, Download, CheckCircle2, XCircle, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 
 type SaoKeRow = {
@@ -29,6 +29,35 @@ const TAI_KHOAN_OPTIONS = ['Tất cả', 'Tiền mặt', 'TCB VA 866', 'TCB P889
 function formatTien(n: number | null): string {
   if (n == null) return '—'
   return Math.round(n).toLocaleString('vi-VN')
+}
+
+// Toast kết quả đồng bộ — góc dưới-phải, tự trượt vào rồi tự biến mất sau
+// 6s (hẹn giờ ở component cha), thay cho dòng chữ nằm lì trong layout như
+// trước. Animate bằng requestAnimationFrame + transition, KHÔNG dùng class
+// "animate-in" (cần plugin tailwindcss-animate, repo này chưa cài).
+function SyncToast({ msg, onClose }: { msg: { ok: boolean; text: string }; onClose: () => void }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  return (
+    <div
+      className={`fixed bottom-5 right-5 z-200 flex items-start gap-2.5 bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 max-w-sm transition-all duration-200 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+      }`}
+    >
+      {msg.ok ? (
+        <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+      ) : (
+        <XCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+      )}
+      <p className={`text-sm flex-1 ${msg.ok ? 'text-gray-800' : 'text-red-600'}`}>{msg.text}</p>
+      <button onClick={onClose} className="p-0.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0">
+        <X size={14} />
+      </button>
+    </div>
+  )
 }
 
 // Dữ liệu từ sheet "Tiền mặt" hiển thị là "TM", các tài khoản ngân hàng
@@ -68,6 +97,13 @@ export default function SaoKeTkPage() {
   const [search, setSearch] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Toast — tự biến mất sau 6s thay vì nằm lì trong layout như trước.
+  useEffect(() => {
+    if (!syncMsg) return
+    const t = setTimeout(() => setSyncMsg(null), 6000)
+    return () => clearTimeout(t)
+  }, [syncMsg])
 
   const cacheRef = useRef<Map<string, SaoKeRow[]>>(new Map())
 
@@ -161,10 +197,6 @@ export default function SaoKeTkPage() {
         </div>
       </div>
 
-      {syncMsg && (
-        <p className={`text-sm ${syncMsg.ok ? 'text-emerald-600' : 'text-red-500'}`}>{syncMsg.text}</p>
-      )}
-
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {
@@ -241,6 +273,8 @@ export default function SaoKeTkPage() {
           </table>
         </div>
       </div>
+
+      {syncMsg && <SyncToast msg={syncMsg} onClose={() => setSyncMsg(null)} />}
     </div>
   )
 }
