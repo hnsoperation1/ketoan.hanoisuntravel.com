@@ -40,6 +40,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<UiTheme>(() => readCache() ?? 'dense')
   const [loading, setLoading] = useState(() => readCache() === null)
 
+  // CSS chọn theme qua [data-ui-theme="dense"] (xem globals.css) — AppShell
+  // đặt attribute này trên 1 div bọc layout, NHƯNG các slide-over/modal
+  // dùng createPortal(..., document.body) thoát HẲN ra khỏi cây DOM của div
+  // đó nên CSS selector không khớp (dù React tree vẫn "trong" component).
+  // Đặt THÊM attribute này lên <html> — luôn là tổ tiên của MỌI node kể cả
+  // portal — để bảng trong slide-over cũng lên đúng viền/kiểu dense.
+  useEffect(() => {
+    document.documentElement.dataset.uiTheme = theme
+  }, [theme])
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/user-preferences')

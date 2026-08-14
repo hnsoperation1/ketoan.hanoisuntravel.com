@@ -85,7 +85,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
 
         <div className="flex items-center gap-1 px-6 border-b border-gray-200 shrink-0">
           {([
-            { key: 'bookings', label: `Bookings (${row.phat_sinh_rows.length})` },
+            { key: 'bookings', label: `Bảng kê (${row.phat_sinh_rows.length})` },
             { key: 'sao_ke', label: `Sao kê (${row.da_thu_rows.length})` },
           ] as const).map(t => (
             <button key={t.key} type="button" onClick={() => setTab(t.key)}
