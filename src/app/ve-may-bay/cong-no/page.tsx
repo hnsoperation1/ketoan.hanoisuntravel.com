@@ -507,6 +507,17 @@ function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (
 
 type ViewMode = 'bang' | 'list' | 'card'
 
+// Lô công nợ NCC upload nguyên xi (chưa chuẩn hoá) — dùng cho 4 tab NCC cố
+// định (FCVN/SAO ĐỎ/VIETJET/SUN PQC), giữ đúng cột như file gốc.
+type RawBatch = {
+  id: string
+  ncc: string
+  source_file: string | null
+  headers: string[]
+  rows: string[][]
+  created_at: string
+}
+
 export default function CongNoVePage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -555,14 +566,43 @@ export default function CongNoVePage() {
     loadData()
   }, [loadData])
 
+  const [rawBatches, setRawBatches] = useState<RawBatch[]>([])
+
+  const loadRawData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ve-may-bay/cong-no-raw')
+      if (!res.ok) return
+      const { data } = await res.json()
+      setRawBatches(Array.isArray(data) ? data : [])
+    } catch { /* im lặng — chỉ ảnh hưởng 4 tab NCC, không chặn trang */ }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRawData()
+  }, [loadRawData])
+
+  const loadAll = useCallback(() => {
+    loadData()
+    loadRawData()
+  }, [loadData, loadRawData])
+
+  async function deleteRawBatch(id: string) {
+    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
+    try {
+      await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
+      loadRawData()
+    } catch { /* im lặng */ }
+  }
+
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Công nợ NCC</span>)
-    setOnRefresh(loadData)
+    setOnRefresh(loadAll)
     return () => {
       setBreadcrumb(null)
       setOnRefresh(null)
     }
-  }, [setBreadcrumb, setOnRefresh, loadData])
+  }, [setBreadcrumb, setOnRefresh, loadAll])
 
   // Danh mục để gợi ý autocomplete cho "Tìm mã khách/TKT/sale chính" — kéo
   // từ nguồn CHUẨN thay vì chỉ suy ra từ các dòng đã gắn tay trong chính
@@ -611,9 +651,17 @@ export default function CongNoVePage() {
 
   // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
   // tự dò xem có khớp chữ ký NCC nào đã hỗ trợ tối ưu riêng không, khớp
-  // thì bỏ qua hẳn bước chọn dòng tiêu đề + map cột tay.
+  // thì bỏ qua hẳn bước chọn dòng tiêu đề + map cột tay. CHỈ áp dụng khi
+  // đang ở tab "Tổng hợp" (chuẩn hoá) — 4 tab NCC riêng luôn upload nguyên
+  // xi, không tự nhận diện/map, chỉ cần chọn đúng dòng tiêu đề.
   function applyGrid(grid: string[][]) {
     setRawGrid(grid)
+    if (nccFilter !== '') {
+      setHeaderRowIndex(null)
+      setVietjetMode(false)
+      setFcvnMode(false)
+      return
+    }
     const vjRow = findVietjetHeaderRow(grid)
     if (vjRow != null) {
       setHeaderRowIndex(vjRow)
@@ -831,6 +879,35 @@ export default function CongNoVePage() {
     }
   }
 
+  // Nhập nguyên xi cho 1 trong 4 tab NCC cố định — không map cột, lưu y
+  // hệt header + dữ liệu thô của file gốc vào ve_debt_records_raw.
+  async function submitRaw() {
+    if (!nccFilter) {
+      setImportError('Chưa chọn tab NCC.')
+      return
+    }
+    setImporting(true)
+    setImportError('')
+    try {
+      const res = await fetch('/api/ve-may-bay/cong-no-raw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ncc: nccFilter, source_file: fileName, headers, rows: dataRows }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
+        setImportError(error || 'Nhập thất bại')
+        return
+      }
+      resetWizard()
+      loadRawData()
+    } catch {
+      setImportError('Nhập thất bại, thử lại.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   async function saveField(id: string, field: 'tkt_tag' | 'ma_khach' | 'sale_chinh' | 'ghi_chu', value: string) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value || null } : r))
     await fetch(`/api/ve-may-bay/cong-no/${id}`, {
@@ -909,7 +986,7 @@ export default function CongNoVePage() {
             Tải file công nợ NCC
           </button>
           {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
-          <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={loadAll} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <RefreshCw size={16} />
           </button>
         </div>
@@ -1082,7 +1159,7 @@ export default function CongNoVePage() {
           </div>
         )}
 
-        {headerRowIndex != null && !vietjetMode && !fcvnMode && (
+        {headerRowIndex != null && !vietjetMode && !fcvnMode && nccFilter === '' && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">
@@ -1135,57 +1212,150 @@ export default function CongNoVePage() {
             </div>
           </div>
         )}
+
+        {headerRowIndex != null && nccFilter !== '' && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                Nhập nguyên xi vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+              </span>
+              <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
+                ← Chọn lại dòng tiêu đề
+              </button>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
+              <table className="text-xs w-full">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500">
+                    {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dataRows.slice(0, 20).map((r, i) => (
+                    <tr key={i} className="border-t border-gray-100">
+                      {headers.map((_, j) => <td key={j} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate">{r[j] || '—'}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {importError && <p className="text-xs text-red-500">{importError}</p>}
+
+            <div className="flex items-center gap-2">
+              <button onClick={submitRaw} disabled={importing}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập nguyên xi {dataRows.length} dòng vào tab &quot;{nccFilter}&quot;
+              </button>
+              <button onClick={resetWizard} disabled={importing} type="button"
+                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
+                Hủy
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       )}
 
-      {/* Filters + view mode */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
-        </div>
-        <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
-          <option value="">Tất cả TKT</option>
-          {tkts.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={khFilter} onChange={e => setKhFilter(e.target.value)} className={SELECT}>
-          <option value="">Tất cả khách hàng</option>
-          {khs.map(k => <option key={k} value={k}>{k}</option>)}
-        </select>
+      {nccFilter === '' ? (
+        <>
+          {/* Filters + view mode */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
+              <option value="">Tất cả TKT</option>
+              {tkts.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={khFilter} onChange={e => setKhFilter(e.target.value)} className={SELECT}>
+              <option value="">Tất cả khách hàng</option>
+              {khs.map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
 
-        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
-          {([
-            { key: 'bang', icon: Table2, title: 'Bảng (giống Excel)' },
-            { key: 'list', icon: List, title: 'Danh sách' },
-            { key: 'card', icon: LayoutGrid, title: 'Thẻ' },
-          ] as const).map(v => (
-            <button key={v.key} title={v.title} onClick={() => setViewMode(v.key)}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === v.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-              <v.icon size={14} />
-            </button>
-          ))}
-        </div>
+            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+              {([
+                { key: 'bang', icon: Table2, title: 'Bảng (giống Excel)' },
+                { key: 'list', icon: List, title: 'Danh sách' },
+                { key: 'card', icon: LayoutGrid, title: 'Thẻ' },
+              ] as const).map(v => (
+                <button key={v.key} title={v.title} onClick={() => setViewMode(v.key)}
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === v.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                  <v.icon size={14} />
+                </button>
+              ))}
+            </div>
 
-        <span className="text-xs text-gray-400 whitespace-nowrap">{filtered.length} dòng · lợi nhuận {formatGiaVe(tongLoiNhuan)}</span>
-      </div>
+            <span className="text-xs text-gray-400 whitespace-nowrap">{filtered.length} dòng · lợi nhuận {formatGiaVe(tongLoiNhuan)}</span>
+          </div>
 
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-300">Đang tải...</div>
-      ) : loadError ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
-          <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-          <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.</div>
-      ) : viewMode === 'bang' ? (
-        <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
-      ) : viewMode === 'list' ? (
-        <ListView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-300">Đang tải...</div>
+          ) : loadError ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
+              <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+              <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.</div>
+          ) : viewMode === 'bang' ? (
+            <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          ) : viewMode === 'list' ? (
+            <ListView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          ) : (
+            <CardView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
+          )}
+        </>
       ) : (
-        <CardView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
+        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} nccLabel={nccFilter} />
       )}
+    </div>
+  )
+}
+
+// Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô 1 bảng riêng,
+// giữ đúng cột/tên cột như file gốc (không ép về schema chung).
+function RawBatchesView({ batches, onDelete, nccLabel }: { batches: RawBatch[]; onDelete: (id: string) => void; nccLabel: string }) {
+  if (batches.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">
+        Chưa có lô công nợ nào cho &quot;{nccLabel}&quot; — bấm &quot;Tải file công nợ NCC&quot; ở trên để upload.
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-4">
+      {batches.map(b => (
+        <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">
+              {b.source_file || 'Không rõ tên file'} · {b.rows.length} dòng · {new Date(b.created_at).toLocaleString('vi-VN')}
+            </span>
+            <button onClick={() => onDelete(b.id)} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <Trash2 size={14} />
+            </button>
+          </div>
+          <div className="list-table-container border border-gray-200 rounded-xl overflow-auto max-h-[480px]">
+            <table className="list-table text-xs w-full">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500">
+                  {b.headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {b.rows.map((r, i) => (
+                  <tr key={i} className="border-t border-gray-100">
+                    {b.headers.map((_, j) => <td key={j} className="px-2 py-1.5 whitespace-nowrap text-gray-900">{r[j] || '—'}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
