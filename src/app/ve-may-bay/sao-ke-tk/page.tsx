@@ -137,7 +137,7 @@ export default function SaoKeTkPage() {
   }, [selected, loadMonth])
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Sao kê TK</span>)
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Sao kê TC</span>)
     setOnRefresh(() => loadMonth(selected.year, selected.month, true))
     return () => {
       setBreadcrumb(null)

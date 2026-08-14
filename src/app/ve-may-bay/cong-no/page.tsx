@@ -329,6 +329,10 @@ async function parseXlsFile(file: File): Promise<SheetData[]> {
 type KhachOpt = { ma_khach: string; ten_khach: string | null }
 
 const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
+
+// 4 NCC cố định (khớp yêu cầu 2026-08-13) — luôn hiện tab dù NCC đó chưa
+// có dòng dữ liệu nào (khác cách cũ chỉ liệt kê NCC đã có sẵn trong rows).
+const NCC_TABS = ['FCVN', 'SAO ĐỎ', 'VIETJET', 'SUN PQC']
 const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white'
 
 // `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
@@ -850,8 +854,10 @@ export default function CongNoVePage() {
     await fetch(`/api/ve-may-bay/cong-no/${id}`, { method: 'DELETE' })
   }
 
-  const nccs = Array.from(new Set(rows.map(r => r.ncc).filter(Boolean))) as string[]
-  const byNcc = rows.filter(r => !nccFilter || r.ncc === nccFilter)
+  // So khớp không phân biệt hoa/thường/khoảng trắng — tab NCC cố định
+  // (FCVN/SAO ĐỎ/VIETJET/SUN PQC) chưa chắc khớp Y HỆT cách viết hoa/thường
+  // đã lưu trong dữ liệu (vd "Vietjet" lúc nhập file vs tab "VIETJET").
+  const byNcc = rows.filter(r => !nccFilter || (r.ncc ?? '').trim().toUpperCase() === nccFilter.trim().toUpperCase())
   const tkts = Array.from(new Set(byNcc.map(r => r.tkt_tag).filter(Boolean))) as string[]
   const byTkt = byNcc.filter(r => !tktFilter || r.tkt_tag === tktFilter)
   const khs = Array.from(new Set(byTkt.map(r => r.ma_khach).filter(Boolean))) as string[]
@@ -1098,6 +1104,19 @@ export default function CongNoVePage() {
         )}
       </div>
 
+      {/* Tab NCC */}
+      <div className="flex items-center gap-1 border-b border-gray-200">
+        {(['', ...NCC_TABS] as const).map(n => (
+          <button key={n || 'tong-hop'} type="button"
+            onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter('') }}
+            className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}>
+            {n || 'Tổng hợp'}
+          </button>
+        ))}
+      </div>
+
       {/* Filters + view mode */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
@@ -1105,10 +1124,6 @@ export default function CongNoVePage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
         </div>
-        <select value={nccFilter} onChange={e => { setNccFilter(e.target.value); setTktFilter(''); setKhFilter('') }} className={SELECT}>
-          <option value="">Tất cả NCC</option>
-          {nccs.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
         <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
           <option value="">Tất cả TKT</option>
           {tkts.map(t => <option key={t} value={t}>{t}</option>)}
