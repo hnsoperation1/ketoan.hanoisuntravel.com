@@ -989,9 +989,17 @@ export default function CongNoVePage() {
         </div>
       </div>
 
-      {/* Nhập công nợ từ file — chỉ hiện khi có việc cần xử lý (chọn sheet/tiêu đề/cột...) */}
-      {(sheets.length > 0 || (importError && sheets.length === 0)) && (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
+          (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
+      {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
+      <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={resetWizard}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
+          <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <X size={18} />
+          </button>
+        </div>
         {importError && sheets.length === 0 && <p className="text-xs text-red-500">{importError}</p>}
 
         {sheets.length > 1 && selectedSheet == null && (
@@ -1253,6 +1261,8 @@ export default function CongNoVePage() {
           </div>
         )}
       </div>
+      </div>,
+      document.body
       )}
 
       {nccFilter === '' ? (
