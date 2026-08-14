@@ -570,19 +570,19 @@ export default function NhanSuPage() {
                     <Fragment key={h.id}>
                       {showGroupHeader && (
                         <tr className="bg-gray-50">
-                          <td colSpan={6} className="px-4 py-2 text-xs font-bold text-gray-600">
-                            <span className="text-gray-400 font-normal">Đoàn: </span>
+                          <td colSpan={6} className="px-4 py-2 text-xs font-bold text-gray-900">
+                            <span className="font-normal">Đoàn: </span>
                             {h.doan ? (
                               <Link href={`/doan/${h.doan.id}`} className="hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
                             ) : '(đoàn đã xoá)'}
                             {h.doan?.hanh_trinh && (
                               <>
-                                <span className="text-gray-400 font-normal"> - Hành trình: </span>
+                                <span className="font-normal"> - Hành trình: </span>
                                 {h.doan.hanh_trinh}
                               </>
                             )}
                             {h.doan?.ngay_di && (
-                              <span className="font-normal text-gray-400">
+                              <span className="font-normal">
                                 {' - '}{formatDateVN(h.doan.ngay_di)}{h.doan.ngay_ve ? ` – ${formatDateVN(h.doan.ngay_ve)}` : ''}
                               </span>
                             )}
@@ -594,14 +594,14 @@ export default function NhanSuPage() {
                           <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
                             <div className="whitespace-nowrap">
                               <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
-                              <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
+                              <span className="text-gray-900"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
                             </div>
-                            <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {h.nhansu?.so_cccd ?? '—'}</div>
+                            <div className="text-xs text-gray-900 font-mono mt-0.5">CCCD: {h.nhansu?.so_cccd ?? '—'}</div>
                           </button>
                         </td>
                         <td className="px-4 py-2.5 text-gray-900">
                           <div>{h.nhansu?.sdt ?? '—'}</div>
-                          {h.nhansu?.email && <div className="text-xs text-gray-400">{h.nhansu.email}</div>}
+                          {h.nhansu?.email && <div className="text-xs text-gray-900">{h.nhansu.email}</div>}
                         </td>
                         <td className="px-4 py-2.5 text-gray-900">{h.nhansu?.stk ? `${h.nhansu.stk} - ${h.nhansu.ten_ngan_hang ?? ''}` : '—'}</td>
                         <td className="px-4 py-2.5 text-center">
@@ -655,7 +655,7 @@ export default function NhanSuPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
                           <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
-                          <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
+                          <span className="text-gray-900"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
                         </button>
                       </td>
                       <td className="px-4 py-2.5">
