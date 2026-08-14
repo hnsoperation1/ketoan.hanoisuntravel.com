@@ -336,7 +336,7 @@ const NCC_TABS = ['FCVN', 'SAO ĐỎ', 'VIETJET', 'SUN PQC']
 
 // Số dòng kẻ trống khi 1 tab NCC chưa có lô dữ liệu nào — chỉ để nhìn
 // giống 1 file Excel trống, không mang ý nghĩa dữ liệu gì.
-const EMPTY_GRID_ROWS = 14
+const EMPTY_GRID_ROWS = 5
 
 // Header gợi ý theo ĐÚNG cột thật của từng NCC — lấy trực tiếp từ dòng tiêu
 // đề file mẫu thật "FILE VÉ GỬI QUỐC.xlsx" (sheet cùng tên NCC), hiện sẵn
@@ -666,18 +666,28 @@ export default function CongNoVePage() {
   }
 
   // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
-  // TẠM TẮT hẳn việc tự dò chữ ký Vietjet/FCVN để tự tách sẵn cột (ngày
-  // bay/hành trình từ SEGMENTS, ngày xuất/đi/về từ issue date FCVN...): giờ
-  // luồng chung là upload nguyên xi trước, việc "biến đổi" (tách/chuẩn hoá
-  // cột) sẽ làm ở bước riêng sau — kể cả tab "Tổng hợp" cũng không tự tách
-  // gì nữa lúc này, chỉ cần chọn đúng dòng tiêu đề rồi map cột tay như bình
-  // thường. Hàm findVietjetHeaderRow/findFcvnHeaderRow + vietjetMode/
-  // fcvnMode giữ nguyên, chưa xoá — sẽ dùng lại khi làm bước biến đổi.
+  // vẫn TỰ NHẬN DIỆN đúng dòng tiêu đề + tên NCC theo chữ ký Vietjet/FCVN đã
+  // biết (đỡ phải tự cuộn/bấm chọn dòng tay), nhưng KHÔNG tự tách sẵn cột
+  // (ngày bay/hành trình từ SEGMENTS, ngày xuất/đi/về từ issue date FCVN...)
+  // nữa — luồng chung giờ là xem nguyên xi/map cột tay, việc "biến đổi"
+  // (tách/chuẩn hoá cột) làm ở bước riêng sau. Vì vậy KHÔNG bật
+  // vietjetMode/fcvnMode (2 cờ đó vẫn giữ, chỉ dùng lại khi làm bước biến
+  // đổi) — cứ để rơi vào nhánh "chọn cột tay" như file NCC khác.
   function applyGrid(grid: string[][]) {
     setRawGrid(grid)
+    const vjRow = findVietjetHeaderRow(grid)
+    if (vjRow != null) {
+      setHeaderRowIndex(vjRow)
+      setNccInput('Vietjet')
+      return
+    }
+    const fcvnRow = findFcvnHeaderRow(grid)
+    if (fcvnRow != null) {
+      setHeaderRowIndex(fcvnRow)
+      setNccInput('FCVN')
+      return
+    }
     setHeaderRowIndex(null)
-    setVietjetMode(false)
-    setFcvnMode(false)
   }
 
   async function handleFilePick(f: File) {
@@ -993,7 +1003,7 @@ export default function CongNoVePage() {
           (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
       {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
       <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={resetWizard}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
           <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
