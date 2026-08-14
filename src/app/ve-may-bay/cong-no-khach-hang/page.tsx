@@ -102,56 +102,60 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             row.phat_sinh_rows.length === 0 ? (
               <p className="text-sm text-gray-400">Không có dòng nào.</p>
             ) : (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm list-table">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Ngày xuất</th>
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Số vé</th>
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Hành khách</th>
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Hành trình</th>
-                      <th className="text-right px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Giá bán</th>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Ngày xuất</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Số vé</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Hành khách</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Hành trình</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Giá bán</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-gray-100">
                     {[...row.phat_sinh_rows].sort((a, b) => (a.issued_date ?? '').localeCompare(b.issued_date ?? '')).map((d, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.issued_date ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.ticket_no ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.pax_name ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.routing ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap text-right">{formatTien(d.gia_ban ?? 0)}</td>
+                      <tr key={i} className="hover:bg-gray-50/70 transition-colors">
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.issued_date ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.ticket_no ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.pax_name ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.routing ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap text-right">{formatTien(d.gia_ban ?? 0)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )
           ) : (
             row.da_thu_rows.length === 0 ? (
               <p className="text-sm text-gray-400">Không có dòng nào.</p>
             ) : (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm list-table">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Ngày</th>
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Nội dung CK</th>
-                      <th className="text-left px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">STK nhận</th>
-                      <th className="text-right px-4 py-2 font-semibold text-gray-400 whitespace-nowrap">Số tiền</th>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Ngày</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Nội dung CK</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">STK nhận</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Số tiền</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-gray-100">
                     {[...row.da_thu_rows].sort((a, b) => (a.ngay ?? '').localeCompare(b.ngay ?? '')).map((d, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.ngay ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900" title={d.dien_giai ?? ''}>{d.dien_giai ?? '—'}</td>
-                        <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{d.tai_khoan ?? '—'}</td>
-                        <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{formatTien(d.thu ?? 0)}</td>
+                      <tr key={i} className="hover:bg-gray-50/70 transition-colors">
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.ngay ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900" title={d.dien_giai ?? ''}>{d.dien_giai ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-900 whitespace-nowrap">{d.tai_khoan ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-emerald-600 whitespace-nowrap text-right">{formatTien(d.thu ?? 0)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )
           )}
