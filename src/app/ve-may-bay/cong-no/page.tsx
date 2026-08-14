@@ -886,11 +886,14 @@ export default function CongNoVePage() {
     }
   }
 
-  // Nhập nguyên xi cho 1 trong 4 tab NCC cố định — không map cột, lưu y
-  // hệt header + dữ liệu thô của file gốc vào ve_debt_records_raw.
+  // Nhập không map cột — lưu y hệt header + dữ liệu thô của file gốc vào
+  // ve_debt_records_raw. Dùng cho cả 4 tab NCC cố định (ncc = nccFilter)
+  // lẫn tab "Tổng hợp" (ncc = nhập tay/tự nhận diện qua nccInput) — việc
+  // chuẩn hoá về định dạng chung cho Tổng hợp làm ở bước riêng sau.
   async function submitRaw() {
-    if (!nccFilter) {
-      setImportError('Chưa chọn tab NCC.')
+    const ncc = nccFilter || nccInput.trim()
+    if (!ncc) {
+      setImportError('Chưa nhập NCC (nhà cung cấp) cho lô này.')
       return
     }
     setImporting(true)
@@ -899,7 +902,7 @@ export default function CongNoVePage() {
       const res = await fetch('/api/ve-may-bay/cong-no-raw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc: nccFilter, source_file: fileName, headers, rows: dataRows }),
+        body: JSON.stringify({ ncc, source_file: fileName, headers, rows: dataRows }),
       })
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
@@ -1174,70 +1177,24 @@ export default function CongNoVePage() {
           </div>
         )}
 
-        {headerRowIndex != null && !vietjetMode && !fcvnMode && nccFilter === '' && (
+        {headerRowIndex != null && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">
-                Tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
-              </span>
-              <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                ← Chọn lại dòng tiêu đề
-              </button>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">NCC (nhà cung cấp) *</label>
-                <input value={nccInput} onChange={e => setNccInput(e.target.value)} placeholder="VD: Vietnam Airlines, Đại lý ABC..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              </div>
-              {REQUIRED_FIELDS.map(f => (
-                <div key={f.key}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Cột &quot;{f.label}&quot; *</label>
-                  <select value={mapping[f.key]} onChange={e => setMapping(m => ({ ...m, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    <option value="">— Chọn cột —</option>
-                    {headers.map((h, i) => <option key={i} value={i}>{h || `Cột ${i + 1}`}</option>)}
-                  </select>
-                </div>
-              ))}
-              {OPTIONAL_FIELDS.map(f => (
-                <div key={f.key}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Cột &quot;{f.label}&quot; (không bắt buộc)</label>
-                  <select value={mapping[f.key]} onChange={e => setMapping(m => ({ ...m, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    <option value="">— Không có —</option>
-                    {headers.map((h, i) => <option key={i} value={i}>{h || `Cột ${i + 1}`}</option>)}
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-            <div className="flex items-center gap-2">
-              <button onClick={submitImport} disabled={importing}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào hệ thống
-              </button>
-              <button onClick={resetWizard} disabled={importing} type="button"
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
-                Hủy
-              </button>
-            </div>
-          </div>
-        )}
-
-        {headerRowIndex != null && nccFilter !== '' && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">
-                Nhập vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+                {nccFilter ? `Nhập vào tab "${nccFilter}"` : 'Nhập vào tab "Tổng hợp"'} — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
               </span>
               <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
                 ← Chọn lại dòng tiêu đề
               </button>
             </div>
+
+            {!nccFilter && (
+              <div className="max-w-xs">
+                <label className="block text-xs font-semibold text-gray-500 mb-1">NCC (nhà cung cấp) *</label>
+                <input value={nccInput} onChange={e => setNccInput(e.target.value)} placeholder="VD: Vietnam Airlines, Đại lý ABC..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            )}
 
             <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
               <table className="text-xs w-full">
@@ -1261,7 +1218,7 @@ export default function CongNoVePage() {
             <div className="flex items-center gap-2">
               <button onClick={submitRaw} disabled={importing}
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào tab &quot;{nccFilter}&quot;
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào tab &quot;{nccFilter || nccInput || '—'}&quot;
               </button>
               <button onClick={resetWizard} disabled={importing} type="button"
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
