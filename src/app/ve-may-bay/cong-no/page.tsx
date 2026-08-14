@@ -906,7 +906,7 @@ export default function CongNoVePage() {
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
-            Nhập công nợ
+            Tải file công nợ NCC
           </button>
           {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
           <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
