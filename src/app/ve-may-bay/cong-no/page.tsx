@@ -903,9 +903,12 @@ export default function CongNoVePage() {
           ))}
         </div>
         <div className="flex items-center gap-2 pb-2">
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }}
-            title="Nhập công nợ từ file"
-            className="text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 border border-gray-200 rounded-lg max-w-[220px]" />
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
+          <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
+            Nhập công nợ
+          </button>
+          {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
           <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <RefreshCw size={16} />
           </button>
@@ -1009,10 +1012,16 @@ export default function CongNoVePage() {
 
             {importError && <p className="text-xs text-red-500">{importError}</p>}
 
-            <button onClick={submitVietjetImport} disabled={importing}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-              {importing && <Loader2 size={14} className="animate-spin" />} Nhập {vietjetRows.length} dòng vào hệ thống
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={submitVietjetImport} disabled={importing}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {vietjetRows.length} dòng vào hệ thống
+              </button>
+              <button onClick={resetWizard} disabled={importing} type="button"
+                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
+                Hủy
+              </button>
+            </div>
           </div>
         )}
 
@@ -1060,10 +1069,16 @@ export default function CongNoVePage() {
 
             {importError && <p className="text-xs text-red-500">{importError}</p>}
 
-            <button onClick={submitFcvnImport} disabled={importing}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-              {importing && <Loader2 size={14} className="animate-spin" />} Nhập {fcvnRows.length} dòng vào hệ thống
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={submitFcvnImport} disabled={importing}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {fcvnRows.length} dòng vào hệ thống
+              </button>
+              <button onClick={resetWizard} disabled={importing} type="button"
+                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
+                Hủy
+              </button>
+            </div>
           </div>
         )}
 
@@ -1108,10 +1123,16 @@ export default function CongNoVePage() {
 
             {importError && <p className="text-xs text-red-500">{importError}</p>}
 
-            <button onClick={submitImport} disabled={importing}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-              {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào hệ thống
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={submitImport} disabled={importing}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào hệ thống
+              </button>
+              <button onClick={resetWizard} disabled={importing} type="button"
+                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
+                Hủy
+              </button>
+            </div>
           </div>
         )}
       </div>
