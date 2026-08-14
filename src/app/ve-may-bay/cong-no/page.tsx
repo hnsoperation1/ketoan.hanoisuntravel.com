@@ -334,10 +334,21 @@ const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semi
 // có dòng dữ liệu nào (khác cách cũ chỉ liệt kê NCC đã có sẵn trong rows).
 const NCC_TABS = ['FCVN', 'SAO ĐỎ', 'VIETJET', 'SUN PQC']
 
-// Số cột/dòng kẻ trống khi 1 tab NCC chưa có lô dữ liệu nào — chỉ để nhìn
+// Số dòng kẻ trống khi 1 tab NCC chưa có lô dữ liệu nào — chỉ để nhìn
 // giống 1 file Excel trống, không mang ý nghĩa dữ liệu gì.
-const EMPTY_GRID_COLS = 8
 const EMPTY_GRID_ROWS = 14
+
+// Header gợi ý theo ĐÚNG cột thật của từng NCC — lấy trực tiếp từ dòng tiêu
+// đề file mẫu thật "FILE VÉ GỬI QUỐC.xlsx" (sheet cùng tên NCC), hiện sẵn
+// khi tab đó CHƯA có lô nào upload để nhìn giống hệt bảng thật thay vì
+// lưới trống vô nghĩa. Ngay khi có lô đầu tiên upload lên, header thật lấy
+// từ chính file đó sẽ thay thế, không còn dùng gợi ý này nữa.
+const NCC_HEADER_HINTS: Record<string, string[]> = {
+  'FCVN': ['Order', 'Receipt Nbr.', 'Issue date', 'Ticket Nbr.', 'Pax Name', 'Route', 'T', 'Cust.', 'Curr', 'ROE', 'Fare', 'Tax', 'Charge', 'Vat', 'Sv.Fee', 'Penalty', 'ToTal AMT', 'Comm.', 'Net Amt', 'FB', 'Class', 'FLT Nbr.', 'Saler', 'Remark'],
+  'VIETJET': ['PNR', 'PAX NAME', 'PAYMENT DATE', 'SEGMENTS', 'PAYMENT BY', 'TAKEN BY', 'ACCOUNT', 'AMOUNT CONVERT (VND)', 'CURRENCY', 'AMOUNT CONVERT (VND)', 'Payment Identifier'],
+  'SAO ĐỎ': ['STT', 'NGAY XV', 'CODE/SO VE', 'TEN KHACH', 'HANH TRINH', 'NGAY DI', 'NGAY VE', 'Gia ve', 'Thue', 'Dich vu', 'CKTM', 'SL PAX', 'Ty gia', 'Thanh Tien', 'THANH TOAN', 'DƯ NỢ', 'GHI CHU'],
+  'SUN PQC': ['STT', 'Loại giao dịch', 'Ngày giao dịch', 'Office ID', 'Loại chứng từ', 'Loại hành trình', 'Mã đặt chỗ (PNR)', 'Số vé', 'Tên khách', 'Hành trình', 'Hình thức thanh toán', 'Lý do phát hành', 'Ngày bay', 'Hãng vận chuyển', 'Số hiệu chuyến bay', 'Hạng vé', 'Loại khách', 'Giá vé', 'Phí hoàn vé', 'Phí xuất vé', 'Phí đổi', 'Phí phụ thu nhiên liệu', 'Phí quản trị hệ thống', 'Thuế suất', 'Thuế VAT', 'Phí sân bay', 'Phí soi chiếu', 'Thuế, phí khác', 'Tổng tiền', 'Loại tiền tệ', 'Người xuất vé'],
+}
 const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white'
 
 // `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
@@ -1315,7 +1326,7 @@ export default function CongNoVePage() {
           )}
         </>
       ) : (
-        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} />
+        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter} />
       )}
     </div>
   )
@@ -1323,23 +1334,24 @@ export default function CongNoVePage() {
 
 // Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô 1 bảng riêng,
 // giữ đúng cột/tên cột như file gốc (không ép về schema chung).
-function RawBatchesView({ batches, onDelete }: { batches: RawBatch[]; onDelete: (id: string) => void }) {
+function RawBatchesView({ batches, onDelete, ncc }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string }) {
   if (batches.length === 0) {
+    const hintHeaders = NCC_HEADER_HINTS[ncc] ?? []
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm pt-0 pb-5 px-[10px]">
         <div className="list-table-container border border-gray-200 rounded-xl overflow-hidden">
           <table className="list-table text-xs w-full border-collapse">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                <th colSpan={EMPTY_GRID_COLS} className="px-2 py-1.5 text-left font-semibold border border-gray-200">
-                  Chưa có dữ liệu — bấm &quot;Tải file công nợ NCC&quot; để upload
-                </th>
+                {hintHeaders.map((h, i) => (
+                  <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: EMPTY_GRID_COLS }).map((_, j) => (
+                  {hintHeaders.map((_, j) => (
                     <td key={j} className="border border-gray-100 h-8">&nbsp;</td>
                   ))}
                 </tr>
