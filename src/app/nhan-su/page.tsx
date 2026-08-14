@@ -48,6 +48,7 @@ type HoSoFlat = {
   trang_thai: TrangThaiHoSo
   du_ho_so_chung_tu: boolean
   da_tra_do_doan: boolean
+  ke_toan_truong_duyet: boolean
   nhansu: {
     id: string
     ho_ten: string
@@ -345,7 +346,7 @@ export default function NhanSuPage() {
   // Tick 1 trong 2 checkbox duyệt tay ("Đã đủ hồ sơ/chứng từ"/"Đã trả đồ
   // đoàn") — cập nhật lạc quan ngay trên UI rồi mới gọi API, cùng route
   // PATCH /api/ho-so/[id] đã dùng ở trang chi tiết đoàn.
-  async function toggleHoSoField(hoSoId: string, field: 'du_ho_so_chung_tu' | 'da_tra_do_doan', value: boolean) {
+  async function toggleHoSoField(hoSoId: string, field: 'du_ho_so_chung_tu' | 'da_tra_do_doan' | 'ke_toan_truong_duyet', value: boolean) {
     setHoSoList(prev => prev.map(h => (h.id === hoSoId ? { ...h, [field]: value } : h)))
     const res = await fetch(`/api/ho-so/${hoSoId}`, {
       method: 'PATCH',
@@ -635,21 +636,21 @@ export default function NhanSuPage() {
               <table className="w-full text-sm list-table">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Đoàn', 'Ngày dịch vụ', 'CTP', 'Trạng thái', ''].map(h => (
-                      <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'CTP' ? 'text-right' : 'text-left'}`}>{h}</th>
+                    {['Nhân sự', 'Đoàn', 'Ngày dịch vụ', 'CTP', 'Trạng thái', 'Kế toán trưởng duyệt', ''].map(h => (
+                      <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'CTP' ? 'text-right' : h === 'Kế toán trưởng duyệt' ? 'text-center' : 'text-left'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
                   ) : loadError ? (
-                    <tr><td colSpan={6} className="px-5 py-14 text-center">
+                    <tr><td colSpan={7} className="px-5 py-14 text-center">
                       <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                       <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                     </td></tr>
                   ) : paymentRows.length === 0 ? (
-                    <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
                   ) : paymentRows.map(h => (
                     <tr key={h.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-4 py-2.5 whitespace-nowrap">
@@ -666,6 +667,10 @@ export default function NhanSuPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{formatDateVN(effectiveDate(h)) || '—'}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-900">{formatTien(h.chi_tra)}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{TRANG_THAI_LABELS[h.trang_thai]}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input type="checkbox" checked={h.ke_toan_truong_duyet} onChange={e => toggleHoSoField(h.id, 'ke_toan_truong_duyet', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                      </td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         {tab === 'can_thanh_toan' && (
                           <button onClick={() => setQrFor(h)} title="QR thanh toán"

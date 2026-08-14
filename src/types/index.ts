@@ -114,6 +114,7 @@ export interface HoSo {
   nhap_misa: boolean
   du_ho_so_chung_tu: boolean
   da_tra_do_doan: boolean
+  ke_toan_truong_duyet: boolean
   anh_cccd_truoc_url: string | null
   anh_cccd_sau_url: string | null
   anh_the_hdv_url: string | null

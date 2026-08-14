@@ -64,7 +64,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
         onClick={close}
       />
       <div
-        className={`fixed inset-y-0 right-0 z-160 w-full max-w-[95vw] xl:max-w-[1400px] bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 z-160 w-full max-w-4xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
