@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Upload, RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
+import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useTopbar } from '@/contexts/topbar'
@@ -889,21 +889,33 @@ export default function CongNoVePage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-end">
-        <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw size={16} />
-        </button>
+      {/* Tab NCC + nhập file + làm mới, cùng 1 dòng */}
+      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
+        <div className="flex items-center gap-1 flex-wrap">
+          {(['', ...NCC_TABS] as const).map(n => (
+            <button key={n || 'tong-hop'} type="button"
+              onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter('') }}
+              className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {n || 'Tổng hợp'}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 pb-2">
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }}
+            title="Nhập công nợ từ file"
+            className="text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 border border-gray-200 rounded-lg max-w-[220px]" />
+          <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Upload */}
+      {/* Nhập công nợ từ file — chỉ hiện khi có việc cần xử lý (chọn sheet/tiêu đề/cột...) */}
+      {(sheets.length > 0 || (importError && sheets.length === 0)) && (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <Upload size={16} className="text-brand-500" /> Nhập công nợ từ file
-        </h2>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }}
-          className="text-sm text-gray-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 border border-gray-200 rounded-xl" />
-
-        {importError && sheets.length === 0 && <p className="mt-3 text-xs text-red-500">{importError}</p>}
+        {importError && sheets.length === 0 && <p className="text-xs text-red-500">{importError}</p>}
 
         {sheets.length > 1 && selectedSheet == null && (
           <div className="mt-4 space-y-2">
@@ -1103,19 +1115,7 @@ export default function CongNoVePage() {
           </div>
         )}
       </div>
-
-      {/* Tab NCC */}
-      <div className="flex items-center gap-1 border-b border-gray-200">
-        {(['', ...NCC_TABS] as const).map(n => (
-          <button key={n || 'tong-hop'} type="button"
-            onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter('') }}
-            className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}>
-            {n || 'Tổng hợp'}
-          </button>
-        ))}
-      </div>
+      )}
 
       {/* Filters + view mode */}
       <div className="flex flex-wrap items-center gap-2">
