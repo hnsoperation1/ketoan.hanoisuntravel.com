@@ -1232,7 +1232,7 @@ export default function CongNoVePage() {
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">
-                Nhập nguyên xi vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+                Nhập vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
               </span>
               <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
                 ← Chọn lại dòng tiêu đề
@@ -1261,7 +1261,7 @@ export default function CongNoVePage() {
             <div className="flex items-center gap-2">
               <button onClick={submitRaw} disabled={importing}
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập nguyên xi {dataRows.length} dòng vào tab &quot;{nccFilter}&quot;
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào tab &quot;{nccFilter}&quot;
               </button>
               <button onClick={resetWizard} disabled={importing} type="button"
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
