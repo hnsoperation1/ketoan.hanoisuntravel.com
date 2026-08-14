@@ -1336,64 +1336,70 @@ export default function CongNoVePage() {
 // giữ đúng cột/tên cột như file gốc (không ép về schema chung).
 function RawBatchesView({ batches, onDelete, ncc }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string }) {
   if (batches.length === 0) {
-    const hintHeaders = NCC_HEADER_HINTS[ncc] ?? []
-    return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm pt-0 pb-5 px-[10px]">
-        <div className="list-table-container border border-gray-200 rounded-xl overflow-hidden">
-          <table className="list-table text-xs w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500">
-                {hintHeaders.map((h, i) => (
-                  <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
-                <tr key={i}>
-                  {hintHeaders.map((_, j) => (
-                    <td key={j} className="border border-gray-100 h-8">&nbsp;</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
+    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" />
   }
   return (
     <div className="space-y-4">
       {batches.map(b => (
-        <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500">
-              {b.source_file || 'Không rõ tên file'} · {b.rows.length} dòng · {new Date(b.created_at).toLocaleString('vi-VN')}
-            </span>
-            <button onClick={() => onDelete(b.id)} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-              <Trash2 size={14} />
-            </button>
-          </div>
-          <div className="list-table-container border border-gray-200 rounded-xl overflow-auto max-h-[480px]">
-            <table className="list-table text-xs w-full">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500">
-                  {b.headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {b.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-gray-100">
-                    {b.headers.map((_, j) => <td key={j} className="px-2 py-1.5 whitespace-nowrap text-gray-900">{r[j] || '—'}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <RawTableCard key={b.id} headers={b.headers} rows={b.rows}
+          info={`${b.source_file || 'Không rõ tên file'} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
+          onDelete={() => onDelete(b.id)} />
       ))}
     </div>
   )
+}
+
+// Khung bảng dùng chung cho cả lô đã upload lẫn tab chưa có dữ liệu (rows
+// rỗng → tự kẻ lưới trống theo đúng số cột header) — có cùng thanh đếm
+// dòng + nút "Phóng to" (portal thẳng document.body, giống BangExcelView)
+// như bảng "Tổng hợp" để đồng nhất trải nghiệm giữa các tab.
+function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; rows: string[][]; info: string; onDelete?: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  const content = (
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
+        <span className="text-xs text-gray-400">{info}</span>
+        <div className="flex items-center gap-1">
+          {onDelete && (
+            <button onClick={onDelete} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <Trash2 size={13} />
+            </button>
+          )}
+          <button onClick={() => setExpanded(e => !e)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
+            {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            {expanded ? 'Thu nhỏ' : 'Phóng to'}
+          </button>
+        </div>
+      </div>
+      <div className={expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'}>
+        <table className="list-table text-xs w-full border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gray-50 text-gray-500">
+              {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length > 0 ? rows.map((r, i) => (
+              <tr key={i} className="border-t border-gray-100">
+                {headers.map((_, j) => <td key={j} className="border border-gray-100 px-2 py-1.5 whitespace-nowrap text-gray-900">{r[j] || '—'}</td>)}
+              </tr>
+            )) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
+              <tr key={i}>
+                {headers.map((_, j) => <td key={j} className="border border-gray-100 h-8">&nbsp;</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
+  if (expanded && mounted) return createPortal(content, document.body)
+  return content
 }
 
 type FieldSaver = (id: string, field: 'tkt_tag' | 'ma_khach' | 'sale_chinh' | 'ghi_chu', value: string) => void
