@@ -19,7 +19,7 @@ export async function GET() {
     .select(
       'id, doan_id, nhansu_id, ngay_dich_vu, so_ngay_cong_tac, don_gia_ngay, so_tien_chi_tra, chi_tra, trang_thai, tinh_trang_thanh_toan, du_ho_so_chung_tu, da_tra_do_doan,' +
       'nhansu:nhansu_id(id, ho_ten, so_cccd, sdt, email, stk, ten_ngan_hang, loai_nhan_su_id, loai_nhan_su:loai_nhan_su_id(*)),' +
-      'doan:doan_id(id, ten_doan, ngay_di, ngay_ve)',
+      'doan:doan_id(id, ten_doan, ngay_di, ngay_ve, hanh_trinh)',
     )
     .order('created_at', { ascending: false })
 

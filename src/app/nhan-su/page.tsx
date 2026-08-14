@@ -571,12 +571,19 @@ export default function NhanSuPage() {
                       {showGroupHeader && (
                         <tr className="bg-gray-50">
                           <td colSpan={6} className="px-4 py-2 text-xs font-bold text-gray-600">
+                            <span className="text-gray-400 font-normal">Đoàn: </span>
                             {h.doan ? (
                               <Link href={`/doan/${h.doan.id}`} className="hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
                             ) : '(đoàn đã xoá)'}
+                            {h.doan?.hanh_trinh && (
+                              <>
+                                <span className="text-gray-400 font-normal"> - Hành trình: </span>
+                                {h.doan.hanh_trinh}
+                              </>
+                            )}
                             {h.doan?.ngay_di && (
-                              <span className="ml-2 font-normal text-gray-400">
-                                {formatDateVN(h.doan.ngay_di)}{h.doan.ngay_ve ? ` – ${formatDateVN(h.doan.ngay_ve)}` : ''}
+                              <span className="font-normal text-gray-400">
+                                {' - '}{formatDateVN(h.doan.ngay_di)}{h.doan.ngay_ve ? ` – ${formatDateVN(h.doan.ngay_ve)}` : ''}
                               </span>
                             )}
                           </td>
