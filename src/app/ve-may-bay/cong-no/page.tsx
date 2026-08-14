@@ -1310,7 +1310,7 @@ export default function CongNoVePage() {
           )}
         </>
       ) : (
-        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} nccLabel={nccFilter} />
+        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} />
       )}
     </div>
   )
@@ -1318,11 +1318,20 @@ export default function CongNoVePage() {
 
 // Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô 1 bảng riêng,
 // giữ đúng cột/tên cột như file gốc (không ép về schema chung).
-function RawBatchesView({ batches, onDelete, nccLabel }: { batches: RawBatch[]; onDelete: (id: string) => void; nccLabel: string }) {
+function RawBatchesView({ batches, onDelete }: { batches: RawBatch[]; onDelete: (id: string) => void }) {
   if (batches.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">
-        Chưa có lô công nợ nào cho &quot;{nccLabel}&quot; — bấm &quot;Tải file công nợ NCC&quot; ở trên để upload.
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm pt-0 pb-5 px-[10px]">
+        <div className="list-table-container border border-gray-200 rounded-xl min-h-[240px]">
+          <table className="list-table text-xs w-full">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500">
+                <th className="px-2 py-1.5 text-left font-semibold">&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody />
+          </table>
+        </div>
       </div>
     )
   }
