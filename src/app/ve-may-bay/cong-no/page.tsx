@@ -1358,8 +1358,21 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
     c0: Math.min(selStart.c, selEnd.c), c1: Math.max(selStart.c, selEnd.c),
   } : null
   const isSelected = (r: number, c: number) => !!selBounds && r >= selBounds.r0 && r <= selBounds.r1 && c >= selBounds.c0 && c <= selBounds.c1
+  // Viền quanh CẢ vùng đang chọn (không phải viền từng ô riêng lẻ) —
+  // giống marquee chọn vùng của Excel: chỉ vẽ cạnh ở đúng rìa ngoài của
+  // hình chữ nhật đang chọn.
+  function selectionEdgeClass(r: number, c: number): string {
+    if (!selBounds || !isSelected(r, c)) return ''
+    const cls: string[] = []
+    if (r === selBounds.r0) cls.push('border-t-2 border-t-brand-500')
+    if (r === selBounds.r1) cls.push('border-b-2 border-b-brand-500')
+    if (c === selBounds.c0) cls.push('border-l-2 border-l-brand-500')
+    if (c === selBounds.c1) cls.push('border-r-2 border-r-brand-500')
+    return cls.join(' ')
+  }
 
-  function startSelect(r: number, c: number) {
+  function startSelect(e: React.MouseEvent, r: number, c: number) {
+    if (e.button !== 0) return // chỉ chuột trái mới bắt đầu/thu vùng chọn mới — chuột phải phải giữ nguyên vùng đang có
     selecting.current = true
     setSelStart({ r, c })
     setSelEnd({ r, c })
@@ -1433,10 +1446,10 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
               <tr key={i} className="border-t border-gray-100">
                 {headers.map((h, j) => (
                   <td key={j}
-                    onMouseDown={() => startSelect(i, j)}
+                    onMouseDown={e => startSelect(e, i, j)}
                     onMouseEnter={() => extendSelect(i, j)}
                     onContextMenu={e => handleContextMenu(e, i, j)}
-                    className={`border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${isSelected(i, j) ? 'bg-brand-100' : ''}`}>
+                    className={`border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${isSelected(i, j) ? 'bg-brand-100' : ''} ${selectionEdgeClass(i, j)}`}>
                     {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
