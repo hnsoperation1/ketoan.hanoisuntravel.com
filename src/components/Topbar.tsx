@@ -72,7 +72,7 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
           >
             <UserAvatar email={user.email} className="w-6 h-6 text-[10px]" />
             <div className="text-left hidden sm:block">
-              <div className="text-sm font-semibold text-gray-800 leading-tight">{user.email}</div>
+              <div className="text-sm font-semibold text-gray-800 leading-tight">{user.full_name}</div>
               <div className="text-[11px] text-gray-400 leading-tight">Kế toán</div>
             </div>
             <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />

@@ -185,7 +185,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm md:text-xs font-semibold truncate" style={{ color: '#003d5c' }}>
-                  {user.email}
+                  {user.full_name}
                 </div>
                 <div className="text-xs md:text-[11px] truncate" style={{ color: '#0069a0' }}>
                   Kế toán

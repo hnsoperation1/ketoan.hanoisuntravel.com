@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 interface AuthUser {
   id: string
   email: string
+  full_name: string
   is_super_admin: boolean
   is_boss: boolean
 }

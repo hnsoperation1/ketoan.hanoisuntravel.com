@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { RefreshCw, Search, X, Loader2, Eye, ArrowRight } from 'lucide-react'
@@ -337,6 +337,8 @@ export default function NhanSuPage() {
     return c
   }, [hoSoInRange])
 
+  // Phân theo đoàn (đoàn mới đi trước), trong từng đoàn sắp theo tên nhân
+  // sự — thay cho cột "Đoàn" lặp lại từng dòng (quyết định 2026-08-13).
   const tongHopRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return hoSoInRange
@@ -348,7 +350,13 @@ export default function NhanSuPage() {
         }
         return true
       })
-      .sort((a, b) => normalizeName(a.nhansu?.ho_ten ?? '').localeCompare(normalizeName(b.nhansu?.ho_ten ?? '')))
+      .sort((a, b) => {
+        const doanA = a.doan?.ngay_di ?? ''
+        const doanB = b.doan?.ngay_di ?? ''
+        if (doanA !== doanB) return doanB.localeCompare(doanA)
+        if (a.doan_id !== b.doan_id) return (a.doan?.ten_doan ?? '').localeCompare(b.doan?.ten_doan ?? '')
+        return normalizeName(a.nhansu?.ho_ten ?? '').localeCompare(normalizeName(b.nhansu?.ho_ten ?? ''))
+      })
   }, [hoSoInRange, filterLoaiId, search])
 
   const paymentRows = useMemo(() => {
@@ -457,63 +465,69 @@ export default function NhanSuPage() {
               <table className="w-full text-sm list-table">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Đoàn', 'Đã đủ hồ sơ/chứng từ', 'Đã trả đồ đoàn', ''].map(h => (
+                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Đủ hồ sơ/chứng từ', 'Đã trả đồ đoàn', ''].map(h => (
                       <th key={h} className="px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap text-left">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
                   ) : loadError ? (
-                    <tr><td colSpan={7} className="px-5 py-14 text-center">
+                    <tr><td colSpan={6} className="px-5 py-14 text-center">
                       <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                       <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                     </td></tr>
                   ) : tongHopRows.length === 0 ? (
-                    <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có lượt tham gia nào khớp bộ lọc.</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có lượt tham gia nào khớp bộ lọc.</td></tr>
                   ) : tongHopRows.map((h, i) => {
-                    const nameKey = normalizeName(h.nhansu?.ho_ten ?? '')
-                    const maybeDup = (i > 0 && normalizeName(tongHopRows[i - 1].nhansu?.ho_ten ?? '') === nameKey)
-                      || (i < tongHopRows.length - 1 && normalizeName(tongHopRows[i + 1].nhansu?.ho_ten ?? '') === nameKey)
+                    const showGroupHeader = i === 0 || tongHopRows[i - 1].doan_id !== h.doan_id
                     return (
-                    <tr key={h.id} className={`hover:bg-gray-50/70 transition-colors ${maybeDup ? 'bg-amber-50/60' : ''}`}>
-                      <td className="px-4 py-2.5">
-                        <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
-                          <div className="whitespace-nowrap">
-                            <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
-                            <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
-                            {maybeDup && (
-                              <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold align-middle">có thể trùng</span>
+                    <Fragment key={h.id}>
+                      {showGroupHeader && (
+                        <tr className="bg-gray-50">
+                          <td colSpan={6} className="px-4 py-2 text-xs font-bold text-gray-600">
+                            {h.doan ? (
+                              <Link href={`/doan/${h.doan.id}`} className="hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
+                            ) : '(đoàn đã xoá)'}
+                            {h.doan?.ngay_di && (
+                              <span className="ml-2 font-normal text-gray-400">
+                                {formatDateVN(h.doan.ngay_di)}{h.doan.ngay_ve ? ` – ${formatDateVN(h.doan.ngay_ve)}` : ''}
+                              </span>
                             )}
-                          </div>
-                          <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {h.nhansu?.so_cccd ?? '—'}</div>
-                        </button>
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-900">
-                        <div>{h.nhansu?.sdt ?? '—'}</div>
-                        {h.nhansu?.email && <div className="text-xs text-gray-400">{h.nhansu.email}</div>}
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-900">{h.nhansu?.stk ? `${h.nhansu.stk} - ${h.nhansu.ten_ngan_hang ?? ''}` : '—'}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap">
-                        {h.doan ? (
-                          <Link href={`/doan/${h.doan.id}`} className="text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
-                        ) : '(đoàn đã xoá)'}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <input type="checkbox" checked={h.du_ho_so_chung_tu} onChange={e => toggleHoSoField(h.id, 'du_ho_so_chung_tu', e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <input type="checkbox" checked={h.da_tra_do_doan} onChange={e => toggleHoSoField(h.id, 'da_tra_do_doan', e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
-                          <Eye size={15} />
-                        </button>
-                      </td>
-                    </tr>
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="hover:bg-gray-50/70 transition-colors">
+                        <td className="px-4 py-2.5">
+                          <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
+                            <div className="whitespace-nowrap">
+                              <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
+                              <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
+                            </div>
+                            <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {h.nhansu?.so_cccd ?? '—'}</div>
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-900">
+                          <div>{h.nhansu?.sdt ?? '—'}</div>
+                          {h.nhansu?.email && <div className="text-xs text-gray-400">{h.nhansu.email}</div>}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-900">{h.nhansu?.stk ? `${h.nhansu.stk} - ${h.nhansu.ten_ngan_hang ?? ''}` : '—'}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <input type="checkbox" checked={h.du_ho_so_chung_tu} onChange={e => toggleHoSoField(h.id, 'du_ho_so_chung_tu', e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <input type="checkbox" checked={h.da_tra_do_doan} onChange={e => toggleHoSoField(h.id, 'da_tra_do_doan', e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                        </td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                          <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            <Eye size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    </Fragment>
                     )
                   })}
                 </tbody>

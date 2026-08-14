@@ -21,9 +21,18 @@ export async function POST(req: NextRequest) {
     await supabase.auth.signOut()
     return NextResponse.json({ error: 'Tài khoản này không có quyền truy cập hệ thống kế toán' }, { status: 403 })
   }
-  const { data: isSuperAdmin } = await supabase.rpc('is_super_admin')
+  const [{ data: isSuperAdmin }, { data: profile }] = await Promise.all([
+    supabase.rpc('is_super_admin'),
+    supabase.from('users').select('role, full_name').eq('id', data.user.id).single(),
+  ])
 
   return NextResponse.json({
-    user: { id: data.user.id, email: data.user.email, is_super_admin: isSuperAdmin ?? false },
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+      full_name: profile?.full_name ?? data.user.email,
+      is_super_admin: isSuperAdmin ?? false,
+      is_boss: profile?.role === 'boss',
+    },
   })
 }
