@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
+import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X, Copy } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useTopbar } from '@/contexts/topbar'
@@ -1338,10 +1338,65 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
+  // Chọn vùng ô kiểu Excel (kéo chuột chọn hình chữ nhật hàng×cột) rồi
+  // Ctrl+C copy đúng vùng đó dạng TSV — thay cho bôi đen văn bản mặc định
+  // của trình duyệt (chạy theo thứ tự DOM nên lem sang ô/dòng khác, không
+  // theo đúng hình chữ nhật người dùng kéo).
+  const [selStart, setSelStart] = useState<{ r: number; c: number } | null>(null)
+  const [selEnd, setSelEnd] = useState<{ r: number; c: number } | null>(null)
+  const selecting = useRef(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stop = () => { selecting.current = false }
+    window.addEventListener('mouseup', stop)
+    return () => window.removeEventListener('mouseup', stop)
+  }, [])
+
+  const selBounds = selStart && selEnd ? {
+    r0: Math.min(selStart.r, selEnd.r), r1: Math.max(selStart.r, selEnd.r),
+    c0: Math.min(selStart.c, selEnd.c), c1: Math.max(selStart.c, selEnd.c),
+  } : null
+  const isSelected = (r: number, c: number) => !!selBounds && r >= selBounds.r0 && r <= selBounds.r1 && c >= selBounds.c0 && c <= selBounds.c1
+
+  function startSelect(r: number, c: number) {
+    selecting.current = true
+    setSelStart({ r, c })
+    setSelEnd({ r, c })
+    wrapRef.current?.focus()
+  }
+  function extendSelect(r: number, c: number) {
+    if (selecting.current) setSelEnd({ r, c })
+  }
+  function copySelection() {
+    if (!selBounds) return
+    const tsv = rows.slice(selBounds.r0, selBounds.r1 + 1)
+      .map(r => r.slice(selBounds.c0, selBounds.c1 + 1).join('\t'))
+      .join('\n')
+    navigator.clipboard.writeText(tsv).catch(() => {})
+  }
+
+  // Menu chuột phải — chỉ có 1 nút "Sao chép" copy đúng vùng đang chọn
+  // (bấm chuột phải ngoài vùng đang chọn thì thu vùng chọn về đúng 1 ô đó
+  // trước, giống hành vi Excel).
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    window.addEventListener('click', close)
+    window.addEventListener('scroll', close, true)
+    return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true) }
+  }, [ctxMenu])
+  function handleContextMenu(e: React.MouseEvent, r: number, c: number) {
+    e.preventDefault()
+    if (!isSelected(r, c)) { setSelStart({ r, c }); setSelEnd({ r, c }) }
+    setCtxMenu({ x: e.clientX, y: e.clientY })
+  }
+
   const content = (
     <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
-        <span className="text-xs text-gray-400">{info}</span>
+        <span className="text-xs text-gray-400">{info} {rows.length > 0 && <span className="text-gray-300">· kéo chọn vùng rồi Ctrl+C để copy</span>}</span>
         <div className="flex items-center gap-1">
           {onDelete && (
             <button onClick={onDelete} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
@@ -1355,7 +1410,9 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
           </button>
         </div>
       </div>
-      <div className={expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'}>
+      <div ref={wrapRef} tabIndex={0}
+        onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') copySelection() }}
+        className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'} select-none outline-none`}>
         <table className="list-table text-xs w-full border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -1366,7 +1423,11 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
             {rows.length > 0 ? rows.map((r, i) => (
               <tr key={i} className="border-t border-gray-100">
                 {headers.map((h, j) => (
-                  <td key={j} className="border border-gray-100 px-2 py-1.5 text-gray-900 align-top">
+                  <td key={j}
+                    onMouseDown={() => startSelect(i, j)}
+                    onMouseEnter={() => extendSelect(i, j)}
+                    onContextMenu={e => handleContextMenu(e, i, j)}
+                    className={`border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${isSelected(i, j) ? 'bg-brand-100' : ''}`}>
                     {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -1388,8 +1449,19 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
     </div>
   )
 
-  if (expanded && mounted) return createPortal(content, document.body)
-  return content
+  const menu = ctxMenu && mounted ? createPortal(
+    <div className="fixed z-[200] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[140px]"
+      style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
+      <button onClick={() => { copySelection(); setCtxMenu(null) }}
+        className="w-full text-left px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+        <Copy size={13} /> Sao chép
+      </button>
+    </div>,
+    document.body
+  ) : null
+
+  if (expanded && mounted) return <>{createPortal(content, document.body)}{menu}</>
+  return <>{content}{menu}</>
 }
 
 type FieldSaver = (id: string, field: 'tkt_tag' | 'ma_khach' | 'sale_chinh' | 'ghi_chu', value: string) => void
