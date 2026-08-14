@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { RefreshCw, Search, X, Loader2, Eye, ArrowRight } from 'lucide-react'
+import { RefreshCw, Search, X, Loader2, Eye, ArrowRight, QrCode } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { TRANG_THAI_LABELS } from '@/types'
 import type { LoaiNhanSu, TrangThaiHoSo } from '@/types'
@@ -76,6 +76,51 @@ function formatTien(n: number | null): string {
   return n ? `${n.toLocaleString('vi-VN')} đ` : '—'
 }
 
+const COMBINING_MARKS_RE = new RegExp('[\\u0300-\\u036f]', 'g')
+
+// Mã BIN NAPAS (VietQR) — CHỈ liệt kê các ngân hàng đã thực tế thấy trong
+// dữ liệu nhân sự thuê ngoài (đỡ rủi ro gõ nhầm mã của ngân hàng ít gặp) +
+// vài ngân hàng phổ biến khác. Ngân hàng nào không có trong danh sách này
+// thì KHÔNG tạo QR (báo rõ cho kế toán, không đoán bừa mã sai).
+const BANK_BIN_MAP: Record<string, string> = {
+  VIETCOMBANK: '970436', VCB: '970436',
+  VIETINBANK: '970415', CTG: '970415', VIETTINBANK: '970415',
+  BIDV: '970418',
+  TECHCOMBANK: '970407', TCB: '970407',
+  MBBANK: '970422', MB: '970422', MILITARYBANK: '970422',
+  VPBANK: '970432', VPB: '970432',
+  ACB: '970416',
+  TPBANK: '970423', TPB: '970423',
+  SACOMBANK: '970403', STB: '970403',
+  AGRIBANK: '970405',
+  SHB: '970443',
+  HDBANK: '970437', HDB: '970437',
+  VIB: '970441',
+  EXIMBANK: '970431', EIB: '970431',
+  MSB: '970426',
+}
+
+// Chuẩn hoá "ten_ngan_hang" (text tự do, hay kèm chi nhánh vd "Vietcombank
+// - CN Gò Vấp") về đúng key trong BANK_BIN_MAP — cắt bỏ phần sau dấu "-"
+// (chi nhánh), bỏ dấu/khoảng trắng, viết hoa.
+function resolveBankBin(tenNganHang: string | null | undefined): string | null {
+  if (!tenNganHang) return null
+  const key = tenNganHang
+    .split('-')[0]
+    .normalize('NFD')
+    .replace(COMBINING_MARKS_RE, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+  return BANK_BIN_MAP[key] ?? null
+}
+
+function buildVietQrUrl(bin: string, stk: string, amount: number | null, content: string): string {
+  const params = new URLSearchParams()
+  if (amount) params.set('amount', String(Math.round(amount)))
+  params.set('addInfo', content)
+  return `https://img.vietqr.io/image/${bin}-${stk}-compact2.png?${params.toString()}`
+}
+
 // Ngày đại diện cho 1 dòng ho_so — ưu tiên ngay_dich_vu riêng (nếu người
 // này tham gia lệch ngày so với cả đoàn), mặc định lấy ngay_di của đoàn.
 function effectiveDate(h: HoSoFlat): string | null {
@@ -87,7 +132,6 @@ function effectiveDate(h: HoSoFlat): string | null {
 // hoa/thường hay có/không dấu (vd "Nguyễn Văn A" vs "NGUYEN VAN A") không
 // bị tách xa nhau như khi sort theo chuỗi gốc. Tạm thời CHỈ sắp gần nhau
 // để kế toán tự soát bằng mắt — chưa tự gộp/xoá gì (xem trao đổi 2026-08-13).
-const COMBINING_MARKS_RE = new RegExp('[\\u0300-\\u036f]', 'g')
 function normalizeName(s: string): string {
   return s
     .normalize('NFD')
@@ -225,6 +269,41 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
   )
 }
 
+// Modal QR chuyển khoản công tác phí (VietQR/NAPAS) — quét bằng app ngân
+// hàng bất kỳ là điền sẵn STK/số tiền/nội dung, khỏi gõ tay. Chỉ tạo được
+// khi ngân hàng nằm trong BANK_BIN_MAP và có đủ STK — thiếu 1 trong 2 thì
+// báo rõ thay vì hiện QR hỏng.
+function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) {
+  const bin = resolveBankBin(h.nhansu?.ten_ngan_hang)
+  const content = `CTP ${h.nhansu?.ho_ten ?? ''} ${h.doan?.ten_doan ?? ''}`.trim()
+  const qrUrl = bin && h.nhansu?.stk ? buildVietQrUrl(bin, h.nhansu.stk, h.chi_tra, content) : null
+
+  return (
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-gray-900">QR thanh toán CTP</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={16} /></button>
+        </div>
+        {!qrUrl ? (
+          <p className="text-sm text-gray-500 py-6 text-center">
+            Chưa hỗ trợ tạo QR cho ngân hàng &quot;{h.nhansu?.ten_ngan_hang ?? '—'}&quot; hoặc thiếu số tài khoản — chuyển khoản thủ công giúp em ạ.
+          </p>
+        ) : (
+          <>
+            <img src={qrUrl} alt="QR chuyển khoản" className="w-full rounded-xl border border-gray-100" />
+            <div className="mt-3 space-y-1 text-sm">
+              <p className="text-gray-900"><span className="text-gray-400">STK:</span> {h.nhansu?.stk} - {h.nhansu?.ten_ngan_hang}</p>
+              <p className="text-gray-900"><span className="text-gray-400">Số tiền:</span> {formatTien(h.chi_tra)}</p>
+              <p className="text-gray-900"><span className="text-gray-400">Nội dung:</span> {content}</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const SELECT = 'px-3 py-1.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 border-none focus:outline-none focus:ring-2 focus:ring-brand-400'
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
@@ -238,6 +317,7 @@ export default function NhanSuPage() {
   const [search, setSearch] = useState('')
   const [filterLoaiId, setFilterLoaiId] = useState('')
   const [viewingId, setViewingId] = useState<string | null>(null)
+  const [qrFor, setQrFor] = useState<HoSoFlat | null>(null)
   const loaiNhanSu = useLoaiNhanSuList()
 
   const [dateMode, setDateMode] = useState<DateFilterMode>('all')
@@ -548,21 +628,21 @@ export default function NhanSuPage() {
               <table className="w-full text-sm list-table">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Đoàn', 'Ngày dịch vụ', 'CTP', 'Trạng thái'].map(h => (
+                    {['Nhân sự', 'Đoàn', 'Ngày dịch vụ', 'CTP', 'Trạng thái', ''].map(h => (
                       <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'CTP' ? 'text-right' : 'text-left'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
                   ) : loadError ? (
-                    <tr><td colSpan={5} className="px-5 py-14 text-center">
+                    <tr><td colSpan={6} className="px-5 py-14 text-center">
                       <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                       <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                     </td></tr>
                   ) : paymentRows.length === 0 ? (
-                    <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
                   ) : paymentRows.map(h => (
                     <tr key={h.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-4 py-2.5 whitespace-nowrap">
@@ -579,6 +659,14 @@ export default function NhanSuPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{formatDateVN(effectiveDate(h)) || '—'}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-900">{formatTien(h.chi_tra)}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{TRANG_THAI_LABELS[h.trang_thai]}</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        {tab === 'can_thanh_toan' && (
+                          <button onClick={() => setQrFor(h)} title="QR thanh toán"
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-brand-600 hover:bg-brand-50 transition-colors ml-auto">
+                            <QrCode size={14} /> QR
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -589,6 +677,7 @@ export default function NhanSuPage() {
       )}
 
       {viewingId && <NhanSuDetailPanel id={viewingId} onClose={() => setViewingId(null)} />}
+      {qrFor && <QrThanhToanModal h={qrFor} onClose={() => setQrFor(null)} />}
     </div>
   )
 }
