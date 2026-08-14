@@ -13,6 +13,7 @@ type Group = {
   tkt_id: string | null
   ma_khach_mac_dinh: string | null
   active: boolean
+  chi_hoan_ve: boolean
   created_at: string
   ve_tkt: { tkt_code: string; ten_nhan_vien: string | null } | null
 }
@@ -153,6 +154,23 @@ export default function NhomTelegramPage() {
     }
   }
 
+  async function toggleChiHoanVe(groupId: string, value: boolean) {
+    setSaving(groupId)
+    try {
+      const res = await fetch(`/api/ve-may-bay/groups/${groupId}/gan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chi_hoan_ve: value }),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        setGroups(prev => prev.map(g => g.id === groupId ? data : g))
+      }
+    } finally {
+      setSaving(null)
+    }
+  }
+
   const choGan = groups.filter(g => !g.tkt_id)
   const daGan = groups.filter(g => g.tkt_id)
 
@@ -220,6 +238,7 @@ export default function NhomTelegramPage() {
                       <th className="px-3 py-2 font-semibold">Nhóm</th>
                       <th className="px-3 py-2 font-semibold">TKT</th>
                       <th className="px-3 py-2 font-semibold">Khách hàng mặc định</th>
+                      <th className="px-3 py-2 font-semibold">Chỉ vé hoàn</th>
                       <th className="px-3 py-2 font-semibold">Trạng thái</th>
                       <th className="px-3 py-2 font-semibold">Đổi TKT</th>
                     </tr>
@@ -237,6 +256,12 @@ export default function NhomTelegramPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           <MaKhachCell groupId={g.id} value={g.ma_khach_mac_dinh} saving={saving === g.id} onSave={updateMaKhach} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <input type="checkbox" checked={g.chi_hoan_ve} disabled={saving === g.id}
+                            onChange={e => toggleChiHoanVe(g.id, e.target.checked)}
+                            title="Bot mặc định đọc mọi tin trong nhóm này là vé hoàn"
+                            className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
                         </td>
                         <td className="px-3 py-2.5">
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${g.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
