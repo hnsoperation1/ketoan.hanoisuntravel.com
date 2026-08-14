@@ -112,6 +112,8 @@ export interface HoSo {
   trang_thai: TrangThaiHoSo
   ngay_duyet: string | null
   nhap_misa: boolean
+  du_ho_so_chung_tu: boolean
+  da_tra_do_doan: boolean
   anh_cccd_truoc_url: string | null
   anh_cccd_sau_url: string | null
   anh_the_hdv_url: string | null

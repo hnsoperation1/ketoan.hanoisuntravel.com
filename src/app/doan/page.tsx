@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid } from 'lucide-react'
+import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid, Search } from 'lucide-react'
 import type { Doan } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
@@ -25,6 +25,9 @@ export default function QuyetToanTourPage() {
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'card' | 'table'>('table')
+  const [search, setSearch] = useState('')
+  const [filterLoai, setFilterLoai] = useState<'' | 'tour' | 'su_kien'>('')
+  const [filterNguon, setFilterNguon] = useState<'' | 'crm' | 'tay'>('')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -84,6 +87,15 @@ export default function QuyetToanTourPage() {
     load()
   }
 
+  const filtered = doanList.filter(d => {
+    if (filterLoai && d.loai_doan !== filterLoai) return false
+    if (filterNguon === 'crm' && !d.opportunity_id) return false
+    if (filterNguon === 'tay' && d.opportunity_id) return false
+    const q = search.trim().toLowerCase()
+    if (q && !`${d.ten_doan} ${d.hanh_trinh ?? ''}`.toLowerCase().includes(q)) return false
+    return true
+  })
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
@@ -109,13 +121,47 @@ export default function QuyetToanTourPage() {
         </button>
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        <div className="relative w-64">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên đoàn, tuyến du lịch..."
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+        <button onClick={() => setFilterLoai('')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterLoai ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Tất cả <span className="opacity-70">{doanList.length}</span>
+        </button>
+        <button onClick={() => setFilterLoai(filterLoai === 'tour' ? '' : 'tour')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterLoai === 'tour' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Tour <span className="opacity-70">{doanList.filter(d => d.loai_doan === 'tour').length}</span>
+        </button>
+        <button onClick={() => setFilterLoai(filterLoai === 'su_kien' ? '' : 'su_kien')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterLoai === 'su_kien' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Sự kiện <span className="opacity-70">{doanList.filter(d => d.loai_doan === 'su_kien').length}</span>
+        </button>
+        <span className="w-px h-4 bg-gray-200 mx-1" />
+        <button onClick={() => setFilterNguon(filterNguon === 'crm' ? '' : 'crm')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNguon === 'crm' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Từ CRM <span className="opacity-70">{doanList.filter(d => d.opportunity_id).length}</span>
+        </button>
+        <button onClick={() => setFilterNguon(filterNguon === 'tay' ? '' : 'tay')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNguon === 'tay' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+          Tạo tay <span className="opacity-70">{doanList.filter(d => !d.opportunity_id).length}</span>
+        </button>
+      </div>
+
+      <p className="text-sm text-gray-400 mb-3">{filtered.length.toLocaleString('vi-VN')} đoàn</p>
+
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-gray-300" size={28} />
         </div>
-      ) : doanList.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400 text-sm">
-          Chưa có đoàn nào. Nhấn &quot;Thêm đoàn&quot; để bắt đầu.
+          {doanList.length === 0 ? <>Chưa có đoàn nào. Nhấn &quot;Thêm đoàn&quot; để bắt đầu.</> : 'Không có đoàn nào khớp bộ lọc.'}
         </div>
       ) : viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
@@ -129,7 +175,7 @@ export default function QuyetToanTourPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {doanList.map((d) => (
+                {filtered.map((d) => (
                   <tr key={d.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="px-4 py-2.5">
                       <Link href={`/doan/${d.id}`} className="flex items-center gap-2 font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">
@@ -154,7 +200,7 @@ export default function QuyetToanTourPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {doanList.map((d) => (
+          {filtered.map((d) => (
             <Link
               key={d.id}
               href={`/doan/${d.id}`}

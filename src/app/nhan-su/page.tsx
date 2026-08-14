@@ -35,9 +35,10 @@ type HoSoHistory = {
   doan: DoanSummary | null
 }
 
-// Dòng phẳng ho_so (mọi đoàn, mọi nhân sự) — nguồn dữ liệu chung cho tab
-// "Tổng hợp" (gom theo nhân sự, lọc theo ngày) và 2 tab thanh toán (lọc
-// theo trang_thai, hiện từng dòng tham gia đoàn) — xem GET /api/nhansu/ho-so-list.
+// Dòng phẳng ho_so (mọi đoàn, mọi nhân sự) — nguồn dữ liệu chung cho CẢ 3
+// tab, MỖI DÒNG = 1 lượt 1 người tham gia 1 đoàn (cùng 1 người đi nhiều
+// đoàn thì lặp lại nhiều dòng, không gom theo người) — xem GET
+// /api/nhansu/ho-so-list.
 type HoSoFlat = {
   id: string
   doan_id: string
@@ -45,7 +46,19 @@ type HoSoFlat = {
   ngay_dich_vu: string | null
   chi_tra: number | null
   trang_thai: TrangThaiHoSo
-  nhansu: { id: string; ho_ten: string; loai_nhan_su_id: string; loai_nhan_su: LoaiNhanSu | null } | null
+  du_ho_so_chung_tu: boolean
+  da_tra_do_doan: boolean
+  nhansu: {
+    id: string
+    ho_ten: string
+    so_cccd: string | null
+    sdt: string | null
+    email: string | null
+    stk: string | null
+    ten_ngan_hang: string | null
+    loai_nhan_su_id: string
+    loai_nhan_su: LoaiNhanSu | null
+  } | null
   doan: DoanSummary | null
 }
 
@@ -219,7 +232,6 @@ const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_
 export default function NhanSuPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [tab, setTab] = useState<Tab>('tong_hop')
-  const [rows, setRows] = useState<NhanSuRow[]>([])
   const [hoSoList, setHoSoList] = useState<HoSoFlat[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -239,21 +251,31 @@ export default function NhanSuPage() {
     setLoading(true)
     setLoadError(false)
     try {
-      const [nhansuRes, hoSoRes] = await Promise.all([
-        fetch('/api/nhansu'),
-        fetch('/api/nhansu/ho-so-list'),
-      ])
-      if (!nhansuRes.ok || !hoSoRes.ok) throw new Error('load failed')
-      const nhansuData = await nhansuRes.json()
-      const hoSoData = await hoSoRes.json()
-      setRows(Array.isArray(nhansuData.nhansu) ? nhansuData.nhansu : [])
-      setHoSoList(Array.isArray(hoSoData.ho_so) ? hoSoData.ho_so : [])
+      const res = await fetch('/api/nhansu/ho-so-list')
+      if (!res.ok) throw new Error('load failed')
+      const data = await res.json()
+      setHoSoList(Array.isArray(data.ho_so) ? data.ho_so : [])
     } catch {
       setLoadError(true)
     } finally {
       setLoading(false)
     }
   }, [])
+
+  // Tick 1 trong 2 checkbox duyệt tay ("Đã đủ hồ sơ/chứng từ"/"Đã trả đồ
+  // đoàn") — cập nhật lạc quan ngay trên UI rồi mới gọi API, cùng route
+  // PATCH /api/ho-so/[id] đã dùng ở trang chi tiết đoàn.
+  async function toggleHoSoField(hoSoId: string, field: 'du_ho_so_chung_tu' | 'da_tra_do_doan', value: boolean) {
+    setHoSoList(prev => prev.map(h => (h.id === hoSoId ? { ...h, [field]: value } : h)))
+    const res = await fetch(`/api/ho-so/${hoSoId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ho_so: { [field]: value } }),
+    })
+    if (!res.ok) {
+      setHoSoList(prev => prev.map(h => (h.id === hoSoId ? { ...h, [field]: !value } : h)))
+    }
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách khi mount, pattern chuẩn cho fetch-on-mount
@@ -303,38 +325,31 @@ export default function NhanSuPage() {
     })
   }, [hoSoList, dateRange])
 
-  const countsByNhanSu = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const h of hoSoInRange) {
-      if (!h.nhansu_id) continue
-      m.set(h.nhansu_id, (m.get(h.nhansu_id) ?? 0) + 1)
-    }
-    return m
-  }, [hoSoInRange])
-
+  // Đếm theo loại nhân sự — đếm LƯỢT (dòng ho_so), không đếm người, vì 1
+  // người đi nhiều đoàn giờ hiện nhiều dòng riêng (quyết định 2026-08-13).
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
-    for (const r of rows) {
-      if (dateRange && (countsByNhanSu.get(r.id) ?? 0) === 0) continue
-      c[r.loai_nhan_su_id] = (c[r.loai_nhan_su_id] ?? 0) + 1
+    for (const h of hoSoInRange) {
+      const loaiId = h.nhansu?.loai_nhan_su_id
+      if (!loaiId) continue
+      c[loaiId] = (c[loaiId] ?? 0) + 1
     }
     return c
-  }, [rows, dateRange, countsByNhanSu])
+  }, [hoSoInRange])
 
-  const filtered = useMemo(() => {
+  const tongHopRows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return rows
-      .filter(r => {
-        if (dateRange && (countsByNhanSu.get(r.id) ?? 0) === 0) return false
-        if (filterLoaiId && r.loai_nhan_su_id !== filterLoaiId) return false
+    return hoSoInRange
+      .filter(h => {
+        if (filterLoaiId && h.nhansu?.loai_nhan_su_id !== filterLoaiId) return false
         if (q) {
-          const hay = `${r.ho_ten} ${r.so_cccd ?? ''} ${r.sdt ?? ''}`.toLowerCase()
+          const hay = `${h.nhansu?.ho_ten ?? ''} ${h.nhansu?.so_cccd ?? ''} ${h.nhansu?.sdt ?? ''}`.toLowerCase()
           if (!hay.includes(q)) return false
         }
         return true
       })
-      .sort((a, b) => normalizeName(a.ho_ten).localeCompare(normalizeName(b.ho_ten)))
-  }, [rows, filterLoaiId, search, dateRange, countsByNhanSu])
+      .sort((a, b) => normalizeName(a.nhansu?.ho_ten ?? '').localeCompare(normalizeName(b.nhansu?.ho_ten ?? '')))
+  }, [hoSoInRange, filterLoaiId, search])
 
   const paymentRows = useMemo(() => {
     if (tab === 'tong_hop') return []
@@ -422,7 +437,7 @@ export default function NhanSuPage() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={() => setFilterLoaiId('')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterLoaiId ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-            Tất cả <span className="opacity-70">{filtered.length}</span>
+            Tất cả <span className="opacity-70">{hoSoInRange.length}</span>
           </button>
           {loaiNhanSu.map(l => (
             <button key={l.id} onClick={() => setFilterLoaiId(filterLoaiId === l.id ? '' : l.id)}
@@ -435,54 +450,66 @@ export default function NhanSuPage() {
 
       {tab === 'tong_hop' ? (
         <>
-          <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} nhân sự</p>
+          <p className="text-sm text-gray-400">{tongHopRows.length.toLocaleString('vi-VN')} lượt tham gia</p>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
               <table className="w-full text-sm list-table">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Số đoàn', ''].map(h => (
-                      <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Số đoàn' ? 'text-right' : 'text-left'}`}>{h}</th>
+                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Đoàn', 'Đã đủ hồ sơ/chứng từ', 'Đã trả đồ đoàn', ''].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap text-left">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
                   ) : loadError ? (
-                    <tr><td colSpan={5} className="px-5 py-14 text-center">
+                    <tr><td colSpan={7} className="px-5 py-14 text-center">
                       <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
                       <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
                     </td></tr>
-                  ) : filtered.length === 0 ? (
-                    <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-400">Không có nhân sự nào khớp bộ lọc.</td></tr>
-                  ) : filtered.map((r, i) => {
-                    const nameKey = normalizeName(r.ho_ten)
-                    const maybeDup = (i > 0 && normalizeName(filtered[i - 1].ho_ten) === nameKey)
-                      || (i < filtered.length - 1 && normalizeName(filtered[i + 1].ho_ten) === nameKey)
+                  ) : tongHopRows.length === 0 ? (
+                    <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có lượt tham gia nào khớp bộ lọc.</td></tr>
+                  ) : tongHopRows.map((h, i) => {
+                    const nameKey = normalizeName(h.nhansu?.ho_ten ?? '')
+                    const maybeDup = (i > 0 && normalizeName(tongHopRows[i - 1].nhansu?.ho_ten ?? '') === nameKey)
+                      || (i < tongHopRows.length - 1 && normalizeName(tongHopRows[i + 1].nhansu?.ho_ten ?? '') === nameKey)
                     return (
-                    <tr key={r.id} className={`hover:bg-gray-50/70 transition-colors ${maybeDup ? 'bg-amber-50/60' : ''}`}>
+                    <tr key={h.id} className={`hover:bg-gray-50/70 transition-colors ${maybeDup ? 'bg-amber-50/60' : ''}`}>
                       <td className="px-4 py-2.5">
-                        <button onClick={() => setViewingId(r.id)} className="text-left hover:text-brand-600 transition-colors">
+                        <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} className="text-left hover:text-brand-600 transition-colors">
                           <div className="whitespace-nowrap">
-                            <span className="font-semibold text-gray-900">{r.ho_ten}</span>
-                            <span className="text-gray-400"> · {r.loai_nhan_su?.ma ?? r.loai_nhan_su?.ten ?? '—'}</span>
+                            <span className="font-semibold text-gray-900">{h.nhansu?.ho_ten ?? '—'}</span>
+                            <span className="text-gray-400"> · {h.nhansu?.loai_nhan_su?.ma ?? h.nhansu?.loai_nhan_su?.ten ?? '—'}</span>
                             {maybeDup && (
                               <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold align-middle">có thể trùng</span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {r.so_cccd ?? '—'}</div>
+                          <div className="text-xs text-gray-400 font-mono mt-0.5">CCCD: {h.nhansu?.so_cccd ?? '—'}</div>
                         </button>
                       </td>
                       <td className="px-4 py-2.5 text-gray-900">
-                        <div>{r.sdt ?? '—'}</div>
-                        {r.email && <div className="text-xs text-gray-400">{r.email}</div>}
+                        <div>{h.nhansu?.sdt ?? '—'}</div>
+                        {h.nhansu?.email && <div className="text-xs text-gray-400">{h.nhansu.email}</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-gray-900">{r.stk ? `${r.stk} - ${r.ten_ngan_hang ?? ''}` : '—'}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-900 font-semibold">{countsByNhanSu.get(r.id) ?? 0}</td>
+                      <td className="px-4 py-2.5 text-gray-900">{h.nhansu?.stk ? `${h.nhansu.stk} - ${h.nhansu.ten_ngan_hang ?? ''}` : '—'}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        {h.doan ? (
+                          <Link href={`/doan/${h.doan.id}`} className="text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">{h.doan.ten_doan}</Link>
+                        ) : '(đoàn đã xoá)'}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input type="checkbox" checked={h.du_ho_so_chung_tu} onChange={e => toggleHoSoField(h.id, 'du_ho_so_chung_tu', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input type="checkbox" checked={h.da_tra_do_doan} onChange={e => toggleHoSoField(h.id, 'da_tra_do_doan', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                      </td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => setViewingId(r.id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <button onClick={() => h.nhansu_id && setViewingId(h.nhansu_id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
                           <Eye size={15} />
                         </button>
                       </td>
