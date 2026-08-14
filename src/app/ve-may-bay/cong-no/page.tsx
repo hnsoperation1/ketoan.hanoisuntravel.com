@@ -333,6 +333,11 @@ const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semi
 // 4 NCC cố định (khớp yêu cầu 2026-08-13) — luôn hiện tab dù NCC đó chưa
 // có dòng dữ liệu nào (khác cách cũ chỉ liệt kê NCC đã có sẵn trong rows).
 const NCC_TABS = ['FCVN', 'SAO ĐỎ', 'VIETJET', 'SUN PQC']
+
+// Số cột/dòng kẻ trống khi 1 tab NCC chưa có lô dữ liệu nào — chỉ để nhìn
+// giống 1 file Excel trống, không mang ý nghĩa dữ liệu gì.
+const EMPTY_GRID_COLS = 8
+const EMPTY_GRID_ROWS = 14
 const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white'
 
 // `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
@@ -1322,14 +1327,24 @@ function RawBatchesView({ batches, onDelete }: { batches: RawBatch[]; onDelete: 
   if (batches.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm pt-0 pb-5 px-[10px]">
-        <div className="list-table-container border border-gray-200 rounded-xl min-h-[240px]">
-          <table className="list-table text-xs w-full">
+        <div className="list-table-container border border-gray-200 rounded-xl overflow-hidden">
+          <table className="list-table text-xs w-full border-collapse">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                <th className="px-2 py-1.5 text-left font-semibold">&nbsp;</th>
+                <th colSpan={EMPTY_GRID_COLS} className="px-2 py-1.5 text-left font-semibold border border-gray-200">
+                  Chưa có dữ liệu — bấm &quot;Tải file công nợ NCC&quot; để upload
+                </th>
               </tr>
             </thead>
-            <tbody />
+            <tbody>
+              {Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
+                <tr key={i}>
+                  {Array.from({ length: EMPTY_GRID_COLS }).map((_, j) => (
+                    <td key={j} className="border border-gray-100 h-8">&nbsp;</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </div>
