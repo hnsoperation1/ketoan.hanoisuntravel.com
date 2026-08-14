@@ -278,6 +278,18 @@ function splitVietjetSegments(segments: string): { flightDate: string; routing: 
   return { flightDate: '', routing: segments || '' }
 }
 
+// Cột "SEGMENTS" trong file thô Vietjet gộp nhiều chặng dính liền nhau
+// trong 1 ô, không có dấu phân cách rõ ràng — chỉ tách được nhờ mỗi chặng
+// luôn bắt đầu bằng ngày dạng "Mon DD, YYYY". Dùng lookahead để cắt ngay
+// trước mỗi lần ngày lặp lại, chỉ để HIỂN THỊ xuống dòng cho dễ đọc — dữ
+// liệu lưu trong DB vẫn giữ nguyên xi, không đụng vào.
+function splitSegmentsForDisplay(value: string): string[] {
+  return (value || '')
+    .split(/(?=[A-Za-z]{3}\s\d{1,2},\s*\d{4})/)
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
 // FCVN (đại lý bán vé nhiều hãng, không phải 1 hãng riêng như Vietjet) —
 // đối chiếu từ file mẫu thật "CNO FCVN.XLS" (định dạng .xls nhị phân cũ,
 // đọc bằng `xlsx`/SheetJS chứ không phải exceljs — xem parseXlsFile bên
@@ -1206,7 +1218,17 @@ export default function CongNoVePage() {
                 <tbody>
                   {dataRows.slice(0, 20).map((r, i) => (
                     <tr key={i} className="border-t border-gray-100">
-                      {headers.map((_, j) => <td key={j} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate">{r[j] || '—'}</td>)}
+                      {headers.map((h, j) => (
+                        <td key={j} className="px-2 py-1.5 align-top max-w-[200px]">
+                          {h?.trim().toUpperCase() === 'SEGMENTS' ? (
+                            <div className="space-y-0.5">
+                              {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap truncate">{seg}</div>)}
+                            </div>
+                          ) : (
+                            <span className="whitespace-nowrap truncate block">{r[j] || '—'}</span>
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -1343,7 +1365,17 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
           <tbody>
             {rows.length > 0 ? rows.map((r, i) => (
               <tr key={i} className="border-t border-gray-100">
-                {headers.map((_, j) => <td key={j} className="border border-gray-100 px-2 py-1.5 whitespace-nowrap text-gray-900">{r[j] || '—'}</td>)}
+                {headers.map((h, j) => (
+                  <td key={j} className="border border-gray-100 px-2 py-1.5 text-gray-900 align-top">
+                    {h?.trim().toUpperCase() === 'SEGMENTS' ? (
+                      <div className="space-y-0.5">
+                        {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
+                      </div>
+                    ) : (
+                      <span className="whitespace-nowrap">{r[j] || '—'}</span>
+                    )}
+                  </td>
+                ))}
               </tr>
             )) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
               <tr key={i}>
