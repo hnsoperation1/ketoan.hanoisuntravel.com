@@ -666,34 +666,15 @@ export default function CongNoVePage() {
   }
 
   // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
-  // tự dò xem có khớp chữ ký NCC nào đã hỗ trợ tối ưu riêng không, khớp
-  // thì bỏ qua hẳn bước chọn dòng tiêu đề + map cột tay. CHỈ áp dụng khi
-  // đang ở tab "Tổng hợp" (chuẩn hoá) — 4 tab NCC riêng luôn upload nguyên
-  // xi, không tự nhận diện/map, chỉ cần chọn đúng dòng tiêu đề.
+  // TẠM TẮT hẳn việc tự dò chữ ký Vietjet/FCVN để tự tách sẵn cột (ngày
+  // bay/hành trình từ SEGMENTS, ngày xuất/đi/về từ issue date FCVN...): giờ
+  // luồng chung là upload nguyên xi trước, việc "biến đổi" (tách/chuẩn hoá
+  // cột) sẽ làm ở bước riêng sau — kể cả tab "Tổng hợp" cũng không tự tách
+  // gì nữa lúc này, chỉ cần chọn đúng dòng tiêu đề rồi map cột tay như bình
+  // thường. Hàm findVietjetHeaderRow/findFcvnHeaderRow + vietjetMode/
+  // fcvnMode giữ nguyên, chưa xoá — sẽ dùng lại khi làm bước biến đổi.
   function applyGrid(grid: string[][]) {
     setRawGrid(grid)
-    if (nccFilter !== '') {
-      setHeaderRowIndex(null)
-      setVietjetMode(false)
-      setFcvnMode(false)
-      return
-    }
-    const vjRow = findVietjetHeaderRow(grid)
-    if (vjRow != null) {
-      setHeaderRowIndex(vjRow)
-      setVietjetMode(true)
-      setFcvnMode(false)
-      setNccInput('Vietjet')
-      return
-    }
-    const fcvnRow = findFcvnHeaderRow(grid)
-    if (fcvnRow != null) {
-      setHeaderRowIndex(fcvnRow)
-      setFcvnMode(true)
-      setVietjetMode(false)
-      setNccInput('FCVN')
-      return
-    }
     setHeaderRowIndex(null)
     setVietjetMode(false)
     setFcvnMode(false)
@@ -987,7 +968,7 @@ export default function CongNoVePage() {
         <div className="flex items-center gap-1 flex-wrap">
           {(['', ...NCC_TABS] as const).map(n => (
             <button key={n || 'tong-hop'} type="button"
-              onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter('') }}
+              onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter(''); resetWizard() }}
               className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
                 nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}>
