@@ -1069,9 +1069,11 @@ export default function CongNoVePage() {
 
   return (
     <>
-    <div className="p-5 space-y-4">
-      {/* Tab NCC + nhập file + làm mới, cùng 1 dòng */}
-      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
+    <div className="px-5 pb-5 space-y-4">
+      {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
+          (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
+          padding-top) để 2 thanh liền mạch nhau. */}
+      <div className="min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
         <div className="flex items-center gap-1 flex-wrap">
           {(['', ...NCC_TABS] as const).map(n => (
             <button key={n || 'tong-hop'} type="button"
@@ -1083,7 +1085,7 @@ export default function CongNoVePage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 pb-2">
+        <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">

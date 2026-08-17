@@ -110,7 +110,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
   return createPortal(
     <>
       <div className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={close} />
-      <div className={`fixed inset-y-0 right-0 z-160 w-full max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-y-0 right-0 z-160 w-full max-w-4xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Khớp mã khách theo mã vé</p>
@@ -125,8 +125,8 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div>
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[1fr_320px]">
+          <div className="overflow-y-auto p-6 border-b md:border-b-0 md:border-r border-gray-100">
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Tin nhắn/booking Telegram khớp mã vé</h3>
             {loading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
@@ -175,13 +175,13 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
             )}
           </div>
 
-          <div>
+          <div className="overflow-y-auto p-6 flex flex-col min-h-0">
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Hoặc tự tìm trong danh mục khách hàng</h3>
             <input autoFocus={candidates.length === 0} value={manualQuery} onChange={e => setManualQuery(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && manualQuery.trim()) chooseManual(manualQuery.trim()) }}
               placeholder="Tìm mã khách hoặc tên khách..."
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 mb-2" />
-            <div className="border border-gray-100 rounded-xl max-h-56 overflow-y-auto divide-y divide-gray-50">
+            <div className="border border-gray-100 rounded-xl overflow-y-auto divide-y divide-gray-50">
               {manualFiltered.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-gray-400">
                   Không tìm thấy trong danh mục.
