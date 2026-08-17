@@ -1,6 +1,6 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 
-type AdminClient = ReturnType<typeof createAdminClient>
+export type AdminClient = ReturnType<typeof createAdminClient>
 
 export type MatchResult = {
   checked: number
@@ -10,8 +10,69 @@ export type MatchResult = {
   errors: string[]
 }
 
+export type BookingRow = { id: string; ticket_no: string | null; ma_khach: string | null }
+export type MatchDecision = { match_status: 'matched' | 'unmatched'; matched_booking_id: string | null; ma_khach?: string }
+
 type DebtTarget = { id: string; ticket_no: string | null; ma_khach: string | null; match_status: string }
-type BookingRow = { id: string; ticket_no: string | null; ma_khach: string | null }
+
+// Quyết định thuần (không đụng DB) cho 1 dòng cần khớp — dùng chung giữa
+// runMatchMaKhach (ve_debt_records, cấu trúc) và runMatchMaKhachRaw
+// (ve_debt_records_raw, nguyên xi) vì logic khớp giống hệt nhau, chỉ khác
+// nguồn dữ liệu/nơi ghi kết quả. Đúng 1 booking khớp idValue + mã khách
+// booking đó tồn tại/active trong danh mục chuẩn → matched, tự điền
+// ma_khach CHỈ khi dòng đang rỗng (không ghi đè). Mơ hồ (0 hoặc >1 booking)
+// hoặc mã khách không hợp lệ → unmatched.
+export function decideMatch(
+  idValue: string,
+  existingMaKhach: string | null,
+  bookingsByTicket: Map<string, BookingRow[]>,
+  directoryMap: Map<string, string>,
+): MatchDecision {
+  const candidates = bookingsByTicket.get(idValue) ?? []
+  const booking = candidates.length === 1 ? candidates[0] : undefined
+  const canonical = booking?.ma_khach ? directoryMap.get(booking.ma_khach.toUpperCase()) : undefined
+
+  if (booking && canonical) {
+    const decision: MatchDecision = { match_status: 'matched', matched_booking_id: booking.id }
+    if (!existingMaKhach) decision.ma_khach = canonical
+    return decision
+  }
+  return { match_status: 'unmatched', matched_booking_id: null }
+}
+
+// Batch-fetch ve_bookings (theo idValues) + danh mục khách hàng active — 2
+// query dùng chung giữa cả 2 luồng khớp (structured/raw), tránh viết lại.
+export async function fetchBookingsAndDirectory(
+  admin: AdminClient,
+  idValues: string[],
+): Promise<{ ok: true; bookingsByTicket: Map<string, BookingRow[]>; directoryMap: Map<string, string> } | { ok: false; error: string }> {
+  const { data: bookingsRaw, error: bookingsErr } = await admin
+    .from('ve_bookings')
+    .select('id, ticket_no, ma_khach')
+    .in('ticket_no', idValues)
+  if (bookingsErr) return { ok: false, error: bookingsErr.message }
+
+  const bookingsByTicket = new Map<string, BookingRow[]>()
+  for (const b of (bookingsRaw ?? []) as BookingRow[]) {
+    if (!b.ticket_no) continue
+    const list = bookingsByTicket.get(b.ticket_no) ?? []
+    list.push(b)
+    bookingsByTicket.set(b.ticket_no, list)
+  }
+
+  const { data: directoryRaw, error: directoryErr } = await admin
+    .from('vmb_khach_hang')
+    .select('ma_khach')
+    .eq('active', true)
+  if (directoryErr) return { ok: false, error: directoryErr.message }
+
+  const directoryMap = new Map<string, string>()
+  for (const d of (directoryRaw ?? []) as { ma_khach: string }[]) {
+    directoryMap.set(d.ma_khach.toUpperCase(), d.ma_khach)
+  }
+
+  return { ok: true, bookingsByTicket, directoryMap }
+}
 
 // Khớp tuyệt đối theo ticket_no giữa ve_debt_records và ve_bookings (dữ liệu
 // bot Telegram nhóm tkt đã parse ra). KHÔNG bao giờ đụng tới dòng
@@ -34,54 +95,21 @@ export async function runMatchMaKhach(admin: AdminClient, opts: { ids?: string[]
   result.skipped = targets.length - rowsToMatch.length
   if (rowsToMatch.length === 0) return result
 
-  const ticketNos = Array.from(new Set(rowsToMatch.map(r => r.ticket_no as string)))
-  const { data: bookingsRaw, error: bookingsErr } = await admin
-    .from('ve_bookings')
-    .select('id, ticket_no, ma_khach')
-    .in('ticket_no', ticketNos)
-  if (bookingsErr) {
-    result.errors.push(bookingsErr.message)
+  const idValues = Array.from(new Set(rowsToMatch.map(r => r.ticket_no as string)))
+  const fetched = await fetchBookingsAndDirectory(admin, idValues)
+  if (!fetched.ok) {
+    result.errors.push(fetched.error)
     return result
   }
-
-  const bookingsByTicket = new Map<string, BookingRow[]>()
-  for (const b of (bookingsRaw ?? []) as BookingRow[]) {
-    if (!b.ticket_no) continue
-    const list = bookingsByTicket.get(b.ticket_no) ?? []
-    list.push(b)
-    bookingsByTicket.set(b.ticket_no, list)
-  }
-
-  const { data: directoryRaw, error: directoryErr } = await admin
-    .from('vmb_khach_hang')
-    .select('ma_khach')
-    .eq('active', true)
-  if (directoryErr) {
-    result.errors.push(directoryErr.message)
-    return result
-  }
-  const directoryMap = new Map<string, string>()
-  for (const d of (directoryRaw ?? []) as { ma_khach: string }[]) {
-    directoryMap.set(d.ma_khach.toUpperCase(), d.ma_khach)
-  }
+  const { bookingsByTicket, directoryMap } = fetched
 
   for (const row of rowsToMatch) {
     result.checked++
-    const candidates = bookingsByTicket.get(row.ticket_no as string) ?? []
-    const booking = candidates.length === 1 ? candidates[0] : undefined
-    const canonical = booking?.ma_khach ? directoryMap.get(booking.ma_khach.toUpperCase()) : undefined
+    const decision = decideMatch(row.ticket_no as string, row.ma_khach, bookingsByTicket, directoryMap)
+    if (decision.match_status === 'matched') result.matched++
+    else result.unmatched++
 
-    let update: { match_status: string; matched_booking_id: string | null; ma_khach?: string }
-    if (booking && canonical) {
-      update = { match_status: 'matched', matched_booking_id: booking.id }
-      if (!row.ma_khach) update.ma_khach = canonical
-      result.matched++
-    } else {
-      update = { match_status: 'unmatched', matched_booking_id: null }
-      result.unmatched++
-    }
-
-    const { error: updateErr } = await admin.from('ve_debt_records').update(update).eq('id', row.id)
+    const { error: updateErr } = await admin.from('ve_debt_records').update(decision).eq('id', row.id)
     if (updateErr) result.errors.push(`${row.id}: ${updateErr.message}`)
   }
 

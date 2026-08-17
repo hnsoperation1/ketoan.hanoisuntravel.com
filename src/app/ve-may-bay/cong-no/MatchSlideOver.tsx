@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
 import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
-import { MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
-import type { DebtRow } from './page'
+import { MatchStatusBadge, type MatchStatus } from '@/lib/ve-may-bay/match-status'
 
 type Candidate = {
   id: string
@@ -21,6 +20,13 @@ type Candidate = {
 
 type KhachInfo = Record<string, { ten_khach: string | null; active: boolean }>
 
+export type MatchSlideOverTarget = {
+  id: string
+  ticketLabel: string
+  contextLabel: string
+  matchStatus: MatchStatus | null
+}
+
 function formatDateTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString('vi-VN')
@@ -29,18 +35,22 @@ function formatDateTime(iso: string): string {
   }
 }
 
-// Slide-over bên phải, mở khi bấm badge trạng thái khớp mã khách ở màn Công
-// nợ NCC — hiện các booking/tin nhắn Telegram nhóm tkt khớp ĐÚNG ticket_no
-// của dòng công nợ đang xem, để kế toán tự chọn mã khách đúng khi hệ thống
-// không tự tin khớp được (hoặc muốn xem lại/chọn lại dòng đã khớp). Khung
-// animation/portal copy từ KhachDetailSlideOver (cong-no-khach-hang/page.tsx)
-// — pattern slide-over duy nhất hiện có trong app. Đặt file riêng (không
-// inline như bản gốc) vì cong-no/page.tsx đã rất dài, thêm state/JSX ở đây
-// sẽ đẩy file đó quá dài không cần thiết.
-export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
-  row: DebtRow
+// Slide-over bên phải, mở khi bấm badge trạng thái khớp mã khách (dùng
+// chung cho cả tab "Tổng hợp" — ve_debt_records — lẫn 4 tab NCC raw —
+// ve_debt_records_raw, xem cong-no/page.tsx) — hiện các booking/tin nhắn
+// Telegram nhóm tkt khớp ĐÚNG mã vé/PNR của dòng đang xem, để kế toán tự
+// chọn mã khách đúng khi hệ thống không tự tin. Không biết gì về nguồn dữ
+// liệu cụ thể (DebtRow hay dòng raw) — chỉ nhận `target` (nhãn hiển thị +
+// trạng thái) và `candidatesUrl` (nơi gọi API), nơi gọi tự ráp 2 thứ đó
+// theo đúng luồng của mình, tránh phải viết 2 slide-over gần giống hệt
+// nhau. Khung animation/portal copy từ KhachDetailSlideOver
+// (cong-no-khach-hang/page.tsx) — pattern slide-over duy nhất hiện có trong
+// app.
+export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, onClose }: {
+  target: MatchSlideOverTarget
+  candidatesUrl: string
   khSuggestions: KhachOpt[]
-  onSaved: (id: string, maKhach: string, matchedBookingId: string | null) => void
+  onSaved: (maKhach: string, matchedBookingId: string | null) => void
   onClose: () => void
 }) {
   const [visible, setVisible] = useState(false)
@@ -62,7 +72,7 @@ export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
       setLoading(true)
       setLoadError(false)
       try {
-        const res = await fetch(`/api/ve-may-bay/cong-no/${row.id}/candidates`)
+        const res = await fetch(candidatesUrl)
         if (!res.ok) throw new Error('load failed')
         const { data } = await res.json()
         if (cancelled) return
@@ -77,7 +87,7 @@ export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
 
     loadCandidates()
     return () => { cancelled = true }
-  }, [row.id])
+  }, [candidatesUrl])
 
   function close() {
     setVisible(false)
@@ -86,12 +96,12 @@ export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
 
   function chooseCandidate(c: Candidate) {
     if (!c.ma_khach) return
-    onSaved(row.id, c.ma_khach, c.id)
+    onSaved(c.ma_khach, c.id)
     close()
   }
 
   function chooseManual(maKhach: string) {
-    onSaved(row.id, maKhach, null)
+    onSaved(maKhach, null)
     close()
   }
 
@@ -104,11 +114,11 @@ export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Khớp mã khách theo mã vé</p>
-            <p className="font-bold text-gray-900 text-lg truncate">{row.ticket_no ?? 'Không có mã vé'}</p>
-            <p className="text-xs text-gray-400 truncate">{row.pax_name ?? '—'} · {row.routing ?? '—'}</p>
+            <p className="font-bold text-gray-900 text-lg truncate">{target.ticketLabel}</p>
+            <p className="text-xs text-gray-400 truncate">{target.contextLabel}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <MatchStatusBadge status={row.match_status ?? 'unmatched'} onClick={() => {}} />
+            <MatchStatusBadge status={target.matchStatus ?? 'unmatched'} onClick={() => {}} />
             <button onClick={close} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
               <X size={18} />
             </button>
@@ -124,10 +134,8 @@ export function MatchSlideOver({ row, khSuggestions, onSaved, onClose }: {
               </div>
             ) : loadError ? (
               <p className="text-sm text-red-500 py-4">Không tải được dữ liệu, thử đóng và mở lại.</p>
-            ) : !row.ticket_no ? (
-              <p className="text-sm text-gray-400 py-4">Dòng này không có mã vé để tra cứu.</p>
             ) : candidates.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4">Không tìm thấy tin nhắn Telegram nào khớp mã vé này.</p>
+              <p className="text-sm text-gray-400 py-4">Không tìm thấy tin nhắn Telegram nào khớp mã vé/PNR này.</p>
             ) : (
               <div className="space-y-2">
                 {candidates.map(c => {

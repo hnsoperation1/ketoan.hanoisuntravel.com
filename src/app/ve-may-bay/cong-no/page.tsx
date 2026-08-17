@@ -9,6 +9,7 @@ import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
 import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
+import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from './MatchSlideOver'
 
 export type DebtRow = {
@@ -539,6 +540,8 @@ type ViewMode = 'bang' | 'list' | 'card'
 
 // Lô công nợ NCC upload nguyên xi (chưa chuẩn hoá) — dùng cho 4 tab NCC cố
 // định (FCVN/SAO ĐỎ/VIETJET/SUN PQC), giữ đúng cột như file gốc.
+type RawMatchInfo = { row_index: number; ma_khach: string | null; match_status: MatchStatus; matched_booking_id: string | null }
+
 type RawBatch = {
   id: string
   ncc: string
@@ -546,6 +549,7 @@ type RawBatch = {
   headers: string[]
   rows: string[][]
   created_at: string
+  ve_debt_records_raw_match: RawMatchInfo[]
 }
 
 export default function CongNoVePage() {
@@ -576,22 +580,60 @@ export default function CongNoVePage() {
   const [tktFilter, setTktFilter] = useState('')
   const [khFilter, setKhFilter] = useState('')
 
-  // Khớp mã khách theo tin nhắn Telegram
+  // Khớp mã khách theo tin nhắn Telegram — tab "Tổng hợp" dùng
+  // ve_debt_records (viewingMatchRow), 4 tab NCC raw dùng
+  // ve_debt_records_raw + bảng sidecar ve_debt_records_raw_match
+  // (viewingRawMatch). Nút "Khớp lại mã khách" gọi đúng endpoint theo tab
+  // đang xem (nccFilter rỗng = Tổng hợp).
   const [rematching, setRematching] = useState(false)
   const [viewingMatchRow, setViewingMatchRow] = useState<DebtRow | null>(null)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
 
   async function runRematch() {
     setRematching(true)
     try {
-      await fetch('/api/ve-may-bay/cong-no/match-ma-khach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-      await loadData()
+      if (nccFilter) {
+        await fetch('/api/ve-may-bay/cong-no-raw/match-ma-khach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+        await loadRawData()
+      } else {
+        await fetch('/api/ve-may-bay/cong-no/match-ma-khach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+        await loadData()
+      }
     } finally {
       setRematching(false)
     }
+  }
+
+  // Gán mã khách TAY cho 1 dòng trong lô raw (qua slide-over). matchedBookingId
+  // khác null chỉ khi chọn từ 1 candidate cụ thể — giữ vết truy vết, đúng
+  // semantics của saveMaKhachManual (bản structured) bên dưới.
+  async function saveRawMaKhachManual(batchId: string, rowIndex: number, maKhach: string, matchedBookingId: string | null) {
+    const trimmed = maKhach.trim()
+    const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
+    setRawBatches(prev => prev.map(b => {
+      if (b.id !== batchId) return b
+      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
+      return {
+        ...b,
+        ve_debt_records_raw_match: [
+          ...others,
+          { row_index: rowIndex, ma_khach: trimmed || null, match_status: nextStatus, matched_booking_id: trimmed ? matchedBookingId : null },
+        ],
+      }
+    }))
+    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }),
+    })
   }
 
   const loadData = useCallback(async () => {
@@ -623,7 +665,7 @@ export default function CongNoVePage() {
       const { data } = await res.json()
       setRawBatches(Array.isArray(data) ? data : [])
     } catch { /* im lặng — chỉ ảnh hưởng 4 tab NCC, không chặn trang */ }
-  }, [])
+  }, [setRawBatches])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1350,12 +1392,35 @@ export default function CongNoVePage() {
           )}
         </>
       ) : (
-        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter} />
+        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
+          onOpenMatch={setViewingRawMatch} />
       )}
     </div>
     {viewingMatchRow && (
-      <MatchSlideOver row={viewingMatchRow} khSuggestions={allMaKhach}
-        onSaved={saveMaKhachManual} onClose={() => setViewingMatchRow(null)} />
+      <MatchSlideOver
+        target={{
+          id: viewingMatchRow.id,
+          ticketLabel: viewingMatchRow.ticket_no ?? 'Không có mã vé',
+          contextLabel: `${viewingMatchRow.pax_name ?? '—'} · ${viewingMatchRow.routing ?? '—'}`,
+          matchStatus: viewingMatchRow.match_status,
+        }}
+        candidatesUrl={`/api/ve-may-bay/cong-no/${viewingMatchRow.id}/candidates`}
+        khSuggestions={allMaKhach}
+        onSaved={(maKhach, matchedBookingId) => saveMaKhachManual(viewingMatchRow.id, maKhach, matchedBookingId)}
+        onClose={() => setViewingMatchRow(null)} />
+    )}
+    {viewingRawMatch && (
+      <MatchSlideOver
+        target={{
+          id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
+          ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
+          contextLabel: viewingRawMatch.paxLabel,
+          matchStatus: viewingRawMatch.matchStatus,
+        }}
+        candidatesUrl={`/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates`}
+        khSuggestions={allMaKhach}
+        onSaved={(maKhach, matchedBookingId) => saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId)}
+        onClose={() => setViewingRawMatch(null)} />
     )}
     </>
   )
@@ -1363,31 +1428,62 @@ export default function CongNoVePage() {
 
 // Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô 1 bảng riêng,
 // giữ đúng cột/tên cột như file gốc (không ép về schema chung).
-function RawBatchesView({ batches, onDelete, ncc }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string }) {
+type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
+
+function RawBatchesView({ batches, onDelete, ncc, onOpenMatch }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch }) {
   if (batches.length === 0) {
-    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" />
+    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} />
   }
   return (
     <div className="space-y-4">
       {batches.map(b => (
         <RawTableCard key={b.id} headers={b.headers} rows={b.rows}
           info={`${b.source_file || 'Không rõ tên file'} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
-          onDelete={() => onDelete(b.id)} />
+          onDelete={() => onDelete(b.id)}
+          matches={new Map(b.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
+          onOpenMatch={rowIndex => {
+            const idColIdx = findIdColumnIndex(b.headers)
+            const paxColIdx = findPaxColumnIndex(b.headers)
+            const row = b.rows[rowIndex]
+            const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+            onOpenMatch({
+              batchId: b.id,
+              rowIndex,
+              idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
+              paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
+              matchStatus: existing?.match_status ?? null,
+            })
+          }} />
       ))}
     </div>
   )
 }
 
+type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status'>
+
 // Khung bảng dùng chung cho cả lô đã upload lẫn tab chưa có dữ liệu (rows
 // rỗng → tự kẻ lưới trống theo đúng số cột header) — có cùng thanh đếm
 // dòng + nút "Phóng to" (portal thẳng document.body, giống BangExcelView)
 // như bảng "Tổng hợp" để đồng nhất trải nghiệm giữa các tab.
-function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; rows: string[][]; info: string; onDelete?: () => void }) {
+//
+// Cột "Mã khách" là cột THÊM VÀO ở UI (không nằm trong headers gốc — dữ
+// liệu raw không đụng tới, xem migration_ve_debt_records_raw.sql), chỉ hiện
+// khi có dòng thật. Ô mã vé/PNR và tên pax (idColIdx/paxColIdx, nhận diện
+// qua raw-column-roles.ts) làm nút bấm mở slide-over — lồng bên trong <td>
+// gốc, không đụng cellProps/cellClassName của useCellSelection nên không
+// phá cơ chế kéo-chọn-Ctrl+C hiện có (đã xác nhận hook chỉ gắn
+// onMouseDown/onMouseEnter/onContextMenu, không có onClick).
+function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch }: {
+  headers: string[]; rows: string[][]; info: string; onDelete?: () => void
+  matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
   const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
+  const idColIdx = findIdColumnIndex(headers)
+  const paxColIdx = findPaxColumnIndex(headers)
 
   const content = (
     <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
@@ -1412,10 +1508,13 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
               {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
+              {rows.length > 0 && <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>}
             </tr>
           </thead>
           <tbody>
-            {rows.length > 0 ? rows.map((r, i) => (
+            {rows.length > 0 ? rows.map((r, i) => {
+              const match = matches.get(i)
+              return (
               <tr key={i} className="border-t border-gray-100">
                 {headers.map((h, j) => (
                   <td key={j}
@@ -1425,13 +1524,25 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
                       </div>
+                    ) : (j === idColIdx || j === paxColIdx) ? (
+                      <button type="button" onClick={() => onOpenMatch(i)}
+                        className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
+                        {r[j] || '—'}
+                      </button>
                     ) : (
                       <span className="whitespace-nowrap">{r[j] || '—'}</span>
                     )}
                   </td>
                 ))}
+                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                  <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
+                    <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
+                    {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
+                  </div>
+                </td>
               </tr>
-            )) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
+              )
+            }) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
               <tr key={i}>
                 {headers.map((_, j) => <td key={j} className="border border-gray-100 h-8">&nbsp;</td>)}
               </tr>
