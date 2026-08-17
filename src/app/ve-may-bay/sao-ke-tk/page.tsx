@@ -195,22 +195,6 @@ export default function SaoKeTkPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-end flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download size={15} className={syncing ? 'animate-pulse' : ''} />
-            {syncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Sheet'}
-          </button>
-          <button onClick={() => loadMonth(selected.year, selected.month, true)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
-
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {
@@ -236,16 +220,28 @@ export default function SaoKeTkPage() {
           <input type="checkbox" checked={chiVmb} onChange={e => setChiVmb(e.target.checked)} />
           Chỉ dòng VMB
         </label>
+
+        <div className="flex items-center gap-4 text-sm ml-2">
+          <span className="text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</span>
+          <span className="text-emerald-600 font-semibold">Thu: {formatTien(tongThu)}</span>
+        </div>
+
         <div className="relative ml-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm đơn vị, diễn giải, mã..."
             className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
         </div>
-      </div>
-
-      <div className="flex items-center gap-4 text-sm">
-        <span className="text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</span>
-        <span className="text-emerald-600 font-semibold">Thu: {formatTien(tongThu)}</span>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download size={15} className={syncing ? 'animate-pulse' : ''} />
+          {syncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Sheet'}
+        </button>
+        <button onClick={() => loadMonth(selected.year, selected.month, true)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+          <RefreshCw size={16} />
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
