@@ -270,12 +270,6 @@ export default function CongNoKhachHangPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-end flex-wrap gap-2">
-        <button onClick={() => loadMonth(selected.year, selected.month, true)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw size={16} />
-        </button>
-      </div>
-
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {
@@ -294,6 +288,9 @@ export default function CongNoKhachHangPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã khách..."
             className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
         </div>
+        <button onClick={() => loadMonth(selected.year, selected.month, true)} title="Làm mới" className="ml-auto p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+          <RefreshCw size={16} />
+        </button>
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">

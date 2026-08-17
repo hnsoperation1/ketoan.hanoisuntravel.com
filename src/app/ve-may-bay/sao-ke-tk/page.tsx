@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { RefreshCw, Search, Download, CheckCircle2, XCircle, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type SaoKeRow = {
   id: string
@@ -179,6 +180,19 @@ export default function SaoKeTkPage() {
 
   const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
 
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const row = filtered[r]
+    if (!row) return ''
+    switch (c) {
+      case 0: return row.ngay ?? ''
+      case 1: return row.dien_giai ?? ''
+      case 2: return stkNhanTien(row.tai_khoan)
+      case 3: return row.thu ? formatTien(row.thu) : row.chi ? `(${formatTien(row.chi)})` : ''
+      case 4: return row.ten_du_an ?? ''
+      default: return ''
+    }
+  })
+
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-end flex-wrap gap-2">
@@ -235,7 +249,7 @@ export default function SaoKeTkPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+        <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
           <table className="w-full text-sm list-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -254,25 +268,26 @@ export default function SaoKeTkPage() {
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(r => (
+              ) : filtered.map((r, i) => (
                 <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.ngay ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700 max-w-[360px] truncate" title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{stkNhanTien(r.tai_khoan)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-right">
+                  <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-2 text-gray-600 whitespace-nowrap cursor-cell')}>{r.ngay ?? '—'}</td>
+                  <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2 text-gray-700 max-w-[360px] truncate cursor-cell')} title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
+                  <td {...cellProps(i, 2)} className={cellClassName(i, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{stkNhanTien(r.tai_khoan)}</td>
+                  <td {...cellProps(i, 3)} className={cellClassName(i, 3, 'px-4 py-2 whitespace-nowrap text-right cursor-cell')}>
                     {r.thu ? (
                       <span className="text-emerald-600">{formatTien(r.thu)}</span>
                     ) : r.chi ? (
                       <span className="text-red-500">({formatTien(r.chi)})</span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-2 text-gray-500 max-w-[200px] truncate" title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
+                  <td {...cellProps(i, 4)} className={cellClassName(i, 4, 'px-4 py-2 text-gray-500 max-w-[200px] truncate cursor-cell')} title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      {menu}
 
       {syncMsg && <SyncToast msg={syncMsg} onClose={() => setSyncMsg(null)} />}
     </div>

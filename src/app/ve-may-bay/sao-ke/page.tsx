@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, Download } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type SaoKeRow = {
   id: string
@@ -119,6 +120,25 @@ export default function SaoKePage() {
   const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
   const tongChi = useMemo(() => filtered.reduce((s, r) => s + (r.chi ?? 0), 0), [filtered])
 
+  const rowIndexById = useMemo(() => new Map(filtered.map((r, i) => [r.id, i])), [filtered])
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const row = filtered[r]
+    if (!row) return ''
+    switch (c) {
+      case 0: return row.ngay ?? ''
+      case 1: return row.tai_khoan ?? ''
+      case 2: return row.ma ?? ''
+      case 3: return row.tag ?? ''
+      case 4: return row.don_vi ?? ''
+      case 5: return row.dien_giai ?? ''
+      case 6: return row.thu ? formatTien(row.thu) : ''
+      case 7: return row.chi ? formatTien(row.chi) : ''
+      case 8: return formatTien(row.so_du_cuoi_ky)
+      case 9: return row.ten_du_an ?? ''
+      default: return ''
+    }
+  })
+
   // Phân theo tháng, mới nhất trước — cả thứ tự tháng lẫn thứ tự giao dịch
   // trong từng tháng đều sort giảm dần theo ngày thực (ISO), không theo
   // thứ tự API trả về (vốn sort theo tai_khoan/row_index, không phải ngày).
@@ -186,7 +206,7 @@ export default function SaoKePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+        <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
           <table className="w-full text-sm list-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -212,32 +232,36 @@ export default function SaoKePage() {
                     {g.label} <span className="text-gray-400 font-normal">({g.rows.length} dòng)</span>
                   </td>
                 </tr>
-                {g.rows.map(r => (
+                {g.rows.map(r => {
+                  const ri = rowIndexById.get(r.id) ?? 0
+                  return (
                   <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.ngay ?? '—'}</td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.tai_khoan}</td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.ma ?? '—'}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">
+                    <td {...cellProps(ri, 0)} className={cellClassName(ri, 0, 'px-4 py-2 text-gray-600 whitespace-nowrap cursor-cell')}>{r.ngay ?? '—'}</td>
+                    <td {...cellProps(ri, 1)} className={cellClassName(ri, 1, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.tai_khoan}</td>
+                    <td {...cellProps(ri, 2)} className={cellClassName(ri, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.ma ?? '—'}</td>
+                    <td {...cellProps(ri, 3)} className={cellClassName(ri, 3, 'px-4 py-2 whitespace-nowrap cursor-cell')}>
                       {r.tag && (
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${r.tag.toUpperCase() === 'VMB' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
                           {r.tag}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-gray-700 max-w-[200px] truncate" title={r.don_vi ?? ''}>{r.don_vi ?? '—'}</td>
-                    <td className="px-4 py-2 text-gray-700 max-w-[320px] truncate" title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
-                    <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{r.thu ? formatTien(r.thu) : '—'}</td>
-                    <td className="px-4 py-2 text-red-500 whitespace-nowrap text-right">{r.chi ? formatTien(r.chi) : '—'}</td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{formatTien(r.so_du_cuoi_ky)}</td>
-                    <td className="px-4 py-2 text-gray-500 max-w-[180px] truncate" title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
+                    <td {...cellProps(ri, 4)} className={cellClassName(ri, 4, 'px-4 py-2 text-gray-700 max-w-[200px] truncate cursor-cell')} title={r.don_vi ?? ''}>{r.don_vi ?? '—'}</td>
+                    <td {...cellProps(ri, 5)} className={cellClassName(ri, 5, 'px-4 py-2 text-gray-700 max-w-[320px] truncate cursor-cell')} title={r.dien_giai ?? ''}>{r.dien_giai ?? '—'}</td>
+                    <td {...cellProps(ri, 6)} className={cellClassName(ri, 6, 'px-4 py-2 text-emerald-600 whitespace-nowrap text-right cursor-cell')}>{r.thu ? formatTien(r.thu) : '—'}</td>
+                    <td {...cellProps(ri, 7)} className={cellClassName(ri, 7, 'px-4 py-2 text-red-500 whitespace-nowrap text-right cursor-cell')}>{r.chi ? formatTien(r.chi) : '—'}</td>
+                    <td {...cellProps(ri, 8)} className={cellClassName(ri, 8, 'px-4 py-2 text-gray-500 whitespace-nowrap text-right cursor-cell')}>{formatTien(r.so_du_cuoi_ky)}</td>
+                    <td {...cellProps(ri, 9)} className={cellClassName(ri, 9, 'px-4 py-2 text-gray-500 max-w-[180px] truncate cursor-cell')} title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
                   </tr>
-                ))}
+                  )
+                })}
                 </Fragment>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      {menu}
     </div>
   )
 }

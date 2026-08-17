@@ -7,6 +7,7 @@ import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 // Nút copy riêng cho từng placeholder — click là copy nguyên chuỗi
 // "{{tag}}" (đúng dạng cần gõ vào file Word) vào clipboard, không phải
@@ -125,6 +126,15 @@ export default function BieuMauHopDongPage() {
     }
   }, [setBreadcrumb, setOnRefresh, load])
 
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const t = templates[r]
+    if (!t) return ''
+    if (c === 0) return t.ten ?? ''
+    if (c === 1) return t.loai ?? ''
+    if (c === 3) return formatDateVN(t.created_at.slice(0, 10))
+    return ''
+  })
+
   async function handleDelete(id: string) {
     await fetch(`/api/hop-dong-templates/${id}`, { method: 'DELETE' })
     load()
@@ -155,6 +165,7 @@ export default function BieuMauHopDongPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden list-table-container">
+            <div {...wrapProps} className="select-none outline-none">
             <table className="w-full text-sm list-table">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
@@ -166,10 +177,10 @@ export default function BieuMauHopDongPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {templates.map((t) => (
+                {templates.map((t, i) => (
                   <tr key={t.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-gray-900">{t.ten}</td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-3 font-semibold text-gray-900 cursor-cell')}>{t.ten}</td>
+                    <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-3 text-gray-600 cursor-cell')}>
                       {t.loai ? (
                         <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{t.loai}</span>
                       ) : (
@@ -186,7 +197,7 @@ export default function BieuMauHopDongPage() {
                         <FileText size={13} /> {t.file_name}
                       </a>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDateVN(t.created_at.slice(0, 10))}</td>
+                    <td {...cellProps(i, 3)} className={cellClassName(i, 3, 'px-4 py-3 text-gray-400 text-xs whitespace-nowrap cursor-cell')}>{formatDateVN(t.created_at.slice(0, 10))}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleDelete(t.id)}
@@ -199,8 +210,10 @@ export default function BieuMauHopDongPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
+        {menu}
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
           <p className="text-sm font-semibold text-gray-800 mb-1">Các trường có thể dùng trong biểu mẫu</p>

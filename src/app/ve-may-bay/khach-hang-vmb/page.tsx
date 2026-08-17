@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type TrangThai = 'khop' | 'chi_cong_no' | 'chi_sao_ke'
 type KhRow = {
@@ -82,6 +83,20 @@ export default function KhachHangVmbPage() {
     })
   }, [rows, filter, search])
 
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const row = filtered[r]
+    if (!row) return ''
+    switch (c) {
+      case 0: return row.ma_khach
+      case 1: return BADGE[row.trang_thai].text
+      case 2: return row.so_dong_cong_no ? String(row.so_dong_cong_no) : ''
+      case 3: return row.so_dong_cong_no ? formatTien(row.tong_phat_sinh) : ''
+      case 4: return row.so_dong_sao_ke ? String(row.so_dong_sao_ke) : ''
+      case 5: return row.so_dong_sao_ke ? formatTien(row.tong_da_thu) : ''
+      default: return ''
+    }
+  })
+
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-end flex-wrap gap-2">
@@ -110,7 +125,7 @@ export default function KhachHangVmbPage() {
       <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</p>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+        <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
           <table className="w-full text-sm list-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -129,22 +144,23 @@ export default function KhachHangVmbPage() {
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
-              ) : filtered.map(r => (
+              ) : filtered.map((r, i) => (
                 <tr key={r.ma_khach} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2 text-gray-700 font-medium whitespace-nowrap">{r.ma_khach}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-2 text-gray-700 font-medium whitespace-nowrap cursor-cell')}>{r.ma_khach}</td>
+                  <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2 whitespace-nowrap cursor-cell')}>
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${BADGE[r.trang_thai].cls}`}>{BADGE[r.trang_thai].text}</span>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{r.so_dong_cong_no || '—'}</td>
-                  <td className="px-4 py-2 text-gray-600 whitespace-nowrap text-right">{r.so_dong_cong_no ? formatTien(r.tong_phat_sinh) : '—'}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-right">{r.so_dong_sao_ke || '—'}</td>
-                  <td className="px-4 py-2 text-emerald-600 whitespace-nowrap text-right">{r.so_dong_sao_ke ? formatTien(r.tong_da_thu) : '—'}</td>
+                  <td {...cellProps(i, 2)} className={cellClassName(i, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap text-right cursor-cell')}>{r.so_dong_cong_no || '—'}</td>
+                  <td {...cellProps(i, 3)} className={cellClassName(i, 3, 'px-4 py-2 text-gray-600 whitespace-nowrap text-right cursor-cell')}>{r.so_dong_cong_no ? formatTien(r.tong_phat_sinh) : '—'}</td>
+                  <td {...cellProps(i, 4)} className={cellClassName(i, 4, 'px-4 py-2 text-gray-500 whitespace-nowrap text-right cursor-cell')}>{r.so_dong_sao_ke || '—'}</td>
+                  <td {...cellProps(i, 5)} className={cellClassName(i, 5, 'px-4 py-2 text-emerald-600 whitespace-nowrap text-right cursor-cell')}>{r.so_dong_sao_ke ? formatTien(r.tong_da_thu) : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      {menu}
     </div>
   )
 }

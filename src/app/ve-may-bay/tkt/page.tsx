@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Plus, Loader2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type Tkt = { id: string; tkt_code: string; ten_nhan_vien: string | null; active: boolean; created_at: string }
 
@@ -103,6 +104,15 @@ export default function TktPage() {
     loadData()
   }
 
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const t = tkts[r]
+    if (!t) return ''
+    if (c === 0) return t.tkt_code ?? ''
+    if (c === 1) return t.ten_nhan_vien ?? ''
+    if (c === 2) return t.active ? 'Đang hoạt động' : 'Đã tắt'
+    return ''
+  })
+
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -144,7 +154,7 @@ export default function TktPage() {
       )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto">
+        <div {...wrapProps} className="overflow-x-auto select-none outline-none">
           <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -163,11 +173,11 @@ export default function TktPage() {
                 </td></tr>
               ) : tkts.length === 0 ? (
                 <tr><td colSpan={4} className="px-5 py-14 text-center text-gray-400">Chưa có TKT nào.</td></tr>
-              ) : tkts.map(t => (
+              ) : tkts.map((t, i) => (
                 <tr key={t.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-2.5 font-semibold text-gray-800">{t.tkt_code}</td>
-                  <td className="px-4 py-2.5 text-gray-600">{t.ten_nhan_vien ?? '—'}</td>
-                  <td className="px-4 py-2.5">
+                  <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-2.5 font-semibold text-gray-800 cursor-cell')}>{t.tkt_code}</td>
+                  <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2.5 text-gray-600 cursor-cell')}>{t.ten_nhan_vien ?? '—'}</td>
+                  <td {...cellProps(i, 2)} className={cellClassName(i, 2, 'px-4 py-2.5 cursor-cell')}>
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
                       {t.active ? 'Đang hoạt động' : 'Đã tắt'}
                     </span>
@@ -184,6 +194,7 @@ export default function TktPage() {
           </table>
         </div>
       </div>
+      {menu}
     </div>
   )
 }

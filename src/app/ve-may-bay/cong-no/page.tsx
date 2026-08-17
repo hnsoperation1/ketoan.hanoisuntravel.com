@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X, Copy } from 'lucide-react'
+import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
 
 type DebtRow = {
@@ -1338,82 +1339,7 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  // Chọn vùng ô kiểu Excel (kéo chuột chọn hình chữ nhật hàng×cột) rồi
-  // Ctrl+C copy đúng vùng đó dạng TSV — thay cho bôi đen văn bản mặc định
-  // của trình duyệt (chạy theo thứ tự DOM nên lem sang ô/dòng khác, không
-  // theo đúng hình chữ nhật người dùng kéo).
-  const [selStart, setSelStart] = useState<{ r: number; c: number } | null>(null)
-  const [selEnd, setSelEnd] = useState<{ r: number; c: number } | null>(null)
-  const selecting = useRef(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const stop = () => { selecting.current = false }
-    window.addEventListener('mouseup', stop)
-    return () => window.removeEventListener('mouseup', stop)
-  }, [])
-
-  const selBounds = selStart && selEnd ? {
-    r0: Math.min(selStart.r, selEnd.r), r1: Math.max(selStart.r, selEnd.r),
-    c0: Math.min(selStart.c, selEnd.c), c1: Math.max(selStart.c, selEnd.c),
-  } : null
-  const isSelected = (r: number, c: number) => !!selBounds && r >= selBounds.r0 && r <= selBounds.r1 && c >= selBounds.c0 && c <= selBounds.c1
-  // Viền quanh CẢ vùng đang chọn (không phải viền từng ô riêng lẻ) —
-  // giống marquee chọn vùng của Excel: chỉ vẽ cạnh ở đúng rìa ngoài của
-  // hình chữ nhật đang chọn.
-  function selectionEdgeClass(r: number, c: number): string {
-    if (!selBounds || !isSelected(r, c)) return ''
-    const cls: string[] = []
-    if (r === selBounds.r0) cls.push('border-t-2 border-t-brand-500')
-    if (r === selBounds.r1) cls.push('border-b-2 border-b-brand-500')
-    if (c === selBounds.c0) cls.push('border-l-2 border-l-brand-500')
-    if (c === selBounds.c1) cls.push('border-r-2 border-r-brand-500')
-    return cls.join(' ')
-  }
-
-  function startSelect(e: React.MouseEvent, r: number, c: number) {
-    if (e.button !== 0) return // chỉ chuột trái mới bắt đầu/thu vùng chọn mới — chuột phải phải giữ nguyên vùng đang có
-    selecting.current = true
-    setSelStart({ r, c })
-    setSelEnd({ r, c })
-    wrapRef.current?.focus()
-  }
-  function extendSelect(r: number, c: number) {
-    if (selecting.current) setSelEnd({ r, c })
-  }
-  function copySelection() {
-    if (!selBounds) return
-    // Ô SEGMENTS (và có thể vài cột khác) chứa xuống dòng thật trong dữ
-    // liệu gốc — nếu để nguyên, Excel hiểu nhầm ký tự xuống dòng đó là bắt
-    // đầu 1 dòng bảng tính mới, làm lệch hẳn các cột phía sau khi dán. Bọc
-    // trong dấu ngoặc kép (đúng chuẩn escape CSV/TSV) để Excel giữ nguyên
-    // trong 1 ô như khi copy thật từ Excel ra.
-    const esc = (v: string) => {
-      const s = v ?? ''
-      return /[\t\n\r"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const tsv = rows.slice(selBounds.r0, selBounds.r1 + 1)
-      .map(r => r.slice(selBounds.c0, selBounds.c1 + 1).map(c => esc(c)).join('\t'))
-      .join('\r\n')
-    navigator.clipboard.writeText(tsv).catch(() => {})
-  }
-
-  // Menu chuột phải — chỉ có 1 nút "Sao chép" copy đúng vùng đang chọn
-  // (bấm chuột phải ngoài vùng đang chọn thì thu vùng chọn về đúng 1 ô đó
-  // trước, giống hành vi Excel).
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
-  useEffect(() => {
-    if (!ctxMenu) return
-    const close = () => setCtxMenu(null)
-    window.addEventListener('click', close)
-    window.addEventListener('scroll', close, true)
-    return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true) }
-  }, [ctxMenu])
-  function handleContextMenu(e: React.MouseEvent, r: number, c: number) {
-    e.preventDefault()
-    if (!isSelected(r, c)) { setSelStart({ r, c }); setSelEnd({ r, c }) }
-    setCtxMenu({ x: e.clientX, y: e.clientY })
-  }
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
 
   const content = (
     <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
@@ -1432,8 +1358,7 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
           </button>
         </div>
       </div>
-      <div ref={wrapRef} tabIndex={0}
-        onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') copySelection() }}
+      <div {...wrapProps}
         className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'} select-none outline-none`}>
         <table className="list-table text-xs w-full border-collapse">
           <thead className="sticky top-0 z-10">
@@ -1446,10 +1371,8 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
               <tr key={i} className="border-t border-gray-100">
                 {headers.map((h, j) => (
                   <td key={j}
-                    onMouseDown={e => startSelect(e, i, j)}
-                    onMouseEnter={() => extendSelect(i, j)}
-                    onContextMenu={e => handleContextMenu(e, i, j)}
-                    className={`border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${isSelected(i, j) ? 'bg-brand-100' : ''} ${selectionEdgeClass(i, j)}`}>
+                    {...cellProps(i, j)}
+                    className={cellClassName(i, j, 'border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell')}>
                     {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -1470,17 +1393,6 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
       </div>
     </div>
   )
-
-  const menu = ctxMenu && mounted ? createPortal(
-    <div className="fixed z-[200] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[140px]"
-      style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
-      <button onClick={() => { copySelection(); setCtxMenu(null) }}
-        className="w-full text-left px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-        <Copy size={13} /> Sao chép
-      </button>
-    </div>,
-    document.body
-  ) : null
 
   if (expanded && mounted) return <>{createPortal(content, document.body)}{menu}</>
   return <>{content}{menu}</>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2, Eye, Pencil } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type Contact = {
   id: string
@@ -622,6 +623,21 @@ export default function DanhMucKhachHangPage() {
     })
   }, [rows, filterNhom, search])
 
+  // Cột 2 (Mã khách) và 4 (Người làm việc) có nút bấm mở panel/gán liên hệ
+  // — không gắn chọn vùng ở đó để tránh lẫn với thao tác bấm nút.
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const k = filtered[r]
+    if (!k) return ''
+    switch (c) {
+      case 0: return k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : ''
+      case 1: return NHOM_SHORT_LABELS[k.nhom] ?? k.nhom
+      case 3: return k.ten_khach ?? ''
+      case 5: return formatVND(k.doanh_thu)
+      case 6: return formatVND(k.loi_nhuan)
+      default: return ''
+    }
+  })
+
   function openAdd() {
     setForm(emptyForm)
     setFormContact(null)
@@ -691,7 +707,7 @@ export default function DanhMucKhachHangPage() {
           {expanded ? 'Thu nhỏ' : 'Phóng to'}
         </button>
       </div>
-      <div className={expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'}>
+      <div {...wrapProps} className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'} select-none outline-none`}>
         <table className="w-full text-sm list-table">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -710,10 +726,10 @@ export default function DanhMucKhachHangPage() {
               </td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">Không có mã khách nào khớp bộ lọc.</td></tr>
-            ) : filtered.map(k => (
+            ) : filtered.map((k, i) => (
               <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
-                <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
-                <td className="px-4 py-2.5 whitespace-nowrap text-gray-500" title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
+                <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-2.5 whitespace-nowrap text-gray-500 cursor-cell')}>{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
+                <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2.5 whitespace-nowrap text-gray-500 cursor-cell')} title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
                 <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">
                   <span className="inline-flex items-center gap-1.5">
                     {k.ma_khach}
@@ -726,7 +742,7 @@ export default function DanhMucKhachHangPage() {
                     </button>
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-gray-700 max-w-[200px] truncate" title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
+                <td {...cellProps(i, 3)} className={cellClassName(i, 3, 'px-4 py-2.5 text-gray-700 max-w-[200px] truncate cursor-cell')} title={k.ten_khach ?? ''}>{k.ten_khach ?? '—'}</td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   {k.contact ? (
                     <button
@@ -745,8 +761,8 @@ export default function DanhMucKhachHangPage() {
                     </button>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800">{formatVND(k.doanh_thu)}</td>
-                <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600">{formatVND(k.loi_nhuan)}</td>
+                <td {...cellProps(i, 5)} className={cellClassName(i, 5, 'px-4 py-2.5 text-right whitespace-nowrap font-semibold text-gray-800 cursor-cell')}>{formatVND(k.doanh_thu)}</td>
+                <td {...cellProps(i, 6)} className={cellClassName(i, 6, 'px-4 py-2.5 text-right whitespace-nowrap font-semibold text-emerald-600 cursor-cell')}>{formatVND(k.loi_nhuan)}</td>
               </tr>
             ))}
           </tbody>
@@ -829,6 +845,7 @@ export default function DanhMucKhachHangPage() {
         {formModal}
         {customerDetailPanel}
         {contactAssignModal}
+        {menu}
       </>,
       document.body,
     )
@@ -839,6 +856,7 @@ export default function DanhMucKhachHangPage() {
       {formModal}
       {customerDetailPanel}
       {contactAssignModal}
+      {menu}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-gray-400">Mã khách chuẩn để đối chiếu với Đầu vào công nợ/sao kê/tin nhắn Telegram.</p>
         <div className="flex items-center gap-2">

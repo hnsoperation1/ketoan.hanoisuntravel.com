@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, ChevronRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
+import { useCellSelection } from '@/hooks/useCellSelection'
 
 type ParsedBooking = { full_name?: string; routing?: string; ticket_no?: string; [k: string]: unknown }
 
@@ -142,6 +143,24 @@ export default function ParseLogsPage() {
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([, g]) => g)
   }, [filtered])
 
+  // filtered đã sắp theo created_at giảm dần nên grouped (gom theo ngày)
+  // giữ nguyên đúng thứ tự render — dùng map id→index này để có (hàng, cột)
+  // ổn định cho vùng chọn kiểu Excel, không phụ thuộc cấu trúc group.
+  const rowIndexById = useMemo(() => new Map(filtered.map((r, i) => [r.id, i])), [filtered])
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const row = filtered[r]
+    if (!row) return ''
+    switch (c) {
+      case 0: return formatTime(row.created_at)
+      case 1: return row.ve_tkt?.tkt_code ?? ''
+      case 2: return row.ve_telegram_groups?.telegram_chat_title ?? ''
+      case 3: return row.from_user_name ?? ''
+      case 4: return BADGE[classify(row)].text
+      case 5: return row.raw_message ?? ''
+      default: return ''
+    }
+  })
+
   function toggle(id: string) {
     setExpanded(prev => {
       const next = new Set(prev)
@@ -193,7 +212,7 @@ export default function ParseLogsPage() {
       <p className="text-sm text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</p>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
-        <div className="overflow-x-auto">
+        <div {...wrapProps} className="overflow-x-auto select-none outline-none">
           <table className="w-full text-sm list-table">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -222,20 +241,21 @@ export default function ParseLogsPage() {
                   {g.rows.map(r => {
                     const kind = classify(r)
                     const isOpen = expanded.has(r.id)
+                    const ri = rowIndexById.get(r.id) ?? 0
                     return (
                       <Fragment key={r.id}>
                         <tr className="hover:bg-gray-50/70 transition-colors cursor-pointer" onClick={() => toggle(r.id)}>
                           <td className="px-2 py-2 text-gray-300">
                             <ChevronRight size={14} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                           </td>
-                          <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{formatTime(r.created_at)}</td>
-                          <td className="px-4 py-2 text-gray-700 whitespace-nowrap">{r.ve_tkt?.tkt_code ?? '—'}</td>
-                          <td className="px-4 py-2 text-gray-500 max-w-[160px] truncate" title={r.ve_telegram_groups?.telegram_chat_title ?? ''}>{r.ve_telegram_groups?.telegram_chat_title ?? '—'}</td>
-                          <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{r.from_user_name ?? '—'}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">
+                          <td {...cellProps(ri, 0)} className={cellClassName(ri, 0, 'px-4 py-2 text-gray-600 whitespace-nowrap cursor-cell')}>{formatTime(r.created_at)}</td>
+                          <td {...cellProps(ri, 1)} className={cellClassName(ri, 1, 'px-4 py-2 text-gray-700 whitespace-nowrap cursor-cell')}>{r.ve_tkt?.tkt_code ?? '—'}</td>
+                          <td {...cellProps(ri, 2)} className={cellClassName(ri, 2, 'px-4 py-2 text-gray-500 max-w-[160px] truncate cursor-cell')} title={r.ve_telegram_groups?.telegram_chat_title ?? ''}>{r.ve_telegram_groups?.telegram_chat_title ?? '—'}</td>
+                          <td {...cellProps(ri, 3)} className={cellClassName(ri, 3, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.from_user_name ?? '—'}</td>
+                          <td {...cellProps(ri, 4)} className={cellClassName(ri, 4, 'px-4 py-2 whitespace-nowrap cursor-cell')}>
                             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${BADGE[kind].cls}`}>{BADGE[kind].text}</span>
                           </td>
-                          <td className="px-4 py-2 text-gray-600 max-w-[360px] truncate" title={r.raw_message ?? ''}>{r.raw_message ?? '—'}</td>
+                          <td {...cellProps(ri, 5)} className={cellClassName(ri, 5, 'px-4 py-2 text-gray-600 max-w-[360px] truncate cursor-cell')} title={r.raw_message ?? ''}>{r.raw_message ?? '—'}</td>
                         </tr>
                         {isOpen && (
                           <tr className="bg-gray-50/60">
@@ -271,6 +291,7 @@ export default function ParseLogsPage() {
           </table>
         </div>
       </div>
+      {menu}
     </div>
   )
 }
