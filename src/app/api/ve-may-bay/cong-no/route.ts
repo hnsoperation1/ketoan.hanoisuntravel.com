@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireUser } from '@/lib/auth'
+import { runMatchMaKhach } from '@/lib/ve-may-bay/match-ma-khach'
 
 // GET — toàn bộ dòng công nợ đã nhập (từ mọi lần upload)
 export async function GET() {
@@ -66,5 +67,16 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient()
   const { data, error } = await admin.from('ve_debt_records').insert(payload).select('id')
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ ok: true, inserted: data?.length ?? 0 })
+
+  const insertedIds = (data ?? []).map(r => r.id)
+  let matched = 0
+  try {
+    const result = await runMatchMaKhach(admin, { ids: insertedIds })
+    matched = result.matched
+  } catch {
+    // Không fail cả lượt upload vì lỗi khớp — dữ liệu đã insert thành công,
+    // khớp lại được bất kỳ lúc nào qua nút "Khớp lại mã khách".
+  }
+
+  return NextResponse.json({ ok: true, inserted: insertedIds.length, matched })
 }

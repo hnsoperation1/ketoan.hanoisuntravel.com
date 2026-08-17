@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
 
-const TEXT_FIELDS = ['tkt_tag', 'ma_khach', 'sale_chinh', 'ghi_chu'] as const
+const TEXT_FIELDS = ['tkt_tag', 'sale_chinh', 'ghi_chu'] as const
 const NUMBER_FIELDS = ['gia_mua', 'cktm', 'gia_ban', 'com_khach'] as const
 
 // PATCH — sửa tay 1 dòng công nợ: gắn TKT/mã khách/sale chính sau khi đối
@@ -22,6 +22,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
   for (const f of NUMBER_FIELDS) {
     if (f in body) payload[f] = typeof body[f] === 'number' ? body[f] : (body[f] ? Number(body[f]) : null)
+  }
+  // "ma_khach" gán tay (qua MaKhachCell hoặc slide-over) khác các TEXT_FIELDS
+  // khác ở chỗ luôn kéo theo đổi match_status — phải phân biệt rõ với
+  // 'matched' (hệ thống tự khớp/tự xác minh), xem
+  // migration_ve_debt_records_match_ma_khach.sql. Rỗng = bỏ chọn → quay lại
+  // 'unmatched' thay vì giữ trạng thái cũ.
+  if ('ma_khach' in body) {
+    const val = body.ma_khach ? String(body.ma_khach).trim() : null
+    payload.ma_khach = val
+    payload.match_status = val ? 'manual' : 'unmatched'
+    payload.matched_booking_id = val && typeof body.matched_booking_id === 'string' ? body.matched_booking_id : null
   }
 
   const admin = createAdminClient()

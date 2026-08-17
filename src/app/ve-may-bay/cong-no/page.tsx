@@ -7,8 +7,11 @@ import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
+import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
+import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
+import { MatchSlideOver } from './MatchSlideOver'
 
-type DebtRow = {
+export type DebtRow = {
   id: string
   ncc: string | null
   ticket_no: string | null
@@ -28,6 +31,8 @@ type DebtRow = {
   ghi_chu: string | null
   source_file: string | null
   created_at: string
+  match_status: MatchStatus | null
+  matched_booking_id: string | null
 }
 
 function formatGiaVe(n: number | null | undefined): string {
@@ -339,7 +344,6 @@ async function parseXlsFile(file: File): Promise<SheetData[]> {
   }))
 }
 
-type KhachOpt = { ma_khach: string; ten_khach: string | null }
 
 const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
 
@@ -452,10 +456,7 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
     if (ma !== (value ?? '')) onSave(ma)
   }
 
-  const qLower = q.trim().toLowerCase()
-  const filtered = qLower
-    ? options.filter(o => o.ma_khach.toLowerCase().includes(qLower) || (o.ten_khach ?? '').toLowerCase().includes(qLower))
-    : options
+  const filtered = filterKhachOptions(options, q)
 
   return (
     <>
@@ -574,6 +575,24 @@ export default function CongNoVePage() {
   const [nccFilter, setNccFilter] = useState('')
   const [tktFilter, setTktFilter] = useState('')
   const [khFilter, setKhFilter] = useState('')
+
+  // Khớp mã khách theo tin nhắn Telegram
+  const [rematching, setRematching] = useState(false)
+  const [viewingMatchRow, setViewingMatchRow] = useState<DebtRow | null>(null)
+
+  async function runRematch() {
+    setRematching(true)
+    try {
+      await fetch('/api/ve-may-bay/cong-no/match-ma-khach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      await loadData()
+    } finally {
+      setRematching(false)
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -931,12 +950,31 @@ export default function CongNoVePage() {
     }
   }
 
-  async function saveField(id: string, field: 'tkt_tag' | 'ma_khach' | 'sale_chinh' | 'ghi_chu', value: string) {
+  async function saveField(id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value || null } : r))
     await fetch(`/api/ve-may-bay/cong-no/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: value }),
+    })
+  }
+
+  // Gán mã khách TAY (qua ô MaKhachCell hoặc slide-over) — khác saveField ở
+  // chỗ luôn kéo theo đổi match_status. matchedBookingId khác null chỉ khi
+  // gọi từ slide-over (chọn đúng 1 candidate cụ thể, giữ vết truy vết); null
+  // khi gõ tự do/chọn từ danh mục chuẩn (MaKhachCell) — không có booking cụ
+  // thể nào đứng sau lựa chọn đó. Rỗng ('') = bỏ chọn → quay lại 'unmatched'
+  // (đỏ) thay vì giữ trạng thái cũ, đúng ngữ nghĩa "chưa có mã khách nào".
+  async function saveMaKhachManual(id: string, maKhach: string, matchedBookingId: string | null) {
+    const trimmed = maKhach.trim()
+    const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
+    setRows(prev => prev.map(r => r.id === id
+      ? { ...r, ma_khach: trimmed || null, match_status: nextStatus, matched_booking_id: trimmed ? matchedBookingId : null }
+      : r))
+    await fetch(`/api/ve-may-bay/cong-no/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }),
     })
   }
 
@@ -988,6 +1026,7 @@ export default function CongNoVePage() {
   const allSaleChinh = Array.from(new Set([...dirSaleChinh, ...rows.map(r => r.sale_chinh).filter(Boolean) as string[]]))
 
   return (
+    <>
     <div className="p-5 space-y-4">
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng */}
       <div className="flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
@@ -1009,6 +1048,10 @@ export default function CongNoVePage() {
             Tải file công nợ NCC
           </button>
           {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
+          <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+            {rematching && <Loader2 size={13} className="animate-spin" />} Khớp lại mã khách
+          </button>
           <button onClick={loadAll} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <RefreshCw size={16} />
           </button>
@@ -1299,17 +1342,22 @@ export default function CongNoVePage() {
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.</div>
           ) : viewMode === 'bang' ? (
-            <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+            <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
           ) : viewMode === 'list' ? (
-            <ListView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+            <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
           ) : (
-            <CardView rows={filtered} onSaveField={saveField} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
+            <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
           )}
         </>
       ) : (
         <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter} />
       )}
     </div>
+    {viewingMatchRow && (
+      <MatchSlideOver row={viewingMatchRow} khSuggestions={allMaKhach}
+        onSaved={saveMaKhachManual} onClose={() => setViewingMatchRow(null)} />
+    )}
+    </>
   )
 }
 
@@ -1398,7 +1446,8 @@ function RawTableCard({ headers, rows, info, onDelete }: { headers: string[]; ro
   return <>{content}{menu}</>
 }
 
-type FieldSaver = (id: string, field: 'tkt_tag' | 'ma_khach' | 'sale_chinh' | 'ghi_chu', value: string) => void
+type FieldSaver = (id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) => void
+type MaKhachSaver = (id: string, maKhach: string, matchedBookingId: string | null) => void
 type NumberFieldSaver = (id: string, field: 'gia_mua' | 'cktm' | 'gia_ban' | 'com_khach', value: number | null) => void
 
 // Chế độ "Bảng" — cố tình giống Excel nhất có thể: 1 kiểu chữ/1 size/1 màu
@@ -1440,8 +1489,8 @@ const BANG_COLS: ColDef[] = [
 ]
 const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
 
-function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: {
-  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
+function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: {
+  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
 }) {
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -1509,7 +1558,12 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                   <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
                   <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                  <td className={`${TD} p-0`}><MaKhachCell value={r.ma_khach} onSave={v => onSaveField(r.id, 'ma_khach', v)} options={khSuggestions} /></td>
+                  <td className={`${TD} p-0`}>
+                    <div className="flex items-center gap-1 px-1">
+                      <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
+                      <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
+                    </div>
+                  </td>
                   <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
                   <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
@@ -1556,7 +1610,12 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
                     <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
                     <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                    <td className={`${TD} p-0`}><MaKhachCell value={r.ma_khach} onSave={v => onSaveField(r.id, 'ma_khach', v)} options={khSuggestions} /></td>
+                    <td className={`${TD} p-0`}>
+                      <div className="flex items-center gap-1 px-1">
+                        <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
+                        <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
+                      </div>
+                    </td>
                     <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
                     <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
@@ -1600,7 +1659,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onDelete, tktSugg
   return content
 }
 
-function ListView({ rows, onSaveField, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
+function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
       {rows.map(r => {
@@ -1645,8 +1704,9 @@ function ListView({ rows, onSaveField, onDelete, tktSuggestions, khSuggestions, 
                 <div className="text-sm font-semibold text-emerald-600">{formatGiaVe(d.loi_nhuan)}</div>
               </div>
             </div>
-            <div className="w-32 shrink-0">
-              <MaKhachCell value={r.ma_khach} onSave={v => onSaveField(r.id, 'ma_khach', v)} options={khSuggestions} />
+            <div className="w-32 shrink-0 space-y-0.5">
+              <MatchStatusBadge status={r.match_status ?? 'unmatched'} onClick={() => onOpenMatch(r)} />
+              <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
             </div>
             <div className="w-28 shrink-0">
               <EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} />
@@ -1664,7 +1724,7 @@ function ListView({ rows, onSaveField, onDelete, tktSuggestions, khSuggestions, 
   )
 }
 
-function CardView({ rows, onSaveField, onDelete, tktSuggestions, khSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[] }) {
+function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {rows.map(r => {
@@ -1701,7 +1761,10 @@ function CardView({ rows, onSaveField, onDelete, tktSuggestions, khSuggestions }
             </div>
             <div className="grid grid-cols-2 gap-2">
               <EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} />
-              <MaKhachCell value={r.ma_khach} onSave={v => onSaveField(r.id, 'ma_khach', v)} options={khSuggestions} />
+              <div className="flex items-center gap-1">
+                <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
+                <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
+              </div>
             </div>
           </div>
         )
