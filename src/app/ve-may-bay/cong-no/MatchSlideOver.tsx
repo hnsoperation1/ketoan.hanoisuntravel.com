@@ -158,7 +158,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
                             )}
                           </div>
                           {c.ve_parse_logs?.raw_message && (
-                            <p className="text-xs text-gray-500 mt-2 whitespace-pre-wrap line-clamp-4 bg-gray-50 rounded-lg p-2">
+                            <p className="text-xs text-gray-500 mt-2 whitespace-pre-wrap bg-gray-50 rounded-lg p-2">
                               {c.ve_parse_logs.raw_message}
                             </p>
                           )}
