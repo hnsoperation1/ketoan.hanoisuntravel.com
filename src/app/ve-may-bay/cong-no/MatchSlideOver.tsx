@@ -13,6 +13,8 @@ type Pax = {
   ten_khach_hang: string | null
   full_name: string | null
   routing: string | null
+  gia_mua: number | null
+  gia_ban: number | null
   ve_tkt: { tkt_code: string | null; ten_nhan_vien: string | null } | null
 }
 
@@ -59,7 +61,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
   target: MatchSlideOverTarget
   candidatesUrl: string
   khSuggestions: KhachOpt[]
-  onSaved: (maKhach: string, matchedBookingId: string | null) => void
+  onSaved: (maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) => void
   onClose: () => void
 }) {
   const [visible, setVisible] = useState(false)
@@ -108,7 +110,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
 
   function choosePax(p: Pax) {
     if (!p.ma_khach) return
-    onSaved(p.ma_khach, p.id)
+    onSaved(p.ma_khach, p.id, p.gia_mua, p.gia_ban)
     close()
   }
 

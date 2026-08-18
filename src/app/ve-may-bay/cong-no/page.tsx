@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
+import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X, Pencil } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
@@ -540,7 +540,15 @@ type ViewMode = 'bang' | 'list' | 'card'
 
 // Lô công nợ NCC upload nguyên xi (chưa chuẩn hoá) — dùng cho 4 tab NCC cố
 // định (FCVN/SAO ĐỎ/VIETJET/SUN PQC), giữ đúng cột như file gốc.
-type RawMatchInfo = { row_index: number; ma_khach: string | null; match_status: MatchStatus; matched_booking_id: string | null }
+type RawMatchInfo = {
+  row_index: number
+  ma_khach: string | null
+  match_status: MatchStatus
+  matched_booking_id: string | null
+  gia_mua: number | null
+  gia_ban: number | null
+  gia_source: 'message' | 'manual' | null
+}
 
 type RawBatch = {
   id: string
@@ -614,25 +622,73 @@ export default function CongNoVePage() {
 
   // Gán mã khách TAY cho 1 dòng trong lô raw (qua slide-over). matchedBookingId
   // khác null chỉ khi chọn từ 1 candidate cụ thể — giữ vết truy vết, đúng
-  // semantics của saveMaKhachManual (bản structured) bên dưới.
-  async function saveRawMaKhachManual(batchId: string, rowIndex: number, maKhach: string, matchedBookingId: string | null) {
+  // semantics của saveMaKhachManual (bản structured) bên dưới. giaMua/giaBan
+  // đi kèm khi chọn đúng 1 pax cụ thể (có giá riêng từ tin nhắn) — luôn ghi
+  // đè (khác auto-match chỉ điền khi đang rỗng) vì đây là hành động kế toán
+  // chủ động chọn, không phải chạy nền tự động.
+  async function saveRawMaKhachManual(batchId: string, rowIndex: number, maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) {
     const trimmed = maKhach.trim()
     const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
+    const hasGia = trimmed && matchedBookingId && (giaMua != null || giaBan != null)
     setRawBatches(prev => prev.map(b => {
       if (b.id !== batchId) return b
+      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
       const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
       return {
         ...b,
         ve_debt_records_raw_match: [
           ...others,
-          { row_index: rowIndex, ma_khach: trimmed || null, match_status: nextStatus, matched_booking_id: trimmed ? matchedBookingId : null },
+          {
+            row_index: rowIndex,
+            ma_khach: trimmed || null,
+            match_status: nextStatus,
+            matched_booking_id: trimmed ? matchedBookingId : null,
+            gia_mua: hasGia ? (giaMua ?? existing?.gia_mua ?? null) : (existing?.gia_mua ?? null),
+            gia_ban: hasGia ? (giaBan ?? existing?.gia_ban ?? null) : (existing?.gia_ban ?? null),
+            gia_source: hasGia ? 'message' : (existing?.gia_source ?? null),
+          },
+        ],
+      }
+    }))
+    const body: Record<string, unknown> = { ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }
+    if (hasGia) {
+      if (giaMua != null) body.gia_mua = giaMua
+      if (giaBan != null) body.gia_ban = giaBan
+    }
+    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  // Sửa tay 1 giá (bấm cây viết) — KHÔNG kèm matched_booking_id nên server
+  // tự gắn gia_source='manual' (xem PATCH .../rows/[rowIndex]/route.ts).
+  async function saveRawGiaManual(batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) {
+    setRawBatches(prev => prev.map(b => {
+      if (b.id !== batchId) return b
+      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
+      return {
+        ...b,
+        ve_debt_records_raw_match: [
+          ...others,
+          {
+            row_index: rowIndex,
+            ma_khach: existing?.ma_khach ?? null,
+            match_status: existing?.match_status ?? 'unmatched',
+            matched_booking_id: existing?.matched_booking_id ?? null,
+            gia_mua: field === 'gia_mua' ? value : (existing?.gia_mua ?? null),
+            gia_ban: field === 'gia_ban' ? value : (existing?.gia_ban ?? null),
+            gia_source: 'manual',
+          },
         ],
       }
     }))
     await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }),
+      body: JSON.stringify({ [field]: value }),
     })
   }
 
@@ -1395,7 +1451,7 @@ export default function CongNoVePage() {
         </>
       ) : (
         <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
-          onOpenMatch={setViewingRawMatch} />
+          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
       )}
     </div>
     {viewingMatchRow && (
@@ -1421,7 +1477,7 @@ export default function CongNoVePage() {
         }}
         candidatesUrl={`/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates`}
         khSuggestions={allMaKhach}
-        onSaved={(maKhach, matchedBookingId) => saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId)}
+        onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
         onClose={() => setViewingRawMatch(null)} />
     )}
     </>
@@ -1432,9 +1488,9 @@ export default function CongNoVePage() {
 // giữ đúng cột/tên cột như file gốc (không ép về schema chung).
 type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
 
-function RawBatchesView({ batches, onDelete, ncc, onOpenMatch }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch }) {
+function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
   if (batches.length === 0) {
-    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} />
+    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
   }
   return (
     <div className="space-y-4">
@@ -1443,6 +1499,7 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch }: { batches: RawB
           info={`${b.source_file || 'Không rõ tên file'} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
           onDelete={() => onDelete(b.id)}
           matches={new Map(b.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
+          onSaveGia={(rowIndex, field, value) => onSaveGia(b.id, rowIndex, field, value)}
           onOpenMatch={rowIndex => {
             const idColIdx = findIdColumnIndex(b.headers)
             const paxColIdx = findPaxColumnIndex(b.headers)
@@ -1461,7 +1518,28 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch }: { batches: RawB
   )
 }
 
-type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status'>
+type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' | 'gia_ban' | 'gia_source'>
+
+// Ô giá mua/giá bán cho bảng raw — mặc định hiện số + nhãn nhỏ "từ tin
+// nhắn" khi gia_source==='message' (tự điền lúc khớp mã khách/chọn pax từ
+// slide-over, xem match-ma-khach-raw.ts), bấm cây viết mới lộ ra ô nhập —
+// tránh nhìn giống ô luôn-sửa-được như EditableNumberCell (dữ liệu ở đây
+// coi là số chính thức ngay khi tự điền, không phải ô nháp).
+function RawPriceCell({ value, source, onSave }: { value: number | null; source: 'message' | 'manual' | null; onSave: (v: number | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  if (editing) {
+    return <EditableNumberCell value={value} onSave={v => { onSave(v); setEditing(false) }} />
+  }
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <span className="text-right">{formatGiaVe(value)}</span>
+      {source === 'message' && <span className="text-[10px] text-gray-400 whitespace-nowrap">từ tin nhắn</span>}
+      <button type="button" onClick={() => setEditing(true)} title="Sửa" className="p-0.5 text-gray-300 hover:text-brand-600 shrink-0">
+        <Pencil size={11} />
+      </button>
+    </div>
+  )
+}
 
 // Khung bảng dùng chung cho cả lô đã upload lẫn tab chưa có dữ liệu (rows
 // rỗng → tự kẻ lưới trống theo đúng số cột header) — có cùng thanh đếm
@@ -1475,9 +1553,10 @@ type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status'>
 // gốc, không đụng cellProps/cellClassName của useCellSelection nên không
 // phá cơ chế kéo-chọn-Ctrl+C hiện có (đã xác nhận hook chỉ gắn
 // onMouseDown/onMouseEnter/onContextMenu, không có onClick).
-function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch }: {
+function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia }: {
   headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
+  onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -1510,7 +1589,14 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch }: {
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
               {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
-              {rows.length > 0 && <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>}
+              {rows.length > 0 && (
+                <>
+                  <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>
+                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá mua</th>
+                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá bán</th>
+                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Lợi nhuận</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -1541,6 +1627,15 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch }: {
                     <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
+                </td>
+                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                  <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
+                </td>
+                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                  <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
+                </td>
+                <td className="border border-gray-100 px-2 py-1.5 align-top text-right">
+                  {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                 </td>
               </tr>
               )

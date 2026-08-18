@@ -13,7 +13,7 @@ export async function GET() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('ve_debt_records_raw')
-    .select('*, ve_debt_records_raw_match(row_index, ma_khach, match_status, matched_booking_id)')
+    .select('*, ve_debt_records_raw_match(row_index, ma_khach, match_status, matched_booking_id, gia_mua, gia_ban, gia_source)')
     .order('created_at', { ascending: false })
     .limit(200)
 

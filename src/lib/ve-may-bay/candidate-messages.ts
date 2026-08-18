@@ -7,6 +7,8 @@ export type CandidatePax = {
   ten_khach_hang: string | null
   full_name: string | null
   routing: string | null
+  gia_mua: number | null
+  gia_ban: number | null
   ve_tkt: { tkt_code: string | null; ten_nhan_vien: string | null } | null
 }
 

@@ -10,7 +10,7 @@ export type MatchResult = {
   errors: string[]
 }
 
-export type BookingRow = { id: string; ticket_no: string | null; ma_khach: string | null }
+export type BookingRow = { id: string; ticket_no: string | null; ma_khach: string | null; gia_mua: number | null; gia_ban: number | null }
 export type MatchDecision = { match_status: 'matched' | 'unmatched'; matched_booking_id: string | null; ma_khach?: string }
 
 type DebtTarget = { id: string; ticket_no: string | null; ma_khach: string | null; match_status: string }
@@ -48,7 +48,7 @@ export async function fetchBookingsAndDirectory(
 ): Promise<{ ok: true; bookingsByTicket: Map<string, BookingRow[]>; directoryMap: Map<string, string> } | { ok: false; error: string }> {
   const { data: bookingsRaw, error: bookingsErr } = await admin
     .from('ve_bookings')
-    .select('id, ticket_no, ma_khach')
+    .select('id, ticket_no, ma_khach, gia_mua, gia_ban')
     .in('ticket_no', idValues)
   if (bookingsErr) return { ok: false, error: bookingsErr.message }
 
