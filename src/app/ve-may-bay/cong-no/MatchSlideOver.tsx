@@ -234,7 +234,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
                   )}
                 </div>
               ) : (
-                manualFiltered.slice(0, 50).map(o => (
+                manualFiltered.map(o => (
                   <button key={o.ma_khach} type="button" onClick={() => chooseManual(o.ma_khach)}
                     className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors">
                     <span className="text-sm font-semibold text-gray-800">{o.ma_khach}</span>
