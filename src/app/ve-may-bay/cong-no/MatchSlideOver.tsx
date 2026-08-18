@@ -171,6 +171,15 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
                 })}
               </div>
             )}
+
+            {selectedMessage?.raw_message && (
+              <div className="mt-4 px-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Nguyên văn tin nhắn</h3>
+                <p className="text-xs text-gray-500 whitespace-pre-wrap bg-gray-50 rounded-lg p-3 max-h-72 overflow-y-auto">
+                  {selectedMessage.raw_message}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="overflow-y-auto p-6 border-b md:border-b-0 md:border-r border-gray-100">
@@ -178,12 +187,6 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
               <p className="text-sm text-gray-400 py-4">Chọn 1 tin nhắn bên trái để xem danh sách khách.</p>
             ) : (
               <>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Nguyên văn tin nhắn</h3>
-                {selectedMessage.raw_message && (
-                  <p className="text-xs text-gray-500 whitespace-pre-wrap bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
-                    {selectedMessage.raw_message}
-                  </p>
-                )}
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Hành khách trong tin nhắn ({selectedMessage.pax.length})</h3>
                 <div className="space-y-2">
                   {selectedMessage.pax.map(p => {
