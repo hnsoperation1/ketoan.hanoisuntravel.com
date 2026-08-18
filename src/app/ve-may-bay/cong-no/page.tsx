@@ -81,6 +81,22 @@ function splitPaxNames(paxName: string | null): string[] {
   return names.length > 0 ? names : [paxName ?? '']
 }
 
+// Bản dành riêng cho bảng raw (4 tab NCC) — CHỈ tách xuống dòng thuần tuý,
+// KHÔNG bỏ đoạn nào (kể cả đoạn "N PAX..."/"N PAX ADT.NN" đầu, hay dấu ":"
+// cuối) — khác splitPaxNames ở trên (dùng cho bảng Tổng hợp, cố tình bỏ
+// đoạn đầu vì ở đó mỗi phần tử trả về được coi là 1 dòng phụ/1 hành khách
+// riêng, giữ "N PAX..." vào sẽ tạo nhầm 1 "hành khách" giả). Đã gặp 2 định
+// dạng ngăn cách thực tế ở file FCVN: "+" (vd "5 PAX ADT.05 + Tên A + Tên
+// B...") và ";" (vd "4 PAX: Tên A; Tên B...") — ưu tiên ";" nếu có, không
+// thì mới tới "+".
+function splitPaxLinesForDisplay(paxName: string | null): string[] {
+  const s = (paxName ?? '').trim()
+  if (!/^\d+\s*PAX\b/i.test(s)) return [paxName ?? '']
+  const sep = s.includes(';') ? ';' : '+'
+  const lines = s.split(sep).map(seg => seg.trim()).filter(Boolean)
+  return lines.length > 0 ? lines : [paxName ?? '']
+}
+
 const REQUIRED_FIELDS = [
   { key: 'ticket_no', label: 'Mã vé' },
   { key: 'pax_name', label: 'Tên pax' },
@@ -1666,7 +1682,7 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
                       <button type="button" onClick={() => onOpenMatch(i)}
                         className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                         <div className="space-y-0.5">
-                          {splitPaxNames(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
+                          {splitPaxLinesForDisplay(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
                         </div>
                       </button>
                     ) : j === idColIdx ? (
