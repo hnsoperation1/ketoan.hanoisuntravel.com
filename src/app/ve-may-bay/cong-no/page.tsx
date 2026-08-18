@@ -323,6 +323,18 @@ function isFcvnDataRow(row: string[]): boolean {
   return /^\d+$/.test((row[0] ?? '').trim())
 }
 
+// Dò dòng "rác" khi nhập nguyên xi (submitRaw, dùng chung cho cả 4 tab NCC,
+// không riêng FCVN nên không dùng được quy tắc "Order" của isFcvnDataRow ở
+// trên) — dựa vào cột mã vé/PNR đã nhận diện được qua findIdColumnIndex
+// (raw-column-roles.ts, đã dùng ổn cho cả 4 NCC ở tính năng khớp mã khách).
+// Dòng dữ liệu thật luôn có mã vé/PNR đủ dài; dòng tiêu đề phụ lặp lại
+// (mỗi ô chỉ có 1 chữ cái chú thích cột) hoặc dòng ngăn cách section (các
+// ô khác đều trống) đều có ô này rỗng hoặc quá ngắn.
+function isLikelyJunkRow(row: string[], idColIdx: number | null): boolean {
+  if (idColIdx == null) return false
+  return (row[idColIdx] ?? '').trim().length < 4
+}
+
 // "Issue date" gộp 3 ngày trong 1 chuỗi: ngày xuất vé - ngày bay đi -
 // ngày bay về (đã xác nhận với user 2026-08-04), vd:
 // "01/08/2026 - 04/08/2026 - 04/08/2026".
@@ -581,6 +593,10 @@ export default function CongNoVePage() {
   const [importError, setImportError] = useState('')
   const [vietjetMode, setVietjetMode] = useState(false)
   const [fcvnMode, setFcvnMode] = useState(false)
+  // Chỉ số (trong dataRows) của các dòng bị nghi là "rác" (tiêu đề phụ lặp
+  // lại, dòng ngăn cách section...) nhưng kế toán đã bấm "Giữ dòng này" —
+  // những dòng đó vẫn được nhập dù bị tô đỏ. Xem isLikelyJunkRow().
+  const [keptJunkRows, setKeptJunkRows] = useState<Set<number>>(new Set())
 
   // Filters
   const [search, setSearch] = useState('')
@@ -791,7 +807,7 @@ export default function CongNoVePage() {
   function resetWizard() {
     setSheets([]); setSelectedSheet(null); setRawGrid([]); setFileName('')
     setHeaderRowIndex(null); setMapping(EMPTY_MAPPING); setNccInput(''); setImportError('')
-    setVietjetMode(false); setFcvnMode(false)
+    setVietjetMode(false); setFcvnMode(false); setKeptJunkRows(new Set())
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -885,6 +901,16 @@ export default function CongNoVePage() {
 
   const dataRows = headerRowIndex == null ? [] : rawGrid.slice(headerRowIndex + 1).filter(r => r.some(c => c.trim() !== ''))
   const headers = headerRowIndex == null ? [] : (rawGrid[headerRowIndex] ?? [])
+  // Chỉ áp dụng cho luồng nhập nguyên xi (submitRaw) — vietjetMode/fcvnMode
+  // đã có quy tắc lọc rác riêng của mình (isFcvnDataRow...), không cần đụng.
+  const rawImportIdColIdx = findIdColumnIndex(headers)
+  const junkRowIndexes = new Set(
+    dataRows.reduce<number[]>((acc, r, i) => {
+      if (isLikelyJunkRow(r, rawImportIdColIdx) && !keptJunkRows.has(i)) acc.push(i)
+      return acc
+    }, []),
+  )
+  const rowsToImport = dataRows.filter((_, i) => !junkRowIndexes.has(i))
 
   // Vị trí cột cố định theo đúng file mẫu Vietjet — xem findVietjetHeaderRow.
   // Lưu ý tên cột trong file gốc GÂY NHẦM: cột "PAYMENT DATE" (r[2]) thực
@@ -1032,7 +1058,7 @@ export default function CongNoVePage() {
       const res = await fetch('/api/ve-may-bay/cong-no-raw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc, source_file: fileName, headers, rows: dataRows }),
+        body: JSON.stringify({ ncc, source_file: fileName, headers, rows: rowsToImport }),
       })
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
@@ -1338,6 +1364,9 @@ export default function CongNoVePage() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">
                 {nccFilter ? `Nhập vào tab "${nccFilter}"` : 'Nhập vào tab "Tổng hợp"'} — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+                {junkRowIndexes.size > 0 && (
+                  <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
+                )}
               </span>
               <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
                 ← Chọn lại dòng tiêu đề
@@ -1356,14 +1385,27 @@ export default function CongNoVePage() {
               <table className="text-xs w-full">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
+                    {rawImportIdColIdx != null && <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap"></th>}
                     {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {dataRows.slice(0, 20).map((r, i) => (
-                    <tr key={i} className="border-t border-gray-100">
+                  {dataRows.slice(0, 20).map((r, i) => {
+                    const isJunk = junkRowIndexes.has(i)
+                    return (
+                    <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''}`}>
+                      {rawImportIdColIdx != null && (
+                        <td className="px-2 py-1.5 align-top">
+                          {isJunk && (
+                            <button type="button" onClick={() => setKeptJunkRows(prev => new Set(prev).add(i))}
+                              className="text-[10px] font-semibold text-red-600 hover:text-red-700 underline whitespace-nowrap">
+                              Giữ dòng này
+                            </button>
+                          )}
+                        </td>
+                      )}
                       {headers.map((h, j) => (
-                        <td key={j} className="px-2 py-1.5 align-top max-w-[200px]">
+                        <td key={j} className={`px-2 py-1.5 align-top max-w-[200px] ${isJunk ? 'text-red-500' : ''}`}>
                           {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                             <div className="space-y-0.5">
                               {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap truncate">{seg}</div>)}
@@ -1374,7 +1416,8 @@ export default function CongNoVePage() {
                         </td>
                       ))}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1384,7 +1427,8 @@ export default function CongNoVePage() {
             <div className="flex items-center gap-2">
               <button onClick={submitRaw} disabled={importing}
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {dataRows.length} dòng vào tab &quot;{nccFilter || nccInput || '—'}&quot;
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {rowsToImport.length} dòng vào tab &quot;{nccFilter || nccInput || '—'}&quot;
+                {junkRowIndexes.size > 0 && <span className="opacity-75"> (đã bỏ {junkRowIndexes.size} dòng rác)</span>}
               </button>
               <button onClick={resetWizard} disabled={importing} type="button"
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
