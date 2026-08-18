@@ -21,6 +21,7 @@ type Message = {
   raw_message: string | null
   created_at: string
   from_user_name: string | null
+  group_title: string | null
   pax: Pax[]
 }
 
@@ -39,11 +40,6 @@ function formatDateTime(iso: string): string {
   } catch {
     return iso
   }
-}
-
-function firstLine(s: string | null): string {
-  if (!s) return ''
-  return s.split('\n')[0].trim()
 }
 
 // Slide-over bên phải, mở khi bấm badge trạng thái khớp mã khách (dùng
@@ -154,30 +150,26 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
             ) : messages.length === 0 ? (
               <p className="text-sm text-gray-400 py-4 px-2">Không tìm thấy tin nhắn Telegram nào khớp mã vé/PNR này.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {messages.map(m => {
                   const selected = m.parse_log_id === selectedMsgId
                   return (
                     <button key={m.parse_log_id} type="button" onClick={() => setSelectedMsgId(m.parse_log_id)}
-                      className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors ${selected ? 'bg-brand-50 border-brand-300' : 'border-transparent hover:bg-gray-50'}`}>
-                      <div className="text-xs text-gray-400">{formatDateTime(m.created_at)}</div>
-                      <div className="text-sm font-semibold text-gray-800 truncate">{m.from_user_name ?? 'Không rõ người gửi'}</div>
-                      <div className="text-xs text-gray-500">{m.pax.length} khách</div>
-                      {firstLine(m.raw_message) && (
-                        <div className="text-xs text-gray-400 truncate mt-0.5">{firstLine(m.raw_message)}</div>
+                      className={`w-full text-left rounded-2xl border p-3 transition-colors ${selected ? 'bg-brand-50 border-brand-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                      {m.group_title && (
+                        <div className="text-[11px] text-gray-400 mb-1 truncate">{m.group_title}</div>
                       )}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-semibold text-emerald-600 truncate">{m.from_user_name ?? 'Không rõ người gửi'}</span>
+                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{m.pax.length} khách</span>
+                      </div>
+                      {m.raw_message && (
+                        <p className="text-xs text-gray-700 whitespace-pre-wrap">{m.raw_message}</p>
+                      )}
+                      <div className="text-[11px] text-gray-400 text-right mt-1">{formatDateTime(m.created_at)}</div>
                     </button>
                   )
                 })}
-              </div>
-            )}
-
-            {selectedMessage?.raw_message && (
-              <div className="mt-4 px-2">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Nguyên văn tin nhắn</h3>
-                <p className="text-xs text-gray-500 whitespace-pre-wrap bg-gray-50 rounded-lg p-3 max-h-72 overflow-y-auto">
-                  {selectedMessage.raw_message}
-                </p>
               </div>
             )}
           </div>

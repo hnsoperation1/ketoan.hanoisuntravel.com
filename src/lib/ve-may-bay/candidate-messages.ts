@@ -15,6 +15,7 @@ export type CandidateMessage = {
   raw_message: string | null
   created_at: string
   from_user_name: string | null
+  group_title: string | null
   pax: CandidatePax[]
 }
 
@@ -23,7 +24,12 @@ export type KhachInfo = Record<string, { ten_khach: string | null; active: boole
 type AnchorRow = CandidatePax & {
   parse_log_id: string | null
   created_at: string
-  ve_parse_logs: { raw_message: string | null; created_at: string | null; from_user_name: string | null } | null
+  ve_parse_logs: {
+    raw_message: string | null
+    created_at: string | null
+    from_user_name: string | null
+    ve_telegram_groups: { telegram_chat_title: string | null } | null
+  } | null
 }
 
 // Gom candidate theo TIN NHẮN thay vì theo từng dòng ve_bookings — 1 tin
@@ -39,7 +45,7 @@ export async function buildCandidateMessages(
 ): Promise<{ messages: CandidateMessage[]; khachInfo: KhachInfo } | { error: string }> {
   const { data: anchorRaw, error: anchorErr } = await admin
     .from('ve_bookings')
-    .select('*, ve_tkt(tkt_code, ten_nhan_vien), ve_parse_logs(raw_message, created_at, from_user_name)')
+    .select('*, ve_tkt(tkt_code, ten_nhan_vien), ve_parse_logs(raw_message, created_at, from_user_name, ve_telegram_groups(telegram_chat_title))')
     .eq('ticket_no', ticketNo)
     .order('created_at', { ascending: false })
   if (anchorErr) return { error: anchorErr.message }
@@ -56,13 +62,14 @@ export async function buildCandidateMessages(
 
   const allPax = (allPaxRaw ?? []) as (CandidatePax & { parse_log_id: string | null; created_at: string })[]
 
-  const metaByLog = new Map<string, { raw_message: string | null; created_at: string; from_user_name: string | null }>()
+  const metaByLog = new Map<string, { raw_message: string | null; created_at: string; from_user_name: string | null; group_title: string | null }>()
   for (const a of anchors) {
     if (!a.parse_log_id || metaByLog.has(a.parse_log_id)) continue
     metaByLog.set(a.parse_log_id, {
       raw_message: a.ve_parse_logs?.raw_message ?? null,
       created_at: a.ve_parse_logs?.created_at ?? a.created_at,
       from_user_name: a.ve_parse_logs?.from_user_name ?? null,
+      group_title: a.ve_parse_logs?.ve_telegram_groups?.telegram_chat_title ?? null,
     })
   }
 
@@ -77,6 +84,7 @@ export async function buildCandidateMessages(
         raw_message: meta?.raw_message ?? null,
         created_at: meta?.created_at ?? '',
         from_user_name: meta?.from_user_name ?? null,
+        group_title: meta?.group_title ?? null,
         pax,
       }
     })
