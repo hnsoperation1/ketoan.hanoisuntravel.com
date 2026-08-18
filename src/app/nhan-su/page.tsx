@@ -63,7 +63,7 @@ type HoSoFlat = {
   doan: DoanSummary | null
 }
 
-type Tab = 'tong_hop' | 'can_thanh_toan' | 'da_thanh_toan'
+type Tab = 'tong_hop' | 'can_thanh_toan' | 'da_thanh_toan' | 'toan_bo'
 type DateFilterMode = 'all' | 'thang' | 'quy' | 'tuy_chon'
 
 // "Đã thanh toán" = trang_thai đã QUA MỐC da_thanh_toan trong quy trình
@@ -313,6 +313,7 @@ export default function NhanSuPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [tab, setTab] = useState<Tab>('tong_hop')
   const [hoSoList, setHoSoList] = useState<HoSoFlat[]>([])
+  const [nhansuList, setNhansuList] = useState<NhanSuRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
@@ -343,6 +344,23 @@ export default function NhanSuPage() {
     }
   }, [])
 
+  // Toàn bộ nhân sự đã đăng ký (không giới hạn theo đoàn) — nguồn riêng cho
+  // tab "Toàn bộ nhân sự", dùng GET /api/nhansu vốn đã có sẵn nhưng chưa
+  // được trang nào gọi tới (xem comment trong route đó).
+  const loadNhansuList = useCallback(async () => {
+    try {
+      const res = await fetch('/api/nhansu')
+      if (!res.ok) return
+      const data = await res.json()
+      setNhansuList(Array.isArray(data.nhansu) ? data.nhansu : [])
+    } catch { /* im lặng — chỉ ảnh hưởng tab Toàn bộ nhân sự, không chặn trang */ }
+  }, [])
+
+  const loadAll = useCallback(() => {
+    loadData()
+    loadNhansuList()
+  }, [loadData, loadNhansuList])
+
   // Tick 1 trong 2 checkbox duyệt tay ("Đã đủ hồ sơ/chứng từ"/"Đã trả đồ
   // đoàn") — cập nhật lạc quan ngay trên UI rồi mới gọi API, cùng route
   // PATCH /api/ho-so/[id] đã dùng ở trang chi tiết đoàn.
@@ -360,17 +378,17 @@ export default function NhanSuPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách khi mount, pattern chuẩn cho fetch-on-mount
-    loadData()
-  }, [loadData])
+    loadAll()
+  }, [loadAll])
 
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Nhân sự thuê ngoài</span>)
-    setOnRefresh(loadData)
+    setOnRefresh(loadAll)
     return () => {
       setBreadcrumb(null)
       setOnRefresh(null)
     }
-  }, [setBreadcrumb, setOnRefresh, loadData])
+  }, [setBreadcrumb, setOnRefresh, loadAll])
 
   // Khoảng ngày hiệu lực theo dateMode — null = không lọc (tất cả thời gian).
   const dateRange = useMemo((): { from: string | null; to: string | null } | null => {
@@ -440,6 +458,39 @@ export default function NhanSuPage() {
       })
   }, [hoSoInRange, filterLoaiId, search])
 
+  // Ai đã từng có ít nhất 1 lượt tham gia đoàn — dùng TOÀN BỘ hoSoList
+  // (không lọc theo khoảng ngày, vì tab "Toàn bộ nhân sự" không có bộ lọc
+  // ngày, chỉ cần biết đã-từng-tham-gia-hay-chưa).
+  const participatedSet = useMemo(() => {
+    const s = new Set<string>()
+    for (const h of hoSoList) if (h.nhansu_id) s.add(h.nhansu_id)
+    return s
+  }, [hoSoList])
+
+  // Đếm NGƯỜI theo loại nhân sự (khác `counts` ở trên vốn đếm LƯỢT) — nguồn
+  // riêng cho chip lọc khi đang ở tab "Toàn bộ nhân sự".
+  const toanBoCounts = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const n of nhansuList) {
+      c[n.loai_nhan_su_id] = (c[n.loai_nhan_su_id] ?? 0) + 1
+    }
+    return c
+  }, [nhansuList])
+
+  const toanBoRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return nhansuList
+      .filter(n => {
+        if (filterLoaiId && n.loai_nhan_su_id !== filterLoaiId) return false
+        if (q) {
+          const hay = `${n.ho_ten} ${n.so_cccd ?? ''} ${n.sdt ?? ''}`.toLowerCase()
+          if (!hay.includes(q)) return false
+        }
+        return true
+      })
+      .sort((a, b) => normalizeName(a.ho_ten).localeCompare(normalizeName(b.ho_ten)))
+  }, [nhansuList, filterLoaiId, search])
+
   const paymentRows = useMemo(() => {
     if (tab === 'tong_hop') return []
     const set = tab === 'can_thanh_toan' ? CAN_THANH_TOAN_SET : DA_THANH_TOAN_SET
@@ -466,6 +517,7 @@ export default function NhanSuPage() {
             { key: 'tong_hop', label: 'Tổng hợp' },
             { key: 'can_thanh_toan', label: 'Cần thanh toán' },
             { key: 'da_thanh_toan', label: 'Đã thanh toán' },
+            { key: 'toan_bo', label: 'Toàn bộ nhân sự' },
           ] as const).map(t => (
             <button key={t.key} type="button" onClick={() => setTab(t.key)}
               className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
@@ -475,7 +527,7 @@ export default function NhanSuPage() {
             </button>
           ))}
         </div>
-        <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+        <button onClick={loadAll} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
         </button>
       </div>
@@ -526,16 +578,16 @@ export default function NhanSuPage() {
         )}
       </div>
 
-      {tab === 'tong_hop' && (
+      {(tab === 'tong_hop' || tab === 'toan_bo') && (
         <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={() => setFilterLoaiId('')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterLoaiId ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-            Tất cả <span className="opacity-70">{hoSoInRange.length}</span>
+            Tất cả <span className="opacity-70">{tab === 'toan_bo' ? nhansuList.length : hoSoInRange.length}</span>
           </button>
           {loaiNhanSu.map(l => (
             <button key={l.id} onClick={() => setFilterLoaiId(filterLoaiId === l.id ? '' : l.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterLoaiId === l.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              {l.ten} <span className="opacity-70">{counts[l.id] ?? 0}</span>
+              {l.ten} <span className="opacity-70">{(tab === 'toan_bo' ? toanBoCounts : counts)[l.id] ?? 0}</span>
             </button>
           ))}
         </div>
@@ -620,6 +672,68 @@ export default function NhanSuPage() {
                         </td>
                       </tr>
                     </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : tab === 'toan_bo' ? (
+        <>
+          <p className="text-sm text-gray-400">{toanBoRows.length.toLocaleString('vi-VN')} nhân sự</p>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm list-table">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Trạng thái tham gia', ''].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-300">Đang tải...</td></tr>
+                  ) : loadError ? (
+                    <tr><td colSpan={5} className="px-5 py-14 text-center">
+                      <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+                      <button onClick={loadAll} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+                    </td></tr>
+                  ) : toanBoRows.length === 0 ? (
+                    <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-400">Không có nhân sự nào khớp bộ lọc.</td></tr>
+                  ) : toanBoRows.map(n => {
+                    const daThamGia = participatedSet.has(n.id)
+                    return (
+                    <tr key={n.id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="px-4 py-2.5">
+                        <button onClick={() => setViewingId(n.id)} className="text-left hover:text-brand-600 transition-colors">
+                          <div className="whitespace-nowrap">
+                            <span className="font-semibold text-gray-900">{n.ho_ten}</span>
+                            <span className="text-gray-900"> · {n.loai_nhan_su?.ma ?? n.loai_nhan_su?.ten ?? '—'}</span>
+                          </div>
+                          <div className="text-xs text-gray-900 font-mono mt-0.5">CCCD: {n.so_cccd ?? '—'}</div>
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-900">
+                        <div>{n.sdt ?? '—'}</div>
+                        {n.email && <div className="text-xs text-gray-900">{n.email}</div>}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-900">{n.stk ? `${n.stk} - ${n.ten_ngan_hang ?? ''}` : '—'}</td>
+                      <td className="px-4 py-2.5">
+                        {daThamGia ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Đã tham gia đoàn</span>
+                        ) : (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">Chưa tham gia đoàn nào</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => setViewingId(n.id)} title="Xem chi tiết" className="p-1 rounded-lg text-gray-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                          <Eye size={15} />
+                        </button>
+                      </td>
+                    </tr>
                     )
                   })}
                 </tbody>
