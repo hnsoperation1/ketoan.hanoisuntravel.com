@@ -142,7 +142,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[280px_1fr_300px]">
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[1fr_1fr_300px]">
           <div className="overflow-y-auto p-4 border-b md:border-b-0 md:border-r border-gray-100">
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 px-2">Tin nhắn Telegram khớp mã vé</h3>
             {loading ? (
