@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireUser } from '@/lib/auth'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
+import { buildCandidateMessages } from '@/lib/ve-may-bay/candidate-messages'
 
 type Ctx = { params: Promise<{ id: string; rowIndex: string }> }
 
@@ -41,31 +42,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     .maybeSingle()
 
   if (!idValue) {
-    return NextResponse.json({ data: { idValue: null, match: match ?? null, candidates: [], khachInfo: {} } })
+    return NextResponse.json({ data: { idValue: null, match: match ?? null, messages: [], khachInfo: {} } })
   }
 
-  const { data: candidates, error: candErr } = await admin
-    .from('ve_bookings')
-    .select('*, ve_tkt(tkt_code, ten_nhan_vien), ve_parse_logs(raw_message)')
-    .eq('ticket_no', idValue)
-    .order('created_at', { ascending: false })
-  if (candErr) return NextResponse.json({ error: candErr.message }, { status: 400 })
+  const result = await buildCandidateMessages(admin, idValue, match?.ma_khach ?? null)
+  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
 
-  const maKhachList = Array.from(new Set(
-    [...(candidates ?? []).map(c => c.ma_khach), match?.ma_khach].filter((x): x is string => !!x),
-  ))
-
-  const khachInfo: Record<string, { ten_khach: string | null; active: boolean }> = {}
-  if (maKhachList.length > 0) {
-    const { data: khach, error: khachErr } = await admin
-      .from('vmb_khach_hang')
-      .select('ma_khach, ten_khach, active')
-      .in('ma_khach', maKhachList)
-    if (khachErr) return NextResponse.json({ error: khachErr.message }, { status: 400 })
-    for (const k of khach ?? []) {
-      khachInfo[k.ma_khach] = { ten_khach: k.ten_khach, active: k.active }
-    }
-  }
-
-  return NextResponse.json({ data: { idValue, match: match ?? null, candidates: candidates ?? [], khachInfo } })
+  return NextResponse.json({ data: { idValue, match: match ?? null, ...result } })
 }
