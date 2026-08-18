@@ -1187,8 +1187,8 @@ export default function CongNoVePage() {
       {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
           (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
       {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
-      <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={resetWizard}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-[100] bg-black/40" onClick={resetWizard}>
+      <div className="bg-white w-screen h-screen overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
           <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
@@ -1381,7 +1381,7 @@ export default function CongNoVePage() {
               </div>
             )}
 
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
+            <div className="border border-gray-200 rounded-xl overflow-auto max-h-[70vh]">
               <table className="text-xs w-full">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
@@ -1390,7 +1390,7 @@ export default function CongNoVePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {dataRows.slice(0, 20).map((r, i) => {
+                  {dataRows.map((r, i) => {
                     const isJunk = junkRowIndexes.has(i)
                     return (
                     <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''}`}>
