@@ -1656,7 +1656,20 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
                       </div>
-                    ) : (j === idColIdx || j === paxColIdx) ? (
+                    ) : j === paxColIdx ? (
+                      // Vé đoàn FCVN gộp nhiều pax vào 1 ô, nối bằng "+" (vd
+                      // "5 PAX ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH..."
+                      // — tách xuống dòng cho dễ đọc, dùng lại đúng
+                      // splitPaxNames đã có cho bảng Tổng hợp. NCC nào không
+                      // khớp mẫu "N PAX..." thì trả về nguyên 1 dòng, không
+                      // đổi gì so với trước.
+                      <button type="button" onClick={() => onOpenMatch(i)}
+                        className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
+                        <div className="space-y-0.5">
+                          {splitPaxNames(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
+                        </div>
+                      </button>
+                    ) : j === idColIdx ? (
                       <button type="button" onClick={() => onOpenMatch(i)}
                         className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                         {r[j] || '—'}
