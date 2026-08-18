@@ -157,7 +157,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
                     <button key={m.parse_log_id} type="button" onClick={() => setSelectedMsgId(m.parse_log_id)}
                       className={`w-full text-left rounded-2xl border p-3 transition-colors ${selected ? 'bg-brand-50 border-brand-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                       {m.group_title && (
-                        <div className="text-[11px] text-gray-400 mb-1 truncate">{m.group_title}</div>
+                        <div className="text-[11px] text-gray-400 mb-1 truncate">Nhóm Telegram: {m.group_title}</div>
                       )}
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-sm font-semibold text-emerald-600 truncate">{m.from_user_name ?? 'Không rõ người gửi'}</span>
