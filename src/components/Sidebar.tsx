@@ -138,9 +138,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               Kế toán vé máy bay
             </p>
           )}
-          <NavLink href="/ve-may-bay/thong-tin-xuat-ve" label="Thông tin xuất vé" icon={Plane} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/cong-no" label="Công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/thong-tin-xuat-ve" label="Thông tin xuất vé" icon={Plane} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TC" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục KH" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
