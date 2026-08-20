@@ -1922,6 +1922,15 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
   useEffect(() => setMounted(true), [])
   const { widths, startResize } = useResizableColumns('ve-cong-no-bang', BANG_COL_DEFAULTS)
 
+  // BẮT BUỘC phải set width tường minh cho <table>: theo chuẩn CSS,
+  // `table-layout: fixed` CHỈ có hiệu lực khi bảng có width khác `auto`.
+  // Thiếu nó, trình duyệt âm thầm quay về auto layout — lúc đó `width` đặt
+  // trên từng <th> chỉ là "gợi ý", độ rộng thật do NỘI DUNG ô quyết định,
+  // nên kéo giãn cột đổi state/inline style nhưng màn hình không nhúc nhích
+  // (triệu chứng đã gặp: cột render ra 35-49px trong khi startResize chặn
+  // cứng tối thiểu 60px — chứng tỏ layout không hề đọc width của mình).
+  const totalWidth = BANG_COLS.reduce((sum, c) => sum + (widths[c.key] ?? c.width), 0)
+
   const TH = 'relative px-2 py-1.5 border border-gray-300 bg-gray-100 font-semibold text-gray-700 whitespace-nowrap text-left overflow-hidden'
   const TD = 'px-2 py-1 border border-gray-300 text-gray-800 whitespace-nowrap font-normal overflow-hidden text-ellipsis'
 
@@ -1950,7 +1959,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
         </button>
       </div>
       <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
-      <table className="text-xs border-collapse list-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed' }}>
+      <table className="text-xs border-collapse list-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
         <thead className="sticky top-0 z-10">
           <tr>
             {BANG_COLS.map(c => (
