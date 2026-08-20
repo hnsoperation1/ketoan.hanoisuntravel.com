@@ -42,6 +42,16 @@ function formatGiaVe(n: number | null | undefined): string {
   return Math.round(n).toLocaleString('vi-VN')
 }
 
+// Nhận diện ô raw NCC là số THUẦN (vd "899000", "-1932000") để tách hàng
+// nghìn + căn phải khi hiện — file gốc NCC không tách hàng nghìn/không có
+// dấu gì khác nên chỉ cần regex đơn giản, không cần biết cột nào là "giá"
+// (raw không có schema cột cố định, xem raw-column-roles.ts).
+function parseRawNumericCell(v: string | undefined): number | null {
+  const s = v?.trim()
+  if (!s || !/^-?\d+(\.\d+)?$/.test(s)) return null
+  return Number(s)
+}
+
 function formatPercent(n: number): string {
   return `${Math.round(n * 1000) / 10}%`
 }
@@ -1793,10 +1803,12 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
               const match = matches.get(i)
               return (
               <tr key={i} className="border-t border-gray-100">
-                {headers.map((h, j) => (
+                {headers.map((h, j) => {
+                  const numericValue = j !== idColIdx && j !== paxColIdx ? parseRawNumericCell(r[j]) : null
+                  return (
                   <td key={j}
                     {...cellProps(i, j)}
-                    className={cellClassName(i, j, 'border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell')}>
+                    className={cellClassName(i, j, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
                     {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -1819,11 +1831,14 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
                         className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                         {r[j] || '—'}
                       </button>
+                    ) : numericValue != null ? (
+                      <span className="whitespace-nowrap">{numericValue.toLocaleString('vi-VN')}</span>
                     ) : (
                       <span className="whitespace-nowrap">{r[j] || '—'}</span>
                     )}
                   </td>
-                ))}
+                  )
+                })}
                 <td className="border border-gray-100 px-2 py-1.5 align-top">
                   <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                     <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />

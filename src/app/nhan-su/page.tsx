@@ -510,9 +510,13 @@ export default function NhanSuPage() {
   }, [hoSoList, tab, search])
 
   return (
-    <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1 border-b border-gray-200 -mb-px">
+    <div className="px-5 pb-5 space-y-4">
+      {/* min-h-12/md:min-h-10 + border-b, không padding-top ở div ngoài —
+          cùng cách cong-no-ncc/page.tsx đang làm để hàng tab nằm sát
+          Topbar (h-12 md:h-10, xem components/Topbar.tsx), 2 thanh liền
+          mạch nhau thay vì có khoảng trống ở giữa. */}
+      <div className="min-h-12 md:min-h-10 flex items-center justify-between flex-wrap gap-2 border-b border-gray-200">
+        <div className="flex items-center gap-1 -mb-px">
           {([
             { key: 'tong_hop', label: 'Tổng hợp' },
             { key: 'can_thanh_toan', label: 'Cần thanh toán' },
