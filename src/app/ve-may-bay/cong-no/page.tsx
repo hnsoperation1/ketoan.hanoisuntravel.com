@@ -11,7 +11,7 @@ import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from './MatchSlideOver'
-import { RawMatchPanel } from './RawMatchPanel'
+import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
 
 export type DebtRow = {
   id: string
@@ -629,6 +629,10 @@ export default function CongNoVePage() {
   const [rematching, setRematching] = useState(false)
   const [viewingMatchRow, setViewingMatchRow] = useState<DebtRow | null>(null)
   const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
+  // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
+  // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
+  // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
+  const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
 
   async function runRematch() {
     setRematching(true)
@@ -1525,10 +1529,18 @@ export default function CongNoVePage() {
                 khSuggestions={allMaKhach}
                 onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
                 onClose={() => setViewingRawMatch(null)}
+                onSelectMessage={setSelectedRawMessage}
               />
             </div>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 space-y-4">
+            {selectedRawMessage && (
+              <SelectedMessagePaxTable
+                message={selectedRawMessage.message}
+                khachInfo={selectedRawMessage.khachInfo}
+                onChoose={p => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, p.gia_mua, p.gia_ban)}
+              />
+            )}
             <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
               onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
           </div>
@@ -1549,6 +1561,71 @@ export default function CongNoVePage() {
         onClose={() => setViewingMatchRow(null)} />
     )}
     </>
+  )
+}
+
+// Bảng hành khách của TIN NHẮN đang chọn ở RawMatchPanel (bên trái) — hiện
+// ngay trên danh sách lô công nợ raw, dạng bảng rộng (đồng bộ style với
+// RawTableCard) thay vì card hẹp nhồi trong panel, dễ đọc/đối chiếu hơn khi
+// tin nhắn có nhiều pax. "Chọn" gán mã khách của đúng dòng công nợ đang mở
+// panel (viewingRawMatch) — y hệt hành vi choosePax cũ trong RawMatchPanel.
+function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
+  message: RawCandidateMessage
+  khachInfo: RawKhachInfo
+  onChoose: (p: RawCandidatePax) => void
+}) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
+        <span className="text-xs text-gray-500 truncate">
+          Hành khách trong tin nhắn của <span className="font-semibold text-emerald-600">{message.from_user_name ?? 'Không rõ người gửi'}</span>
+          {message.group_title && <span className="text-gray-400"> · Nhóm: {message.group_title}</span>}
+        </span>
+        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{message.pax.length} khách</span>
+      </div>
+      <div className="overflow-auto max-h-[360px]">
+        <table className="list-table text-xs w-full border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gray-50 text-gray-500">
+              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Hành khách</th>
+              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã vé</th>
+              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">TKT</th>
+              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>
+              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {message.pax.map(p => {
+              const info = p.ma_khach ? khachInfo[p.ma_khach] : undefined
+              const invalid = p.ma_khach && !info
+              const inactive = info && !info.active
+              return (
+                <tr key={p.id} className="border-t border-gray-100">
+                  <td className="border border-gray-100 px-2 py-1.5 text-gray-900 whitespace-nowrap">{p.full_name || p.ten_khach_hang || 'Không rõ tên khách'}</td>
+                  <td className="border border-gray-100 px-2 py-1.5 text-gray-500 whitespace-nowrap">{p.ticket_no ?? '—'}</td>
+                  <td className="border border-gray-100 px-2 py-1.5 text-gray-500 whitespace-nowrap">{p.ve_tkt?.tkt_code ?? '—'}</td>
+                  <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
+                    <span className="font-semibold text-gray-800">{p.ma_khach ?? '—'}</span>
+                    {info?.ten_khach && <span className="text-gray-400"> · {info.ten_khach}</span>}
+                    {(invalid || inactive) && (
+                      <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                        {invalid ? 'Không có trong danh mục' : 'Đã ngừng hoạt động'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
+                    <button type="button" onClick={() => onChoose(p)} disabled={!p.ma_khach}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      Chọn
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 

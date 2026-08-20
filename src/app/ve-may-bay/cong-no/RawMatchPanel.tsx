@@ -6,7 +6,7 @@ import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 
-type Pax = {
+export type RawCandidatePax = {
   id: string
   ticket_no: string | null
   ma_khach: string | null
@@ -18,16 +18,16 @@ type Pax = {
   ve_tkt: { tkt_code: string | null; ten_nhan_vien: string | null } | null
 }
 
-type Message = {
+export type RawCandidateMessage = {
   parse_log_id: string
   raw_message: string | null
   created_at: string
   from_user_name: string | null
   group_title: string | null
-  pax: Pax[]
+  pax: RawCandidatePax[]
 }
 
-type KhachInfo = Record<string, { ten_khach: string | null; active: boolean }>
+export type RawKhachInfo = Record<string, { ten_khach: string | null; active: boolean }>
 
 function formatDateTime(iso: string): string {
   try {
@@ -41,22 +41,28 @@ function formatDateTime(iso: string): string {
 // cố định, không phải overlay/portal) — tạm thời (2026-08-20) thay thế cách
 // hiển thị của MatchSlideOver CHỈ CHO 4 tab NCC raw, theo yêu cầu bấm mã
 // vé/PNR sẽ "trượt" nội dung khớp vào khoảng trống bên trái thay vì mở modal
-// che hết bảng. Dữ liệu/logic chọn giữ y hệt MatchSlideOver (cùng
-// candidatesUrl, cùng onSaved) — chỉ khác layout dọc 1 cột thay vì 3 cột
-// ngang do bề rộng panel hẹp hơn nhiều. MatchSlideOver.tsx giữ nguyên không
-// đổi (vẫn dùng cho tab "Tổng hợp"), file này là bản dựng riêng, có thể xoá
-// bỏ để quay lại modal cũ bất cứ lúc nào mà không đụng gì tới file kia.
-export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, onClose }: {
+// che hết bảng. MatchSlideOver.tsx giữ nguyên không đổi (vẫn dùng cho tab
+// "Tổng hợp"), file này là bản dựng riêng, có thể xoá bỏ để quay lại modal
+// cũ bất cứ lúc nào mà không đụng gì tới file kia.
+//
+// Panel này CHỈ còn giữ danh sách tin nhắn + tìm tay trong danh mục — danh
+// sách hành khách của tin nhắn đang chọn đã chuyển ra bảng riêng bên phải
+// (xem SelectedMessagePaxTable ở page.tsx) để dễ đọc hơn dạng bảng rộng
+// thay vì card hẹp. `onSelectMessage` báo lên page.tsx mỗi khi tin nhắn
+// được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc bị
+// xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
+export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, onClose, onSelectMessage }: {
   target: MatchSlideOverTarget | null
   candidatesUrl: string | null
   khSuggestions: KhachOpt[]
   onSaved: (maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) => void
   onClose: () => void
+  onSelectMessage: (info: { message: RawCandidateMessage; khachInfo: RawKhachInfo } | null) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [khachInfo, setKhachInfo] = useState<KhachInfo>({})
+  const [messages, setMessages] = useState<RawCandidateMessage[]>([])
+  const [khachInfo, setKhachInfo] = useState<RawKhachInfo>({})
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
   const [manualQuery, setManualQuery] = useState('')
 
@@ -69,6 +75,7 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
         setKhachInfo({})
         setSelectedMsgId(null)
         setLoading(false)
+        onSelectMessage(null)
         return
       }
       setLoading(true)
@@ -79,10 +86,12 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
         if (!res.ok) throw new Error('load failed')
         const { data } = await res.json()
         if (cancelled) return
-        const msgs: Message[] = Array.isArray(data?.messages) ? data.messages : []
+        const msgs: RawCandidateMessage[] = Array.isArray(data?.messages) ? data.messages : []
+        const info: RawKhachInfo = data?.khachInfo ?? {}
         setMessages(msgs)
-        setKhachInfo(data?.khachInfo ?? {})
+        setKhachInfo(info)
         setSelectedMsgId(msgs[0]?.parse_log_id ?? null)
+        onSelectMessage(msgs[0] ? { message: msgs[0], khachInfo: info } : null)
       } catch {
         if (!cancelled) setLoadError(true)
       } finally {
@@ -92,16 +101,17 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
 
     loadCandidates()
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidatesUrl])
-
-  function choosePax(p: Pax) {
-    if (!p.ma_khach) return
-    onSaved(p.ma_khach, p.id, p.gia_mua, p.gia_ban)
-  }
 
   function chooseManual(maKhach: string) {
     onSaved(maKhach, null)
     setManualQuery('')
+  }
+
+  function selectMessage(m: RawCandidateMessage) {
+    setSelectedMsgId(m.parse_log_id)
+    onSelectMessage({ message: m, khachInfo })
   }
 
   if (!target) {
@@ -113,7 +123,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
   }
 
   const manualFiltered = filterKhachOptions(khSuggestions, manualQuery)
-  const selectedMessage = messages.find(m => m.parse_log_id === selectedMsgId) ?? null
 
   return (
     <div key={target.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col max-h-[calc(100vh-140px)]">
@@ -147,7 +156,7 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
               {messages.map(m => {
                 const selected = m.parse_log_id === selectedMsgId
                 return (
-                  <button key={m.parse_log_id} type="button" onClick={() => setSelectedMsgId(m.parse_log_id)}
+                  <button key={m.parse_log_id} type="button" onClick={() => selectMessage(m)}
                     className={`w-full text-left rounded-xl border p-2.5 transition-colors ${selected ? 'bg-brand-50 border-brand-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                     {m.group_title && (
                       <div className="text-[11px] text-gray-400 mb-1 truncate">Nhóm: {m.group_title}</div>
@@ -166,40 +175,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
             </div>
           )}
         </div>
-
-        {selectedMessage && (
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">Hành khách trong tin nhắn ({selectedMessage.pax.length})</h3>
-            <div className="space-y-2">
-              {selectedMessage.pax.map(p => {
-                const info = p.ma_khach ? khachInfo[p.ma_khach] : undefined
-                const invalid = p.ma_khach && !info
-                const inactive = info && !info.active
-                return (
-                  <div key={p.id} className="border border-gray-200 rounded-xl p-2.5">
-                    <div className="text-xs font-semibold text-gray-800 truncate">{p.full_name || p.ten_khach_hang || 'Không rõ tên khách'}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">Mã vé: {p.ticket_no ?? '—'} · TKT {p.ve_tkt?.tkt_code ?? '—'}</div>
-                    <div className="text-xs mt-1.5 flex items-center justify-between gap-2">
-                      <span className="min-w-0">
-                        Mã khách: <span className="font-semibold text-gray-800">{p.ma_khach ?? '—'}</span>
-                        {info?.ten_khach && <span className="text-gray-400"> · {info.ten_khach}</span>}
-                        {(invalid || inactive) && (
-                          <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
-                            {invalid ? 'Không có trong danh mục' : 'Đã ngừng hoạt động'}
-                          </span>
-                        )}
-                      </span>
-                      <button type="button" onClick={() => choosePax(p)} disabled={!p.ma_khach}
-                        className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                        Chọn
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         <div>
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">Hoặc tự tìm trong danh mục khách hàng</h3>
