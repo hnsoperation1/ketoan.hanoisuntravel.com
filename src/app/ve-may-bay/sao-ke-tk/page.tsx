@@ -194,7 +194,7 @@ export default function SaoKeTkPage() {
   })
 
   return (
-    <div className="p-5 space-y-4">
+    <div className="px-5 pb-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {

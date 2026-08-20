@@ -852,7 +852,7 @@ export default function DanhMucKhachHangPage() {
   }
 
   return (
-    <div className="p-5 space-y-4">
+    <div className="px-5 pb-5 space-y-4">
       {formModal}
       {customerDetailPanel}
       {contactAssignModal}

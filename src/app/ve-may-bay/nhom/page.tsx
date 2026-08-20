@@ -175,7 +175,7 @@ export default function NhomTelegramPage() {
   const daGan = groups.filter(g => g.tkt_id)
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="px-5 pb-5 space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-400">
           Add bot vào nhóm TKT trong Telegram trước — nhóm sẽ tự xuất hiện ở đây để gán.

@@ -185,7 +185,7 @@ export default function ParseLogsPage() {
   }
 
   return (
-    <div className="p-5 space-y-4">
+    <div className="px-5 pb-5 space-y-4">
       <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />
