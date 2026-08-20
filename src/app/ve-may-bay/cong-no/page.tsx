@@ -1511,20 +1511,22 @@ export default function CongNoVePage() {
           )}
         </>
       ) : (
-        <div className="flex items-start gap-4">
-          <div className="w-[360px] shrink-0 sticky top-4">
-            <RawMatchPanel
-              target={viewingRawMatch ? {
-                id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
-                ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
-                contextLabel: viewingRawMatch.paxLabel,
-                matchStatus: viewingRawMatch.matchStatus,
-              } : null}
-              candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
-              khSuggestions={allMaKhach}
-              onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
-              onClose={() => setViewingRawMatch(null)}
-            />
+        <div className="flex items-start">
+          <div className={`shrink-0 sticky top-4 overflow-hidden transition-[width,margin] duration-300 ease-out ${viewingRawMatch ? 'w-[360px] mr-4' : 'w-0 mr-0'}`}>
+            <div className="w-[360px]">
+              <RawMatchPanel
+                target={viewingRawMatch ? {
+                  id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
+                  ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
+                  contextLabel: viewingRawMatch.paxLabel,
+                  matchStatus: viewingRawMatch.matchStatus,
+                } : null}
+                candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
+                khSuggestions={allMaKhach}
+                onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
+                onClose={() => setViewingRawMatch(null)}
+              />
+            </div>
           </div>
           <div className="flex-1 min-w-0">
             <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
