@@ -56,10 +56,15 @@ export async function buildCandidateMessages(
   const parseLogIds = Array.from(new Set(anchors.map(a => a.parse_log_id).filter((x): x is string => !!x)))
   if (parseLogIds.length === 0) return { messages: [], khachInfo: {} }
 
+  // order theo pax_order (vị trí trong tin nhắn gốc, ghi bởi
+  // hns-ticket-parser lúc insertBookings) — nullsFirst: false để dòng cũ từ
+  // trước khi có cột này (pax_order = null) rơi xuống cuối mỗi nhóm thay vì
+  // xen lẫn ngẫu nhiên.
   const { data: allPaxRaw, error: paxErr } = await admin
     .from('ve_bookings')
     .select('*, ve_tkt(tkt_code, ten_nhan_vien)')
     .in('parse_log_id', parseLogIds)
+    .order('pax_order', { ascending: true, nullsFirst: false })
   if (paxErr) return { error: paxErr.message }
 
   const allPax = (allPaxRaw ?? []) as (CandidatePax & { parse_log_id: string | null; created_at: string })[]
@@ -78,9 +83,11 @@ export async function buildCandidateMessages(
   const messages: CandidateMessage[] = parseLogIds
     .map(logId => {
       const meta = metaByLog.get(logId)
-      const pax = allPax
-        .filter(p => p.parse_log_id === logId)
-        .sort((a, b) => normalizePaxName(a.full_name ?? a.ten_khach_hang).localeCompare(normalizePaxName(b.full_name ?? b.ten_khach_hang)))
+      // Không sort theo tên nữa — giữ đúng thứ tự pax xuất hiện trong tin
+      // nhắn gốc (kế toán cần đối chiếu song song với nguyên văn tin nhắn ở
+      // panel bên trái), lấy từ query .order('pax_order', ...) ở trên nên
+      // thứ tự trong mảng đã đúng sẵn, chỉ cần filter theo logId.
+      const pax = allPax.filter(p => p.parse_log_id === logId)
       return {
         parse_log_id: logId,
         raw_message: meta?.raw_message ?? null,
@@ -109,8 +116,4 @@ export async function buildCandidateMessages(
   }
 
   return { messages, khachInfo }
-}
-
-function normalizePaxName(s: string | null): string {
-  return (s ?? '').trim().toUpperCase()
 }
