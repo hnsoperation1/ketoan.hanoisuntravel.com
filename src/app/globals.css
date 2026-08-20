@@ -81,3 +81,20 @@ a,
   letter-spacing: normal;
   background: #fafafa;
 }
+
+/* Bảng có kéo giãn cột (table-layout: fixed + width tường minh trên
+   <table>). Với fixed layout, nội dung dài hơn bề rộng cột KHÔNG tự nới
+   cột nữa mà tràn đè sang cột bên cạnh — phải tự cắt ở từng ô, nếu không
+   chữ chồng lên nhau không đọc được. Auto layout trước đây tự co giãn theo
+   nội dung nên không gặp lỗi này. */
+.fixed-cols-table th,
+.fixed-cols-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Lối thoát cho ô có dropdown/popover bung ra ngoài (vd ô "Mã khách" có
+   picker absolute top-full) — cắt tràn ở đây sẽ nuốt mất cả dropdown. */
+.fixed-cols-table td.allow-overflow {
+  overflow: visible;
+}

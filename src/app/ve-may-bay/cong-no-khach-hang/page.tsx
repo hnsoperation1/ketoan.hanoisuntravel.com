@@ -129,7 +129,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
-                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: psTotalWidth }}>
+                <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: psTotalWidth }}>
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       {PHAT_SINH_COLS.map(c => (
@@ -162,7 +162,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
-                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: dtTotalWidth }}>
+                <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: dtTotalWidth }}>
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       {DA_THU_COLS.map(c => (
@@ -347,7 +347,7 @@ export default function CongNoKhachHangPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: cnKhTotalWidth }}>
+          <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: cnKhTotalWidth }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
                 {CN_KH_COLS.map(c => (

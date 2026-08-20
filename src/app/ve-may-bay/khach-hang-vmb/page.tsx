@@ -138,7 +138,7 @@ export default function KhachHangVmbPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: vmbTotalWidth }}>
+          <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: vmbTotalWidth }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
                 {VMB_COLS.map(c => (

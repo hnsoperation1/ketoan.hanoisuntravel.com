@@ -177,7 +177,7 @@ export default function BieuMauHopDongPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden list-table-container">
             <div {...wrapProps} className="select-none outline-none">
-            <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: bmTotalWidth }}>
+            <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: bmTotalWidth }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {BIEU_MAU_COLS.map((c) => (

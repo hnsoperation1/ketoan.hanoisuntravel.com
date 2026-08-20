@@ -617,7 +617,7 @@ export default function VeMayBayPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: xvTotalWidth }}>
+          <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: xvTotalWidth }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
                 {user?.is_super_admin && (

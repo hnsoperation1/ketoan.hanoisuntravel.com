@@ -226,7 +226,7 @@ export default function ParseLogsPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none">
-          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: plTotalWidth }}>
+          <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: plTotalWidth }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 {PARSE_LOG_COLS.map(c => (

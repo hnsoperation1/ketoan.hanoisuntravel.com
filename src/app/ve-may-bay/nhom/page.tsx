@@ -246,7 +246,7 @@ export default function NhomTelegramPage() {
               <p className="text-sm text-gray-400">Chưa có nhóm nào được gán TKT.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: nhomTotalWidth }}>
+                <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: nhomTotalWidth }}>
                   <thead>
                     <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wide">
                       {NHOM_COLS.map(c => (

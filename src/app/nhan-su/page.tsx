@@ -636,7 +636,7 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: thTotalWidth }}>
+              <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: thTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {TONG_HOP_COLS.map(c => (
@@ -726,7 +726,7 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: tbTotalWidth }}>
+              <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: tbTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {TOAN_BO_COLS.map(c => (
@@ -792,7 +792,7 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: payTotalWidth }}>
+              <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: payTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {PAYMENT_COLS.map(c => (

@@ -447,7 +447,7 @@ export default function DoanDetailPage() {
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-                  <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
+                  <table className="text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         {HO_SO_COLS.map((c) => (
@@ -1664,7 +1664,7 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: ftTotalWidth }}>
+        <table className="text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: ftTotalWidth }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {FILES_TAB_COLS.map((c) => (

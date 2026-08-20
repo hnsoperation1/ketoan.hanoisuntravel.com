@@ -721,7 +721,7 @@ export default function DanhMucKhachHangPage() {
         </button>
       </div>
       <div {...wrapProps} className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'} select-none outline-none`}>
-        <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: dmKhTotalWidth }}>
+        <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: dmKhTotalWidth }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {DM_KH_COLS.map(c => (

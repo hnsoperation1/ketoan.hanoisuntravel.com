@@ -1803,7 +1803,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
       </div>
       <div {...wrapProps}
         className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'} select-none outline-none`}>
-        <table className="list-table text-xs border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
+        <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
               {headers.map((h, i) => (
@@ -1832,7 +1832,8 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                   return (
                   <td key={j}
                     {...cellProps(i, j)}
-                    className={cellClassName(i, j, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
+                    title={r[j] || undefined}
+                    className={cellClassName(i, j, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
                     {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                       <div className="space-y-0.5">
                         {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -1863,19 +1864,19 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                   </td>
                   )
                 })}
-                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
                   <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                     <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
                 </td>
-                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
                 </td>
-                <td className="border border-gray-100 px-2 py-1.5 align-top">
+                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
                 </td>
-                <td className="border border-gray-100 px-2 py-1.5 align-top text-right">
+                <td className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
                   {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                 </td>
               </tr>
@@ -1983,7 +1984,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
         </button>
       </div>
       <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
-      <table className="text-xs border-collapse list-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
+      <table className="text-xs border-collapse list-table fixed-cols-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
         <thead className="sticky top-0 z-10">
           <tr>
             {BANG_COLS.map(c => (
