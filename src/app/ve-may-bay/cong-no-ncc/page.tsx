@@ -1787,7 +1787,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   const content = (
     <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
-        <span className="text-xs text-gray-400">{info} {rows.length > 0 && <span className="text-gray-300">· kéo chọn vùng rồi Ctrl+C để copy</span>}</span>
+        <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">
           {onDelete && (
             <button onClick={onDelete} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
