@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
-import { MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 
 export type RawCandidatePax = {
@@ -115,23 +114,14 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
 
   return (
     <div key={target.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col max-h-[calc(100vh-140px)]">
-      <div className="flex items-start justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Khớp mã khách theo mã vé</p>
-          <p className="font-bold text-gray-900 text-sm truncate">{target.ticketLabel}</p>
-          <p className="text-xs text-gray-400 truncate">{target.contextLabel}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <MatchStatusBadge status={target.matchStatus ?? 'unmatched'} onClick={() => {}} />
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
-            <X size={14} />
-          </button>
-        </div>
-      </div>
-
       <div className="overflow-y-auto p-3 space-y-4">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">Tin nhắn Telegram khớp mã vé</h3>
+          <div className="flex items-center justify-between gap-2 mb-2 px-1">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Tin nhắn Telegram khớp mã vé</h3>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
+              <X size={14} />
+            </button>
+          </div>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
               <Loader2 size={16} className="animate-spin" /> Đang tải...
