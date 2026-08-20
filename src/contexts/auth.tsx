@@ -37,10 +37,16 @@ function writeCache(user: AuthUser | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Có cache (lần mở app trước đã đăng nhập) → render ngay với dữ liệu cũ,
-  // đồng thời vẫn gọi /api/auth/me ngầm bên dưới để xác thực lại session.
-  const [user, setUser] = useState<AuthUser | null>(() => readCache())
-  const [loading, setLoading] = useState(() => readCache() === null)
+  // Luôn khởi tạo null/true (giống hệt server, không có sessionStorage) —
+  // đọc cache ngay trong useState như trước đây khiến server render ra
+  // màn loading còn client hydrate thẳng ra đã-đăng-nhập, lệch hoàn toàn 2
+  // cây DOM → hydration mismatch trên MỌI trang (cùng nguyên nhân đã sửa ở
+  // useResizableColumns.ts, nhưng nặng hơn nhiều vì AuthProvider bọc cả
+  // app). Cache được áp NGAY trong effect đầu tiên bên dưới (chạy ngay sau
+  // khi hydrate xong, trước khi refresh() kịp trả API) nên vẫn giữ được
+  // đúng cảm giác "vào là thấy luôn" cho user đã đăng nhập từ trước.
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
     try {
@@ -59,7 +65,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    refresh()
+    async function init() {
+      const cached = readCache()
+      if (cached) {
+        setUser(cached)
+        setLoading(false)
+      }
+      await refresh()
+    }
+    init()
   }, [refresh])
 
   async function login(email: string, password: string) {

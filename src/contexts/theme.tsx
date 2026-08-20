@@ -33,12 +33,25 @@ function writeCache(theme: UiTheme) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  // Có cache (đã từng chọn trước đó) → dùng ngay để tránh nháy giao diện
-  // mặc định trước khi fetch xong; vẫn gọi API ngầm để xác nhận/đồng bộ.
-  // Mặc định 'dense' (giao diện mới) khi chưa có gì trong cache — khớp
-  // fallback ở GET /api/user-preferences.
-  const [theme, setThemeState] = useState<UiTheme>(() => readCache() ?? 'dense')
-  const [loading, setLoading] = useState(() => readCache() === null)
+  // Luôn khởi tạo 'dense'/true (giống hệt server) — đọc cache ngay trong
+  // useState như trước đây khiến `data-ui-theme` ở AppShell lệch giữa
+  // server/client, gây hydration mismatch (cùng nguyên nhân đã sửa ở
+  // auth.tsx/useResizableColumns.ts). Cache được áp NGAY trong effect đầu
+  // tiên bên dưới nên vẫn giữ đúng cảm giác "vào là thấy luôn" cho user đã
+  // từng chọn theme trước đó, chỉ khác là không đọc cache lúc hydrate nữa.
+  const [theme, setThemeState] = useState<UiTheme>('dense')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function init() {
+      const cached = readCache()
+      if (cached) {
+        setThemeState(cached)
+        setLoading(false)
+      }
+    }
+    init()
+  }, [])
 
   // CSS chọn theme qua [data-ui-theme="dense"] (xem globals.css) — AppShell
   // đặt attribute này trên 1 div bọc layout, NHƯNG các slide-over/modal
