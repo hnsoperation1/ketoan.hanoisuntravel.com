@@ -1221,7 +1221,7 @@ export default function CongNoVePage() {
           {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
           <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
-            {rematching && <Loader2 size={13} className="animate-spin" />} Khớp lại mã khách
+            {rematching && <Loader2 size={13} className="animate-spin" />} Tìm mã khách
           </button>
           <button onClick={loadAll} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <RefreshCw size={16} />
