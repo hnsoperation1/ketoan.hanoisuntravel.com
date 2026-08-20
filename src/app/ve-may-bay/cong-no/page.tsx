@@ -1534,9 +1534,10 @@ export default function CongNoVePage() {
           <div className="flex-1 min-w-0 space-y-4">
             {selectedRawMessage && (
               <SelectedMessagePaxTable
+                key={selectedRawMessage.message.parse_log_id}
                 message={selectedRawMessage.message}
                 khachInfo={selectedRawMessage.khachInfo}
-                onChoose={p => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, p.gia_mua, p.gia_ban)}
+                onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
               />
             )}
             <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
@@ -1570,8 +1571,19 @@ export default function CongNoVePage() {
 function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
   message: RawCandidateMessage
   khachInfo: RawKhachInfo
-  onChoose: (p: RawCandidatePax) => void
+  onChoose: (p: RawCandidatePax, giaMua: number | null, giaBan: number | null) => void
 }) {
+  // Giá mua/bán AI đọc từ tin nhắn có thể sai — cho kế toán sửa NGAY tại
+  // đây trước khi bấm "Chọn" thay vì phải chọn xong rồi sửa lại ở bảng công
+  // nợ. Chỉ là state hiển thị tạm cho tin nhắn đang xem (không ghi DB ở
+  // đây) — "Chọn" gửi đúng giá đã sửa (hoặc giá gốc nếu chưa sửa) lên qua
+  // onChoose, page.tsx mới là nơi thật sự lưu vào ve_debt_records_raw_match.
+  const [priceOverrides, setPriceOverrides] = useState<Record<string, { gia_mua?: number | null; gia_ban?: number | null }>>({})
+
+  function setPrice(paxId: string, field: 'gia_mua' | 'gia_ban', value: number | null) {
+    setPriceOverrides(prev => ({ ...prev, [paxId]: { ...prev[paxId], [field]: value } }))
+  }
+
   return (
     <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
@@ -1589,6 +1601,8 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
               <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã vé</th>
               <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">TKT</th>
               <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>
+              <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá mua</th>
+              <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá bán</th>
               <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap"></th>
             </tr>
           </thead>
@@ -1597,6 +1611,8 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
               const info = p.ma_khach ? khachInfo[p.ma_khach] : undefined
               const invalid = p.ma_khach && !info
               const inactive = info && !info.active
+              const giaMua = priceOverrides[p.id]?.gia_mua !== undefined ? priceOverrides[p.id].gia_mua! : p.gia_mua
+              const giaBan = priceOverrides[p.id]?.gia_ban !== undefined ? priceOverrides[p.id].gia_ban! : p.gia_ban
               return (
                 <tr key={p.id} className="border-t border-gray-100">
                   <td className="border border-gray-100 px-2 py-1.5 text-gray-900 whitespace-nowrap">{p.full_name || p.ten_khach_hang || 'Không rõ tên khách'}</td>
@@ -1611,8 +1627,14 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
                       </span>
                     )}
                   </td>
+                  <td className="border border-gray-100 px-2 py-1.5">
+                    <RawPriceCell value={giaMua} source="message" onSave={v => setPrice(p.id, 'gia_mua', v)} />
+                  </td>
+                  <td className="border border-gray-100 px-2 py-1.5">
+                    <RawPriceCell value={giaBan} source="message" onSave={v => setPrice(p.id, 'gia_ban', v)} />
+                  </td>
                   <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
-                    <button type="button" onClick={() => onChoose(p)} disabled={!p.ma_khach}
+                    <button type="button" onClick={() => onChoose(p, giaMua, giaBan)} disabled={!p.ma_khach}
                       className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                       Chọn
                     </button>

@@ -131,23 +131,26 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
           ) : messages.length === 0 ? (
             <p className="text-sm text-gray-400 py-2 px-1">Không tìm thấy tin nhắn Telegram nào khớp mã vé/PNR này.</p>
           ) : (
-            <div className="space-y-2">
+            // Phân cách bằng viền mảnh (divide-y) + dải màu bên trái khi
+            // chọn, thay vì khoảng trắng giữa các card + viền bo tròn từng
+            // cái — đỡ tốn diện tích panel hẹp hơn nhiều mà vẫn rõ ranh giới.
+            <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
               {messages.map(m => {
                 const selected = m.parse_log_id === selectedMsgId
                 return (
                   <button key={m.parse_log_id} type="button" onClick={() => selectMessage(m)}
-                    className={`w-full text-left rounded-xl border p-2.5 transition-colors ${selected ? 'bg-brand-50 border-brand-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                    className={`w-full text-left px-2.5 py-2 border-l-4 transition-colors ${selected ? 'bg-brand-50 border-l-brand-500' : 'border-l-transparent hover:bg-gray-50'}`}>
                     {m.group_title && (
-                      <div className="text-[11px] text-gray-400 mb-1 truncate">Nhóm: {m.group_title}</div>
+                      <div className="text-[11px] text-gray-400 truncate">Nhóm: {m.group_title}</div>
                     )}
-                    <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-emerald-600 truncate">{m.from_user_name ?? 'Không rõ người gửi'}</span>
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{m.pax.length} khách</span>
                     </div>
                     {m.raw_message && (
                       <p className="text-xs text-gray-700 whitespace-pre-wrap">{m.raw_message}</p>
                     )}
-                    <div className="text-[10px] text-gray-400 text-right mt-1">{formatDateTime(m.created_at)}</div>
+                    <div className="text-[10px] text-gray-400 text-right">{formatDateTime(m.created_at)}</div>
                   </button>
                 )
               })}
