@@ -5,6 +5,17 @@ import { createPortal } from 'react-dom'
 import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2, Eye, Pencil } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const DM_KH_COLS = [
+  { key: 'nguon', label: 'Nguồn', width: 110 },
+  { key: 'phan_loai', label: 'Phân loại', width: 130 },
+  { key: 'ma_khach', label: 'Mã khách', width: 150 },
+  { key: 'ten_khach', label: 'Tên khách', width: 200 },
+  { key: 'nguoi_lam_viec', label: 'Người làm việc', width: 160 },
+  { key: 'doanh_thu', label: 'Doanh thu', align: 'right' as const, width: 130 },
+  { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 130 },
+]
 
 type Contact = {
   id: string
@@ -637,6 +648,8 @@ export default function DanhMucKhachHangPage() {
       default: return ''
     }
   })
+  const { widths: dmKhWidths, startResize: startDmKhResize } = useResizableColumns('danh-muc-khach-hang', Object.fromEntries(DM_KH_COLS.map(c => [c.key, c.width])))
+  const dmKhTotalWidth = DM_KH_COLS.reduce((sum, c) => sum + (dmKhWidths[c.key] ?? c.width), 0)
 
   function openAdd() {
     setForm(emptyForm)
@@ -708,11 +721,15 @@ export default function DanhMucKhachHangPage() {
         </button>
       </div>
       <div {...wrapProps} className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-x-auto'} select-none outline-none`}>
-        <table className="w-full text-sm list-table">
+        <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: dmKhTotalWidth }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['Nguồn', 'Phân loại', 'Mã khách', 'Tên khách', 'Người làm việc', 'Doanh thu', 'Lợi nhuận'].map(h => (
-                <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Doanh thu' || h === 'Lợi nhuận' ? 'text-right' : 'text-left'}`}>{h}</th>
+              {DM_KH_COLS.map(c => (
+                <th key={c.key} style={{ width: dmKhWidths[c.key] ?? c.width }}
+                  className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                  {c.label}
+                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startDmKhResize(c.key, e)} />
+                </th>
               ))}
             </tr>
           </thead>

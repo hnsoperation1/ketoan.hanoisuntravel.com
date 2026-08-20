@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const VMB_COLS = [
+  { key: 'ma_khach', label: 'Mã khách', width: 160 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 140 },
+  { key: 'so_dong_cn', label: 'Số dòng công nợ', width: 140 },
+  { key: 'tong_ps', label: 'Tổng phát sinh', width: 140 },
+  { key: 'so_dong_sk', label: 'Số dòng sao kê', width: 140 },
+  { key: 'tong_da_thu', label: 'Tổng đã thu', width: 140 },
+]
 
 type TrangThai = 'khop' | 'chi_cong_no' | 'chi_sao_ke'
 type KhRow = {
@@ -96,6 +106,8 @@ export default function KhachHangVmbPage() {
       default: return ''
     }
   })
+  const { widths: vmbWidths, startResize: startVmbResize } = useResizableColumns('khach-hang-vmb', Object.fromEntries(VMB_COLS.map(c => [c.key, c.width])))
+  const vmbTotalWidth = VMB_COLS.reduce((sum, c) => sum + (vmbWidths[c.key] ?? c.width), 0)
 
   return (
     <div className="px-5 pb-5 space-y-4">
@@ -126,11 +138,15 @@ export default function KhachHangVmbPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: vmbTotalWidth }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Mã khách', 'Trạng thái', 'Số dòng công nợ', 'Tổng phát sinh', 'Số dòng sao kê', 'Tổng đã thu'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">{h}</th>
+                {VMB_COLS.map(c => (
+                  <th key={c.key} style={{ width: vmbWidths[c.key] ?? c.width }}
+                    className="relative text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none bg-gray-50">
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startVmbResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>

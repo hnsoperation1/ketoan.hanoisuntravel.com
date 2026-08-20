@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Send, ShieldCheck, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const NHOM_COLS = [
+  { key: 'nhom', label: 'Nhóm', width: 220 },
+  { key: 'tkt', label: 'TKT', width: 160 },
+  { key: 'ma_khach', label: 'Khách hàng mặc định', width: 200 },
+  { key: 'chi_hoan_ve', label: 'Chỉ vé hoàn', width: 110 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 110 },
+  { key: 'doi_tkt', label: 'Đổi TKT', width: 160 },
+]
 
 type Tkt = { id: string; tkt_code: string; ten_nhan_vien: string | null; active: boolean }
 type Group = {
@@ -107,6 +117,10 @@ export default function NhomTelegramPage() {
       setOnRefresh(null)
     }
   }, [setBreadcrumb, setOnRefresh, loadData])
+
+  // Phải gọi trước early-return bên dưới (Rules of Hooks).
+  const { widths: nhomWidths, startResize: startNhomResize } = useResizableColumns('nhom-telegram', Object.fromEntries(NHOM_COLS.map(c => [c.key, c.width])))
+  const nhomTotalWidth = NHOM_COLS.reduce((sum, c) => sum + (nhomWidths[c.key] ?? c.width), 0)
 
   if (!user?.is_super_admin) {
     return (
@@ -232,15 +246,15 @@ export default function NhomTelegramPage() {
               <p className="text-sm text-gray-400">Chưa có nhóm nào được gán TKT.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm list-table">
+                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: nhomTotalWidth }}>
                   <thead>
                     <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wide">
-                      <th className="px-3 py-2 font-semibold">Nhóm</th>
-                      <th className="px-3 py-2 font-semibold">TKT</th>
-                      <th className="px-3 py-2 font-semibold">Khách hàng mặc định</th>
-                      <th className="px-3 py-2 font-semibold">Chỉ vé hoàn</th>
-                      <th className="px-3 py-2 font-semibold">Trạng thái</th>
-                      <th className="px-3 py-2 font-semibold">Đổi TKT</th>
+                      {NHOM_COLS.map(c => (
+                        <th key={c.key} style={{ width: nhomWidths[c.key] ?? c.width }} className="relative px-3 py-2 font-semibold overflow-hidden select-none">
+                          {c.label}
+                          <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startNhomResize(c.key, e)} />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">

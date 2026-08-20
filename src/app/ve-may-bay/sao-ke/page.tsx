@@ -4,6 +4,20 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, Download } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const SAO_KE_COLS = [
+  { key: 'ngay', label: 'Ngày', width: 100 },
+  { key: 'tai_khoan', label: 'Tài khoản', width: 130 },
+  { key: 'ma', label: 'Mã', width: 100 },
+  { key: 'tag', label: 'Tag', width: 100 },
+  { key: 'don_vi', label: 'Đơn vị', width: 160 },
+  { key: 'dien_giai', label: 'Diễn giải', width: 260 },
+  { key: 'thu', label: 'Thu', width: 120 },
+  { key: 'chi', label: 'Chi', width: 120 },
+  { key: 'du_cuoi_ky', label: 'Dư cuối kỳ', width: 120 },
+  { key: 'du_an', label: 'Dự án', width: 140 },
+]
 
 type SaoKeRow = {
   id: string
@@ -138,6 +152,8 @@ export default function SaoKePage() {
       default: return ''
     }
   })
+  const { widths: skWidths, startResize: startSkResize } = useResizableColumns('sao-ke', Object.fromEntries(SAO_KE_COLS.map(c => [c.key, c.width])))
+  const skTotalWidth = SAO_KE_COLS.reduce((sum, c) => sum + (skWidths[c.key] ?? c.width), 0)
 
   // Phân theo tháng, mới nhất trước — cả thứ tự tháng lẫn thứ tự giao dịch
   // trong từng tháng đều sort giảm dần theo ngày thực (ISO), không theo
@@ -207,11 +223,15 @@ export default function SaoKePage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: skTotalWidth }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Ngày', 'Tài khoản', 'Mã', 'Tag', 'Đơn vị', 'Diễn giải', 'Thu', 'Chi', 'Dư cuối kỳ', 'Dự án'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">{h}</th>
+                {SAO_KE_COLS.map(c => (
+                  <th key={c.key} style={{ width: skWidths[c.key] ?? c.width }}
+                    className="relative text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none bg-gray-50">
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startSkResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>

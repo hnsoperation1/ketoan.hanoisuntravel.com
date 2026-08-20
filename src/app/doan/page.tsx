@@ -7,6 +7,15 @@ import type { Doan } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const DOAN_COLS = [
+  { key: 'doan', label: 'Đoàn', width: 240 },
+  { key: 'tuyen', label: 'Tuyến du lịch', width: 220 },
+  { key: 'ngay_di', label: 'Ngày đi', width: 120 },
+  { key: 'ngay_ve', label: 'Ngày về', width: 120 },
+  { key: 'so_khach', label: 'Số khách dự kiến', align: 'right' as const, width: 140 },
+]
 
 const EMPTY_FORM = {
   ten_doan: '',
@@ -95,6 +104,8 @@ export default function QuyetToanTourPage() {
     if (q && !`${d.ten_doan} ${d.hanh_trinh ?? ''}`.toLowerCase().includes(q)) return false
     return true
   })
+  const { widths: doanWidths, startResize: startDoanResize } = useResizableColumns('doan-list', Object.fromEntries(DOAN_COLS.map(c => [c.key, c.width])))
+  const doanTotalWidth = DOAN_COLS.reduce((sum, c) => sum + (doanWidths[c.key] ?? c.width), 0)
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -166,11 +177,15 @@ export default function QuyetToanTourPage() {
       ) : viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm list-table">
+            <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: doanTotalWidth }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Đoàn', 'Tuyến du lịch', 'Ngày đi', 'Ngày về', 'Số khách dự kiến'].map(h => (
-                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'Số khách dự kiến' ? 'text-right' : 'text-left'}`}>{h}</th>
+                  {DOAN_COLS.map(c => (
+                    <th key={c.key} style={{ width: doanWidths[c.key] ?? c.width }}
+                      className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                      {c.label}
+                      <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startDoanResize(c.key, e)} />
+                    </th>
                   ))}
                 </tr>
               </thead>

@@ -34,6 +34,24 @@ import { formatDateVN, deriveTinhTp } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 import DateInput from '@/components/DateInput'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const HO_SO_COLS = [
+  { key: 'expand', label: '', width: 40 },
+  { key: 'nhan_su', label: 'Nhân sự', width: 200 },
+  { key: 'lien_he', label: 'Liên hệ', width: 160 },
+  { key: 'the_hdv', label: 'Thẻ HDV', width: 140 },
+  { key: 'ctp_thuc_nhan', label: 'CTP (thực nhận)', align: 'right' as const, width: 140 },
+  { key: 'ctp', label: 'CTP', align: 'right' as const, width: 130 },
+  { key: 'ngan_hang', label: 'Ngân hàng', width: 180 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 140 },
+]
+const FILES_TAB_COLS = [
+  { key: 'nguoi', label: 'Người', width: 220 },
+  { key: 'so_hop_dong', label: 'Số hợp đồng', width: 160 },
+  { key: 'ngay_ky', label: 'Ngày ký', width: 130 },
+  { key: 'action', label: '', width: 80 },
+]
 
 const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   cho_xac_nhan_ai: 'bg-amber-50 text-amber-700',
@@ -284,6 +302,8 @@ export default function DoanDetailPage() {
   const [creatingLoai, setCreatingLoai] = useState(false)
   const loaiNhanSu = useLoaiNhanSuList()
   const filteredHoSo = filterLoaiId ? hoSo.filter((r) => r.nhansu.loai_nhan_su_id === filterLoaiId) : hoSo
+  const { widths: hsWidths, startResize: startHsResize } = useResizableColumns('doan-ho-so', Object.fromEntries(HO_SO_COLS.map(c => [c.key, c.width])))
+  const hsTotalWidth = HO_SO_COLS.reduce((sum, c) => sum + (hsWidths[c.key] ?? c.width), 0)
 
   function showToast(msg: string) {
     setToast(msg)
@@ -427,17 +447,19 @@ export default function DoanDetailPage() {
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['', 'Nhân sự', 'Liên hệ', 'Thẻ HDV', 'CTP (thực nhận)', 'CTP', 'Ngân hàng', 'Trạng thái'].map((h) => (
+                        {HO_SO_COLS.map((c) => (
                           <th
-                            key={h}
-                            className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${
-                              h === 'CTP (thực nhận)' || h === 'CTP' ? 'text-right' : 'text-left'
+                            key={c.key}
+                            style={{ width: hsWidths[c.key] ?? c.width }}
+                            className={`relative px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${
+                              c.align === 'right' ? 'text-right' : 'text-left'
                             }`}
                           >
-                            {h}
+                            {c.label}
+                            <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startHsResize(c.key, e)} />
                           </th>
                         ))}
                       </tr>
@@ -1590,6 +1612,10 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
     }
   }, [withFileIds])
 
+  // Phải gọi trước early-return bên dưới (Rules of Hooks).
+  const { widths: ftWidths, startResize: startFtResize } = useResizableColumns('doan-files-tab', Object.fromEntries(FILES_TAB_COLS.map(c => [c.key, c.width])))
+  const ftTotalWidth = FILES_TAB_COLS.reduce((sum, c) => sum + (ftWidths[c.key] ?? c.width), 0)
+
   if (withFile.length === 0) {
     return <p className="text-sm text-gray-400 text-center py-14">Chưa có hợp đồng nào được tạo.</p>
   }
@@ -1638,12 +1664,14 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', width: ftTotalWidth }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['Người', 'Số hợp đồng', 'Ngày ký', ''].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                  {h}
+              {FILES_TAB_COLS.map((c) => (
+                <th key={c.key} style={{ width: ftWidths[c.key] ?? c.width }}
+                  className="relative text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                  {c.label}
+                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startFtResize(c.key, e)} />
                 </th>
               ))}
             </tr>

@@ -9,6 +9,32 @@ import { TRANG_THAI_LABELS } from '@/types'
 import type { LoaiNhanSu, TrangThaiHoSo } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import DateInput from '@/components/DateInput'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const TONG_HOP_COLS = [
+  { key: 'nhan_su', label: 'Nhân sự', width: 220 },
+  { key: 'lien_he', label: 'Liên hệ', width: 180 },
+  { key: 'ngan_hang', label: 'Ngân hàng', width: 200 },
+  { key: 'du_ho_so', label: 'Đủ hồ sơ/chứng từ', align: 'center' as const, width: 130 },
+  { key: 'da_tra_do', label: 'Đã trả đồ đoàn', align: 'center' as const, width: 120 },
+  { key: 'action', label: '', width: 50 },
+]
+const TOAN_BO_COLS = [
+  { key: 'nhan_su', label: 'Nhân sự', width: 220 },
+  { key: 'lien_he', label: 'Liên hệ', width: 180 },
+  { key: 'ngan_hang', label: 'Ngân hàng', width: 200 },
+  { key: 'trang_thai', label: 'Trạng thái tham gia', width: 170 },
+  { key: 'action', label: '', width: 50 },
+]
+const PAYMENT_COLS = [
+  { key: 'nhan_su', label: 'Nhân sự', width: 200 },
+  { key: 'doan', label: 'Đoàn', width: 180 },
+  { key: 'ngay_dv', label: 'Ngày dịch vụ', width: 120 },
+  { key: 'ctp', label: 'CTP', align: 'right' as const, width: 120 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 130 },
+  { key: 'duyet', label: 'Kế toán trưởng duyệt', align: 'center' as const, width: 150 },
+  { key: 'action', label: '', width: 60 },
+]
 
 type NhanSuRow = {
   id: string
@@ -509,6 +535,13 @@ export default function NhanSuPage() {
       .sort((a, b) => (effectiveDate(b) ?? '').localeCompare(effectiveDate(a) ?? ''))
   }, [hoSoList, tab, search])
 
+  const { widths: thWidths, startResize: startThResize } = useResizableColumns('nhan-su-tong-hop', Object.fromEntries(TONG_HOP_COLS.map(c => [c.key, c.width])))
+  const thTotalWidth = TONG_HOP_COLS.reduce((sum, c) => sum + (thWidths[c.key] ?? c.width), 0)
+  const { widths: tbWidths, startResize: startTbResize } = useResizableColumns('nhan-su-toan-bo', Object.fromEntries(TOAN_BO_COLS.map(c => [c.key, c.width])))
+  const tbTotalWidth = TOAN_BO_COLS.reduce((sum, c) => sum + (tbWidths[c.key] ?? c.width), 0)
+  const { widths: payWidths, startResize: startPayResize } = useResizableColumns('nhan-su-payment', Object.fromEntries(PAYMENT_COLS.map(c => [c.key, c.width])))
+  const payTotalWidth = PAYMENT_COLS.reduce((sum, c) => sum + (payWidths[c.key] ?? c.width), 0)
+
   return (
     <div className="px-5 pb-5 space-y-4">
       {/* min-h-12/md:min-h-10 + border-b, không padding-top ở div ngoài —
@@ -603,11 +636,15 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm list-table">
+              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: thTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Đủ hồ sơ/chứng từ', 'Đã trả đồ đoàn', ''].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap text-left">{h}</th>
+                    {TONG_HOP_COLS.map(c => (
+                      <th key={c.key} style={{ width: thWidths[c.key] ?? c.width }}
+                        className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'center' ? 'text-center' : 'text-left'}`}>
+                        {c.label}
+                        <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startThResize(c.key, e)} />
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -689,11 +726,15 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm list-table">
+              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: tbTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Liên hệ', 'Ngân hàng', 'Trạng thái tham gia', ''].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap text-left">{h}</th>
+                    {TOAN_BO_COLS.map(c => (
+                      <th key={c.key} style={{ width: tbWidths[c.key] ?? c.width }}
+                        className="relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none text-left">
+                        {c.label}
+                        <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startTbResize(c.key, e)} />
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -751,11 +792,15 @@ export default function NhanSuPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm list-table">
+              <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: payTotalWidth }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['Nhân sự', 'Đoàn', 'Ngày dịch vụ', 'CTP', 'Trạng thái', 'Kế toán trưởng duyệt', ''].map(h => (
-                      <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap ${h === 'CTP' ? 'text-right' : h === 'Kế toán trưởng duyệt' ? 'text-center' : 'text-left'}`}>{h}</th>
+                    {PAYMENT_COLS.map(c => (
+                      <th key={c.key} style={{ width: payWidths[c.key] ?? c.width }}
+                        className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'}`}>
+                        {c.label}
+                        <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startPayResize(c.key, e)} />
+                      </th>
                     ))}
                   </tr>
                 </thead>

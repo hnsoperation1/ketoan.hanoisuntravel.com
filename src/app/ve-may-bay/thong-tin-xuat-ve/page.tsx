@@ -8,6 +8,20 @@ import { RoutingText } from '@/components/RoutingText'
 import FilterPicker from '@/components/FilterPicker'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const XUAT_VE_COLS = [
+  { key: 'tkt', label: 'TKT', width: 100 },
+  { key: 'pax', label: 'Pax', width: 160 },
+  { key: 'ma_khach', label: 'Mã khách', width: 130 },
+  { key: 'ma_code', label: 'Mã code/Số vé', width: 130 },
+  { key: 'hanh_trinh', label: 'Hành trình', width: 160 },
+  { key: 'ngay_xuat', label: 'Ngày xuất', width: 110 },
+  { key: 'gia_mua', label: 'Giá mua', width: 110 },
+  { key: 'gia_ban', label: 'Giá bán', width: 110 },
+  { key: 'loi_nhuan', label: 'Lợi nhuận', width: 110 },
+  { key: 'ghi_chu', label: 'Ghi chú', width: 200 },
+]
 
 type MaKhachSource = 'chuan' | 'doi_chieu' | 'da_dung'
 type KhachOpt = { ma_khach: string; ten_khach: string | null; source: MaKhachSource }
@@ -540,6 +554,9 @@ export default function VeMayBayPage() {
   })()
 
   const colCount = user?.is_super_admin ? 12 : 11
+  const { widths: xvWidths, startResize: startXvResize } = useResizableColumns('thong-tin-xuat-ve', Object.fromEntries(XUAT_VE_COLS.map(c => [c.key, c.width])))
+  const xvDataWidth = XUAT_VE_COLS.reduce((sum, c) => sum + (xvWidths[c.key] ?? c.width), 0)
+  const xvTotalWidth = xvDataWidth + 32 + (user?.is_super_admin ? 32 : 0)
   const filteredIds = filtered.map(r => r.id)
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id))
   const toggleSelectAll = () => setSelectedIds(allFilteredSelected ? new Set() : new Set(filteredIds))
@@ -600,7 +617,7 @@ export default function VeMayBayPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: xvTotalWidth }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
                 {user?.is_super_admin && (
@@ -610,8 +627,12 @@ export default function VeMayBayPage() {
                   </th>
                 )}
                 <th className="w-8" />
-                {['TKT', 'Pax', 'Mã khách', 'Mã code/Số vé', 'Hành trình', 'Ngày xuất', 'Giá mua', 'Giá bán', 'Lợi nhuận', 'Ghi chú'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                {XUAT_VE_COLS.map(c => (
+                  <th key={c.key} style={{ width: xvWidths[c.key] ?? c.width }}
+                    className="relative text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startXvResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>

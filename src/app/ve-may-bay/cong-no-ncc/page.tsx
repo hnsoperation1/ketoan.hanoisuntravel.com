@@ -1689,12 +1689,12 @@ type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: strin
 
 function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
   if (batches.length === 0) {
-    return <RawTableCard headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
+    return <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
   }
   return (
     <div className="space-y-4">
       {batches.map(b => (
-        <RawTableCard key={b.id} headers={b.headers} rows={b.rows}
+        <RawTableCard key={b.id} ncc={ncc} headers={b.headers} rows={b.rows}
           info={`${b.source_file || 'Không rõ tên file'} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
           onDelete={() => onDelete(b.id)}
           matches={new Map(b.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
@@ -1752,8 +1752,15 @@ function RawPriceCell({ value, source, onSave }: { value: number | null; source:
 // gốc, không đụng cellProps/cellClassName của useCellSelection nên không
 // phá cơ chế kéo-chọn-Ctrl+C hiện có (đã xác nhận hook chỉ gắn
 // onMouseDown/onMouseEnter/onContextMenu, không có onClick).
-function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia }: {
-  headers: string[]; rows: string[][]; info: string; onDelete?: () => void
+const RAW_EXTRA_COLS = [
+  { key: 'ma_khach', label: 'Mã khách', align: undefined as 'right' | undefined, width: 130 },
+  { key: 'gia_mua', label: 'Giá mua', align: 'right' as const, width: 100 },
+  { key: 'gia_ban', label: 'Giá bán', align: 'right' as const, width: 100 },
+  { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 100 },
+]
+
+function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia }: {
+  ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
 }) {
@@ -1764,6 +1771,18 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
   const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
   const idColIdx = findIdColumnIndex(headers)
   const paxColIdx = findPaxColumnIndex(headers)
+
+  // Cột raw không cố định (đọc thẳng từ file NCC upload) nên key theo INDEX
+  // thay vì tên cột — key theo tên dễ trùng/đổi giữa các lần upload khác
+  // nhau. Lưu theo `raw-table-{ncc}` để việc kéo giãn cột "nhớ" lại đúng
+  // cho từng tab NCC (FCVN/SAO ĐỎ/VIETJET/SUN PQC), dùng chung cho mọi lô
+  // đã upload của cùng 1 NCC vì cấu trúc cột thường giống hệt nhau.
+  const rawColDefaults: Record<string, number> = {}
+  headers.forEach((_, i) => { rawColDefaults[String(i)] = 110 })
+  for (const c of RAW_EXTRA_COLS) rawColDefaults[c.key] = c.width
+  const { widths: rawWidths, startResize: startRawResize } = useResizableColumns(`raw-table-${ncc}`, rawColDefaults)
+  const rawTotalWidth = headers.reduce((sum, _, i) => sum + (rawWidths[String(i)] ?? 110), 0)
+    + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => sum + (rawWidths[c.key] ?? c.width), 0) : 0)
 
   const content = (
     <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
@@ -1784,18 +1803,23 @@ function RawTableCard({ headers, rows, info, onDelete, matches, onOpenMatch, onS
       </div>
       <div {...wrapProps}
         className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'} select-none outline-none`}>
-        <table className="list-table text-xs w-full border-collapse">
+        <table className="list-table text-xs border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
-              {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
-              {rows.length > 0 && (
-                <>
-                  <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>
-                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá mua</th>
-                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá bán</th>
-                  <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Lợi nhuận</th>
-                </>
-              )}
+              {headers.map((h, i) => (
+                <th key={i} style={{ width: rawWidths[String(i)] ?? 110 }}
+                  className="relative px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none">
+                  {h || `Cột ${i + 1}`}
+                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(String(i), e)} />
+                </th>
+              ))}
+              {rows.length > 0 && RAW_EXTRA_COLS.map(c => (
+                <th key={c.key} style={{ width: rawWidths[c.key] ?? c.width }}
+                  className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                  {c.label}
+                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(c.key, e)} />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>

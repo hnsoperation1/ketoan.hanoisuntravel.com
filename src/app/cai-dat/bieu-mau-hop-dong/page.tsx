@@ -8,6 +8,15 @@ import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const BIEU_MAU_COLS = [
+  { key: 'ten', label: 'Tên biểu mẫu', width: 260 },
+  { key: 'loai', label: 'Loại', width: 140 },
+  { key: 'file', label: 'File', width: 220 },
+  { key: 'ngay_tao', label: 'Ngày tạo', width: 130 },
+  { key: 'action', label: '', width: 80 },
+]
 
 // Nút copy riêng cho từng placeholder — click là copy nguyên chuỗi
 // "{{tag}}" (đúng dạng cần gõ vào file Word) vào clipboard, không phải
@@ -134,6 +143,8 @@ export default function BieuMauHopDongPage() {
     if (c === 3) return formatDateVN(t.created_at.slice(0, 10))
     return ''
   })
+  const { widths: bmWidths, startResize: startBmResize } = useResizableColumns('bieu-mau-hop-dong', Object.fromEntries(BIEU_MAU_COLS.map(c => [c.key, c.width])))
+  const bmTotalWidth = BIEU_MAU_COLS.reduce((sum, c) => sum + (bmWidths[c.key] ?? c.width), 0)
 
   async function handleDelete(id: string) {
     await fetch(`/api/hop-dong-templates/${id}`, { method: 'DELETE' })
@@ -166,12 +177,14 @@ export default function BieuMauHopDongPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden list-table-container">
             <div {...wrapProps} className="select-none outline-none">
-            <table className="w-full text-sm list-table">
+            <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: bmTotalWidth }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Tên biểu mẫu', 'Loại', 'File', 'Ngày tạo', ''].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                      {h}
+                  {BIEU_MAU_COLS.map((c) => (
+                    <th key={c.key} style={{ width: bmWidths[c.key] ?? c.width }}
+                      className="relative text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                      {c.label}
+                      <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startBmResize(c.key, e)} />
                     </th>
                   ))}
                 </tr>

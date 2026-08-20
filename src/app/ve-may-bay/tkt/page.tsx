@@ -5,10 +5,18 @@ import { RefreshCw, Plus, Loader2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
 
 type Tkt = { id: string; tkt_code: string; ten_nhan_vien: string | null; active: boolean; created_at: string }
 
 const INPUT = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white placeholder:text-gray-300'
+
+const TKT_COLS = [
+  { key: 'ma_tkt', label: 'Mã TKT', width: 150 },
+  { key: 'nv', label: 'Nhân viên phụ trách', width: 220 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 120 },
+  { key: 'action', label: '', width: 60 },
+]
 
 export default function TktPage() {
   const { user } = useAuth()
@@ -50,6 +58,20 @@ export default function TktPage() {
       setOnRefresh(null)
     }
   }, [setBreadcrumb, setOnRefresh, loadData])
+
+  // useCellSelection/useResizableColumns PHẢI gọi trước early-return bên
+  // dưới (Rules of Hooks — số lượng/thứ tự hook gọi phải giống nhau ở mọi
+  // lần render, kể cả nhánh "Không có quyền truy cập").
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
+    const t = tkts[r]
+    if (!t) return ''
+    if (c === 0) return t.tkt_code ?? ''
+    if (c === 1) return t.ten_nhan_vien ?? ''
+    if (c === 2) return t.active ? 'Đang hoạt động' : 'Đã tắt'
+    return ''
+  })
+  const { widths: tktWidths, startResize: startTktResize } = useResizableColumns('tkt-page', Object.fromEntries(TKT_COLS.map(c => [c.key, c.width])))
+  const tktTotalWidth = TKT_COLS.reduce((sum, c) => sum + (tktWidths[c.key] ?? c.width), 0)
 
   if (!user?.is_super_admin) {
     return (
@@ -104,15 +126,6 @@ export default function TktPage() {
     loadData()
   }
 
-  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
-    const t = tkts[r]
-    if (!t) return ''
-    if (c === 0) return t.tkt_code ?? ''
-    if (c === 1) return t.ten_nhan_vien ?? ''
-    if (c === 2) return t.active ? 'Đang hoạt động' : 'Đã tắt'
-    return ''
-  })
-
   return (
     <div className="px-5 pb-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -155,11 +168,15 @@ export default function TktPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none">
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: tktTotalWidth }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Mã TKT', 'Nhân viên phụ trách', 'Trạng thái', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                {TKT_COLS.map(c => (
+                  <th key={c.key} style={{ width: tktWidths[c.key] ?? c.width }}
+                    className="relative text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startTktResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>

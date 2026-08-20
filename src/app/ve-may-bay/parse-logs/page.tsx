@@ -5,6 +5,17 @@ import { RefreshCw, Search, ChevronRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const PARSE_LOG_COLS = [
+  { key: 'expand', label: '', width: 40 },
+  { key: 'time', label: 'Thời gian', width: 140 },
+  { key: 'tkt', label: 'TKT', width: 120 },
+  { key: 'nhom', label: 'Nhóm', width: 180 },
+  { key: 'nguoi_gui', label: 'Người gửi', width: 150 },
+  { key: 'trang_thai', label: 'Trạng thái', width: 120 },
+  { key: 'noi_dung', label: 'Nội dung gốc', width: 320 },
+]
 
 type ParsedBooking = { full_name?: string; routing?: string; ticket_no?: string; [k: string]: unknown }
 
@@ -160,6 +171,8 @@ export default function ParseLogsPage() {
       default: return ''
     }
   })
+  const { widths: plWidths, startResize: startPlResize } = useResizableColumns('parse-logs', Object.fromEntries(PARSE_LOG_COLS.map(c => [c.key, c.width])))
+  const plTotalWidth = PARSE_LOG_COLS.reduce((sum, c) => sum + (plWidths[c.key] ?? c.width), 0)
 
   function toggle(id: string) {
     setExpanded(prev => {
@@ -213,11 +226,15 @@ export default function ParseLogsPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div {...wrapProps} className="overflow-x-auto select-none outline-none">
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: plTotalWidth }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['', 'Thời gian', 'TKT', 'Nhóm', 'Người gửi', 'Trạng thái', 'Nội dung gốc'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                {PARSE_LOG_COLS.map(c => (
+                  <th key={c.key} style={{ width: plWidths[c.key] ?? c.width }}
+                    className="relative text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startPlResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>

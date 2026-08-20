@@ -4,6 +4,27 @@ import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'rea
 import { createPortal } from 'react-dom'
 import { RefreshCw, Search, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+const PHAT_SINH_COLS = [
+  { key: 'ngay_xuat', label: 'Ngày xuất', width: 110 },
+  { key: 'so_ve', label: 'Số vé', width: 130 },
+  { key: 'hanh_khach', label: 'Hành khách', width: 180 },
+  { key: 'hanh_trinh', label: 'Hành trình', width: 180 },
+  { key: 'gia_ban', label: 'Giá bán', align: 'right' as const, width: 130 },
+]
+const DA_THU_COLS = [
+  { key: 'ngay', label: 'Ngày', width: 110 },
+  { key: 'noi_dung', label: 'Nội dung CK', width: 260 },
+  { key: 'stk', label: 'STK nhận', width: 160 },
+  { key: 'so_tien', label: 'Số tiền', align: 'right' as const, width: 130 },
+]
+const CN_KH_COLS = [
+  { key: 'ma_khach', label: 'Mã khách', width: 160 },
+  { key: 'tong_gia_ban', label: 'Tổng giá bán', align: 'right' as const, width: 150 },
+  { key: 'tong_da_thu', label: 'Tổng đã thu', align: 'right' as const, width: 150 },
+  { key: 'cong_no', label: 'Công nợ', align: 'right' as const, width: 150 },
+]
 
 type PhatSinhRow = { ticket_no: string | null; pax_name: string | null; issued_date: string | null; routing: string | null; gia_ban: number | null }
 type DaThuRow = { ngay: string | null; dien_giai: string | null; thu: number | null; tai_khoan: string | null }
@@ -46,6 +67,10 @@ function formatTien(n: number): string {
 function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => void }) {
   const [visible, setVisible] = useState(false)
   const [tab, setTab] = useState<'bookings' | 'sao_ke'>('bookings')
+  const { widths: psWidths, startResize: startPsResize } = useResizableColumns('cn-kh-phat-sinh', Object.fromEntries(PHAT_SINH_COLS.map(c => [c.key, c.width])))
+  const psTotalWidth = PHAT_SINH_COLS.reduce((sum, c) => sum + (psWidths[c.key] ?? c.width), 0)
+  const { widths: dtWidths, startResize: startDtResize } = useResizableColumns('cn-kh-da-thu', Object.fromEntries(DA_THU_COLS.map(c => [c.key, c.width])))
+  const dtTotalWidth = DA_THU_COLS.reduce((sum, c) => sum + (dtWidths[c.key] ?? c.width), 0)
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true))
@@ -104,14 +129,16 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
-                <table className="w-full text-sm list-table">
+                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: psTotalWidth }}>
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Ngày xuất</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Số vé</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Hành khách</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Hành trình</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Giá bán</th>
+                      {PHAT_SINH_COLS.map(c => (
+                        <th key={c.key} style={{ width: psWidths[c.key] ?? c.width }}
+                          className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                          {c.label}
+                          <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startPsResize(c.key, e)} />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -135,13 +162,16 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
-                <table className="w-full text-sm list-table">
+                <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: dtTotalWidth }}>
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Ngày</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Nội dung CK</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">STK nhận</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Số tiền</th>
+                      {DA_THU_COLS.map(c => (
+                        <th key={c.key} style={{ width: dtWidths[c.key] ?? c.width }}
+                          className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                          {c.label}
+                          <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startDtResize(c.key, e)} />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -267,6 +297,8 @@ export default function CongNoKhachHangPage() {
   const tongDaThu = useMemo(() => filtered.reduce((s, r) => s + r.tong_da_thu, 0), [filtered])
   const tongCongNo = tongPhatSinh - tongDaThu
   const viewingRow = viewingMaKhach ? filtered.find(r => r.ma_khach === viewingMaKhach) ?? null : null
+  const { widths: cnKhWidths, startResize: startCnKhResize } = useResizableColumns('cong-no-khach-hang', Object.fromEntries(CN_KH_COLS.map(c => [c.key, c.width])))
+  const cnKhTotalWidth = CN_KH_COLS.reduce((sum, c) => sum + (cnKhWidths[c.key] ?? c.width), 0)
 
   return (
     <div className="px-5 pb-5 space-y-4">
@@ -315,11 +347,15 @@ export default function CongNoKhachHangPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm list-table">
+          <table className="text-sm list-table border-collapse" style={{ tableLayout: 'fixed', width: cnKhTotalWidth }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['Mã khách', 'Tổng giá bán', 'Tổng đã thu', 'Công nợ'].map(h => (
-                  <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50 ${h === 'Mã khách' ? 'text-left' : 'text-right'}`}>{h}</th>
+                {CN_KH_COLS.map(c => (
+                  <th key={c.key} style={{ width: cnKhWidths[c.key] ?? c.width }}
+                    className={`relative px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none bg-gray-50 ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
+                    {c.label}
+                    <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startCnKhResize(c.key, e)} />
+                  </th>
                 ))}
               </tr>
             </thead>
