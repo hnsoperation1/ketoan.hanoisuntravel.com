@@ -633,6 +633,14 @@ export default function CongNoVePage() {
   // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
   // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
   const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
+  const { widths: rawPanelWidths, startResize: startRawPanelResize } = useResizableColumns('cong-no-raw-panel', { panel: 360 })
+  const [resizingRawPanel, setResizingRawPanel] = useState(false)
+  function startResizeRawPanel(e: React.MouseEvent) {
+    setResizingRawPanel(true)
+    startRawPanelResize('panel', e)
+    const onUp = () => { setResizingRawPanel(false); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mouseup', onUp)
+  }
 
   async function runRematch() {
     setRematching(true)
@@ -1516,8 +1524,10 @@ export default function CongNoVePage() {
         </>
       ) : (
         <div className="flex items-start">
-          <div className={`shrink-0 sticky top-4 overflow-hidden transition-[width,margin] duration-300 ease-out ${viewingRawMatch ? 'w-[360px] mr-4' : 'w-0 mr-0'}`}>
-            <div className="w-[360px]">
+          <div
+            className={`relative shrink-0 sticky top-4 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
+            style={viewingRawMatch ? { width: rawPanelWidths.panel } : undefined}>
+            <div style={{ width: rawPanelWidths.panel }}>
               <RawMatchPanel
                 target={viewingRawMatch ? {
                   id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
@@ -1530,6 +1540,10 @@ export default function CongNoVePage() {
                 onSelectMessage={setSelectedRawMessage}
               />
             </div>
+            {viewingRawMatch && (
+              <div onMouseDown={startResizeRawPanel} title="Kéo để đổi độ rộng"
+                className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-300/50 active:bg-brand-400/60 transition-colors" />
+            )}
           </div>
           <div className="flex-1 min-w-0 space-y-4">
             {selectedRawMessage && (

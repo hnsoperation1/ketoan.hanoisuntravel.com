@@ -167,7 +167,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
 }
 
 // Báo cáo tổng hợp — không phải nơi nhập liệu. Tổng phát sinh cộng dồn từ
-// gia_ban trong "Đầu vào công nợ" (/ve-may-bay/cong-no, lọc theo
+// gia_ban trong "Đầu vào công nợ" (/ve-may-bay/cong-no-ncc, lọc theo
 // issued_date), tổng đã thu cộng dồn từ thu trong "Đầu vào sao kê"
 // (/ve-may-bay/sao-ke, lọc theo ngay), nối theo mã khách — xem chú thích
 // nối dữ liệu trong route GET.

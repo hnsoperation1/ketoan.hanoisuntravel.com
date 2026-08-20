@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth'
 
 // Gộp công nợ theo khách hàng — nối các nguồn KHÔNG có khoá ngoại chung:
 //   - "Phát sinh": ve_debt_records.ma_khach (nhập tay/upload Excel ở
-//     /ve-may-bay/cong-no) + ve_bookings.ma_khach (bot Telegram tự trích
+//     /ve-may-bay/cong-no-ncc) + ve_bookings.ma_khach (bot Telegram tự trích
 //     xuất, xem ở /ve-may-bay/thong-tin-xuat-ve) — 2 đường nhập liệu độc
 //     lập cho cùng 1 khái niệm "vé đã xuất", vé nào chỉ đi qua bot mà chưa
 //     từng upload Excel trước đó thì trước đây hoàn toàn không xuất hiện ở

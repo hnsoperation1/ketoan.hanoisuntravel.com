@@ -21,9 +21,9 @@ const MA_KHACH_SOURCE_LABEL: Record<MaKhachSource, string> = {
 }
 const MA_KHACH_SOURCE_ORDER: MaKhachSource[] = ['chuan', 'doi_chieu', 'da_dung']
 
-// Cùng pattern picker "mã khách" như MaKhachCell ở /ve-may-bay/cong-no —
+// Cùng pattern picker "mã khách" như MaKhachCell ở /ve-may-bay/cong-no-ncc —
 // nhân bản page-local ở đây thay vì tách shared component, theo đúng cách
-// mỗi trang trong module này tự giữ các mảnh UI riêng (xem cong-no/page.tsx).
+// mỗi trang trong module này tự giữ các mảnh UI riêng (xem cong-no-ncc/page.tsx).
 // Options hợp từ 3 nguồn (xem maKhachOptions ở component cha) — nhóm theo
 // nguồn khi hiện kết quả để kế toán biết mã đang chọn có phải danh mục
 // chuẩn hay chỉ mới thấy dùng ở công nợ/sao kê/bảng này, tự quyết định có

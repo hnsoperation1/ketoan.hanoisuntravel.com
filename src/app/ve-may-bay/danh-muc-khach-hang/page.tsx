@@ -694,7 +694,7 @@ export default function DanhMucKhachHangPage() {
   }
 
   // "Phóng to": render qua Portal thẳng vào document.body, giống cách
-  // /ve-may-bay/cong-no đang làm — thoát hẳn khỏi layout trang (Sidebar/
+  // /ve-may-bay/cong-no-ncc đang làm — thoát hẳn khỏi layout trang (Sidebar/
   // Topbar) để bảng nhiều cột ở chế độ "Đầy đủ" chiếm trọn màn hình. Chỉ
   // phóng to riêng khối bảng, KHÔNG kèm thanh tìm kiếm/bộ lọc phía trên.
   const tableSection = (
