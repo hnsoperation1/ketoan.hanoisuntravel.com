@@ -1526,8 +1526,6 @@ export default function CongNoVePage() {
                   matchStatus: viewingRawMatch.matchStatus,
                 } : null}
                 candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
-                khSuggestions={allMaKhach}
-                onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
                 onClose={() => setViewingRawMatch(null)}
                 onSelectMessage={setSelectedRawMessage}
               />

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
-import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 
@@ -45,17 +44,16 @@ function formatDateTime(iso: string): string {
 // "Tổng hợp"), file này là bản dựng riêng, có thể xoá bỏ để quay lại modal
 // cũ bất cứ lúc nào mà không đụng gì tới file kia.
 //
-// Panel này CHỈ còn giữ danh sách tin nhắn + tìm tay trong danh mục — danh
-// sách hành khách của tin nhắn đang chọn đã chuyển ra bảng riêng bên phải
-// (xem SelectedMessagePaxTable ở page.tsx) để dễ đọc hơn dạng bảng rộng
-// thay vì card hẹp. `onSelectMessage` báo lên page.tsx mỗi khi tin nhắn
-// được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc bị
-// xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
-export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, onClose, onSelectMessage }: {
+// Panel này CHỈ còn giữ danh sách tin nhắn — danh sách hành khách của tin
+// nhắn đang chọn đã chuyển ra bảng riêng bên phải (xem SelectedMessagePaxTable
+// ở page.tsx) để dễ đọc hơn dạng bảng rộng thay vì card hẹp; mục tìm tay
+// trong danh mục khách hàng đã bỏ hẳn (2026-08-20) — chọn mã khách giờ chỉ
+// còn qua bảng bên phải. `onSelectMessage` báo lên page.tsx mỗi khi tin
+// nhắn được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc
+// bị xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
+export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage }: {
   target: MatchSlideOverTarget | null
   candidatesUrl: string | null
-  khSuggestions: KhachOpt[]
-  onSaved: (maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) => void
   onClose: () => void
   onSelectMessage: (info: { message: RawCandidateMessage; khachInfo: RawKhachInfo } | null) => void
 }) {
@@ -64,7 +62,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
   const [messages, setMessages] = useState<RawCandidateMessage[]>([])
   const [khachInfo, setKhachInfo] = useState<RawKhachInfo>({})
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
-  const [manualQuery, setManualQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -80,7 +77,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
       }
       setLoading(true)
       setLoadError(false)
-      setManualQuery('')
       try {
         const res = await fetch(candidatesUrl)
         if (!res.ok) throw new Error('load failed')
@@ -104,11 +100,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidatesUrl])
 
-  function chooseManual(maKhach: string) {
-    onSaved(maKhach, null)
-    setManualQuery('')
-  }
-
   function selectMessage(m: RawCandidateMessage) {
     setSelectedMsgId(m.parse_log_id)
     onSelectMessage({ message: m, khachInfo })
@@ -121,8 +112,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
       </div>
     )
   }
-
-  const manualFiltered = filterKhachOptions(khSuggestions, manualQuery)
 
   return (
     <div key={target.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col max-h-[calc(100vh-140px)]">
@@ -166,7 +155,7 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{m.pax.length} khách</span>
                     </div>
                     {m.raw_message && (
-                      <p className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-4">{m.raw_message}</p>
+                      <p className="text-xs text-gray-700 whitespace-pre-wrap">{m.raw_message}</p>
                     )}
                     <div className="text-[10px] text-gray-400 text-right mt-1">{formatDateTime(m.created_at)}</div>
                   </button>
@@ -174,35 +163,6 @@ export function RawMatchPanel({ target, candidatesUrl, khSuggestions, onSaved, o
               })}
             </div>
           )}
-        </div>
-
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">Hoặc tự tìm trong danh mục khách hàng</h3>
-          <input value={manualQuery} onChange={e => setManualQuery(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && manualQuery.trim()) chooseManual(manualQuery.trim()) }}
-            placeholder="Tìm mã khách hoặc tên khách..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400 mb-2" />
-          <div className="border border-gray-100 rounded-xl overflow-y-auto max-h-52 divide-y divide-gray-50">
-            {manualFiltered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-gray-400">
-                Không tìm thấy trong danh mục.
-                {manualQuery.trim() && (
-                  <button onClick={() => chooseManual(manualQuery.trim())}
-                    className="block mx-auto mt-2 text-xs font-semibold text-brand-600 hover:text-brand-700">
-                    Dùng nguyên văn &quot;{manualQuery.trim()}&quot;
-                  </button>
-                )}
-              </div>
-            ) : (
-              manualFiltered.map(o => (
-                <button key={o.ma_khach} type="button" onClick={() => chooseManual(o.ma_khach)}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors">
-                  <span className="text-xs font-semibold text-gray-800">{o.ma_khach}</span>
-                  {o.ten_khach && <span className="text-[11px] text-gray-400 ml-2">{o.ten_khach}</span>}
-                </button>
-              ))
-            )}
-          </div>
         </div>
       </div>
     </div>
