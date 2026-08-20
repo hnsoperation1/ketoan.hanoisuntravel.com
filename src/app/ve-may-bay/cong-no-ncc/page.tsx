@@ -1957,7 +1957,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
               <th key={c.key} style={{ width: widths[c.key] ?? c.width }}
                 className={`${TH} select-none ${c.align === 'right' ? 'text-right' : ''}`}>
                 {c.label}
-                <div className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-brand-400/40" onMouseDown={e => startResize(c.key, e)} />
+                <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startResize(c.key, e)} />
               </th>
             ))}
           </tr>
