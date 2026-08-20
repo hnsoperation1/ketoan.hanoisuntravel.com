@@ -131,15 +131,17 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
           ) : messages.length === 0 ? (
             <p className="text-sm text-gray-400 py-2 px-1">Không tìm thấy tin nhắn Telegram nào khớp mã vé/PNR này.</p>
           ) : (
-            // Phân cách bằng viền mảnh (divide-y) + dải màu bên trái khi
-            // chọn, thay vì khoảng trắng giữa các card + viền bo tròn từng
-            // cái — đỡ tốn diện tích panel hẹp hơn nhiều mà vẫn rõ ranh giới.
-            <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+            // Mỗi tin nhắn 1 "bubble" riêng (nền + viền + bo góc của chính
+            // nó) thay vì 1 khối chung ngăn bằng viền mảnh — nhìn 1 phát
+            // biết ranh giới từng tin ngay cả khi nội dung dài nhiều dòng
+            // như trên. Vẫn giữ khoảng cách nhỏ (space-y-1.5) chứ không to
+            // như bản card gốc trước đây, để không lãng phí diện tích panel.
+            <div className="space-y-1.5">
               {messages.map(m => {
                 const selected = m.parse_log_id === selectedMsgId
                 return (
                   <button key={m.parse_log_id} type="button" onClick={() => selectMessage(m)}
-                    className={`w-full text-left px-2.5 py-2 border-l-4 transition-colors ${selected ? 'bg-brand-50 border-l-brand-500' : 'border-l-transparent hover:bg-gray-50'}`}>
+                    className={`w-full text-left rounded-xl border px-2.5 py-2 transition-colors ${selected ? 'bg-brand-50 border-brand-300 shadow-sm' : 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'}`}>
                     {m.group_title && (
                       <div className="text-[11px] text-gray-400 truncate">Nhóm: {m.group_title}</div>
                     )}

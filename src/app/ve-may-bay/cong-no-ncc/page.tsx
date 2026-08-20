@@ -618,6 +618,10 @@ export default function CongNoVePage() {
   // Filters
   const [search, setSearch] = useState('')
   const [nccFilter, setNccFilter] = useState('')
+  // rowNccFilter: lọc theo cột NCC ngay TRONG tab "Tổng hợp" (khác nccFilter
+  // ở trên — đó là chọn TAB FCVN/SAO ĐỎ/VIETJET/SUN PQC, luôn rỗng khi đang
+  // ở Tổng hợp) — chỉ dùng/hiện dropdown này khi nccFilter === ''.
+  const [rowNccFilter, setRowNccFilter] = useState('')
   const [tktFilter, setTktFilter] = useState('')
   const [khFilter, setKhFilter] = useState('')
 
@@ -1149,8 +1153,10 @@ export default function CongNoVePage() {
   // (FCVN/SAO ĐỎ/VIETJET/SUN PQC) chưa chắc khớp Y HỆT cách viết hoa/thường
   // đã lưu trong dữ liệu (vd "Vietjet" lúc nhập file vs tab "VIETJET").
   const byNcc = rows.filter(r => !nccFilter || (r.ncc ?? '').trim().toUpperCase() === nccFilter.trim().toUpperCase())
-  const tkts = Array.from(new Set(byNcc.map(r => r.tkt_tag).filter(Boolean))) as string[]
-  const byTkt = byNcc.filter(r => !tktFilter || r.tkt_tag === tktFilter)
+  const nccOptions = Array.from(new Set(rows.map(r => r.ncc).filter(Boolean))) as string[]
+  const byRowNcc = byNcc.filter(r => !rowNccFilter || r.ncc === rowNccFilter)
+  const tkts = Array.from(new Set(byRowNcc.map(r => r.tkt_tag).filter(Boolean))) as string[]
+  const byTkt = byRowNcc.filter(r => !tktFilter || r.tkt_tag === tktFilter)
   const khs = Array.from(new Set(byTkt.map(r => r.ma_khach).filter(Boolean))) as string[]
   const byKh = byTkt.filter(r => !khFilter || r.ma_khach === khFilter)
 
@@ -1480,6 +1486,10 @@ export default function CongNoVePage() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
                 className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
+            <select value={rowNccFilter} onChange={e => { setRowNccFilter(e.target.value); setTktFilter(''); setKhFilter('') }} className={SELECT}>
+              <option value="">Tất cả NCC</option>
+              {nccOptions.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
             <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
               <option value="">Tất cả TKT</option>
               {tkts.map(t => <option key={t} value={t}>{t}</option>)}
