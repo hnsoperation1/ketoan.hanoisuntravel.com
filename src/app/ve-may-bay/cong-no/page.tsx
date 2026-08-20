@@ -11,6 +11,7 @@ import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from './MatchSlideOver'
+import { RawMatchPanel } from './RawMatchPanel'
 
 export type DebtRow = {
   id: string
@@ -1510,8 +1511,26 @@ export default function CongNoVePage() {
           )}
         </>
       ) : (
-        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
-          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
+        <div className="flex items-start gap-4">
+          <div className="w-[360px] shrink-0 sticky top-4">
+            <RawMatchPanel
+              target={viewingRawMatch ? {
+                id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
+                ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
+                contextLabel: viewingRawMatch.paxLabel,
+                matchStatus: viewingRawMatch.matchStatus,
+              } : null}
+              candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
+              khSuggestions={allMaKhach}
+              onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
+              onClose={() => setViewingRawMatch(null)}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
+              onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
+          </div>
+        </div>
       )}
     </div>
     {viewingMatchRow && (
@@ -1526,19 +1545,6 @@ export default function CongNoVePage() {
         khSuggestions={allMaKhach}
         onSaved={(maKhach, matchedBookingId) => saveMaKhachManual(viewingMatchRow.id, maKhach, matchedBookingId)}
         onClose={() => setViewingMatchRow(null)} />
-    )}
-    {viewingRawMatch && (
-      <MatchSlideOver
-        target={{
-          id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
-          ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
-          contextLabel: viewingRawMatch.paxLabel,
-          matchStatus: viewingRawMatch.matchStatus,
-        }}
-        candidatesUrl={`/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates`}
-        khSuggestions={allMaKhach}
-        onSaved={(maKhach, matchedBookingId, giaMua, giaBan) => saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
-        onClose={() => setViewingRawMatch(null)} />
     )}
     </>
   )
