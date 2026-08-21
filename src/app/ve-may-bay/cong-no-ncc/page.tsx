@@ -2,40 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X, Pencil } from 'lucide-react'
-import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
+import { RefreshCw, Trash2, Loader2, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
-import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
-import { MatchSlideOver } from './MatchSlideOver'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
-
-export type DebtRow = {
-  id: string
-  ncc: string | null
-  ticket_no: string | null
-  pax_name: string | null
-  issued_date: string | null
-  payment_date: string | null
-  departure_date: string | null
-  return_date: string | null
-  routing: string | null
-  gia_mua: number | null
-  cktm: number | null
-  gia_ban: number | null
-  com_khach: number | null
-  tkt_tag: string | null
-  ma_khach: string | null
-  sale_chinh: string | null
-  ghi_chu: string | null
-  source_file: string | null
-  created_at: string
-  match_status: MatchStatus | null
-  matched_booking_id: string | null
-}
 
 function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -50,10 +23,6 @@ function parseRawNumericCell(v: string | undefined): number | null {
   const s = v?.trim()
   if (!s || !/^-?\d+(\.\d+)?$/.test(s)) return null
   return Number(s)
-}
-
-function formatPercent(n: number): string {
-  return `${Math.round(n * 1000) / 10}%`
 }
 
 // Bỏ hết ký tự không phải số (dấu phẩy ngăn cách nghìn, ký hiệu tiền tệ,
@@ -79,50 +48,17 @@ function parseVndNumber(raw: string): number | null {
   return negative ? -n : n
 }
 
-// Vé đoàn gộp nhiều pax vào 1 dòng dữ liệu (gặp ở file FCVN, vd "5 PAX
-// ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH + ... :") — theo quyết định
-// lúc nhập, KHÔNG tách trong DB (số lượng pax không cố định, tự tách lúc
-// import dễ sai) — chỉ tách hiển thị RIÊNG ở view Bảng cho dễ đọc, dữ
-// liệu gốc trong DB vẫn nguyên 1 dòng/1 record. Không khớp mẫu "N PAX..."
-// thì trả về mảng 1 phần tử (dòng bình thường, không đổi gì).
-function splitPaxNames(paxName: string | null): string[] {
-  const s = (paxName ?? '').trim()
-  if (!/^\d+\s*PAX\b/i.test(s)) return [paxName ?? '']
-  const names = s.split('+').slice(1).map(seg => seg.trim().replace(/:\s*$/, '').trim()).filter(Boolean)
-  return names.length > 0 ? names : [paxName ?? '']
-}
-
 // Bản dành riêng cho bảng raw (4 tab NCC) — CHỈ tách xuống dòng thuần tuý,
 // KHÔNG bỏ đoạn nào (kể cả đoạn "N PAX..."/"N PAX ADT.NN" đầu, hay dấu ":"
-// cuối) — khác splitPaxNames ở trên (dùng cho bảng Tổng hợp, cố tình bỏ
-// đoạn đầu vì ở đó mỗi phần tử trả về được coi là 1 dòng phụ/1 hành khách
-// riêng, giữ "N PAX..." vào sẽ tạo nhầm 1 "hành khách" giả). Đã gặp 2 định
-// dạng ngăn cách thực tế ở file FCVN: "+" (vd "5 PAX ADT.05 + Tên A + Tên
-// B...") và ";" (vd "4 PAX: Tên A; Tên B...") — ưu tiên ";" nếu có, không
-// thì mới tới "+".
+// cuối). Đã gặp 2 định dạng ngăn cách thực tế ở file FCVN: "+" (vd "5 PAX
+// ADT.05 + Tên A + Tên B...") và ";" (vd "4 PAX: Tên A; Tên B...") — ưu
+// tiên ";" nếu có, không thì mới tới "+".
 function splitPaxLinesForDisplay(paxName: string | null): string[] {
   const s = (paxName ?? '').trim()
   if (!/^\d+\s*PAX\b/i.test(s)) return [paxName ?? '']
   const sep = s.includes(';') ? ';' : '+'
   const lines = s.split(sep).map(seg => seg.trim()).filter(Boolean)
   return lines.length > 0 ? lines : [paxName ?? '']
-}
-
-const REQUIRED_FIELDS = [
-  { key: 'ticket_no', label: 'Mã vé' },
-  { key: 'pax_name', label: 'Tên pax' },
-  { key: 'issued_date', label: 'Ngày xuất vé' },
-  { key: 'routing', label: 'Hành trình' },
-  { key: 'gia_mua', label: 'Giá mua' },
-] as const
-const OPTIONAL_FIELDS = [
-  { key: 'cktm', label: 'CKTM' },
-  { key: 'gia_ban', label: 'Giá bán' },
-  { key: 'com_khach', label: 'COM khách' },
-] as const
-type MapKey = typeof REQUIRED_FIELDS[number]['key'] | typeof OPTIONAL_FIELDS[number]['key']
-const EMPTY_MAPPING: Record<MapKey, number | ''> = {
-  ticket_no: '', pax_name: '', issued_date: '', routing: '', gia_mua: '', cktm: '', gia_ban: '', com_khach: '',
 }
 
 function parseCsvLine(line: string): string[] {
@@ -284,13 +220,8 @@ async function parseXlsxSheetsAny(file: File): Promise<SheetData[]> {
   }
 }
 
-// ── Nhập liệu tối ưu riêng cho từng NCC (bắt đầu với Vietjet) ───────────────
-// File công nợ gốc của Vietjet luôn cùng 1 cấu trúc cột cố định (đối chiếu
-// từ file mẫu thật "CNO VIETJET 1.3T8.xlsx", 2026-08-04): PNR, PAX NAME,
-// PAYMENT DATE, SEGMENTS, PAYMENT BY, TAKEN BY, ACCOUNT, AMOUNT CONVERT
-// (VND), CURRENCY, AMOUNT CONVERT (VND) [lặp lại], Payment Identifier —
-// nên nhận diện được bằng chữ ký 4 cột đầu, bỏ qua hẳn bước chọn dòng tiêu
-// đề + map cột tay của wizard chung.
+// ── Nhận diện nhanh chữ ký Vietjet/FCVN để gợi ý sẵn tên NCC lúc chọn
+// file, không tự tách/chuẩn hoá cột nữa (việc đó làm ở bước riêng sau).
 function findVietjetHeaderRow(grid: string[][]): number | null {
   const norm = (s: string) => (s || '').toLowerCase().trim()
   for (let i = 0; i < grid.length; i++) {
@@ -301,15 +232,6 @@ function findVietjetHeaderRow(grid: string[][]): number | null {
     }
   }
   return null
-}
-
-// SEGMENTS gộp chung ngày bay + hành trình trong 1 chuỗi, vd:
-// "Aug 02, 2026 CXR - HAN CONF" → tách phần ngày (định dạng "Mon DD, YYYY"
-// cố định) ra khỏi phần hành trình còn lại.
-function splitVietjetSegments(segments: string): { flightDate: string; routing: string } {
-  const m = (segments || '').match(/^([A-Za-z]{3}\s+\d{1,2},\s*\d{4})\s*(.*)$/)
-  if (m) return { flightDate: m[1], routing: m[2].trim() }
-  return { flightDate: '', routing: segments || '' }
 }
 
 // Cột "SEGMENTS" trong file thô Vietjet gộp nhiều chặng dính liền nhau
@@ -324,16 +246,6 @@ function splitSegmentsForDisplay(value: string): string[] {
     .filter(Boolean)
 }
 
-// FCVN (đại lý bán vé nhiều hãng, không phải 1 hãng riêng như Vietjet) —
-// đối chiếu từ file mẫu thật "CNO FCVN.XLS" (định dạng .xls nhị phân cũ,
-// đọc bằng `xlsx`/SheetJS chứ không phải exceljs — xem parseXlsFile bên
-// dưới). Header 2 tầng: dòng chữ (Order/Receipt Nbr./Issue date/Ticket
-// Nbr./Pax Name/Route/T/Cust...) rồi 1 dòng ký hiệu phụ (A/B/C/D...) ngay
-// dưới — nhận diện bằng dòng chữ. Dữ liệu xen lẫn các dòng tiêu đề nhóm
-// ("Domestic Flights", "VIETNAM AIRLINES - VN"...) và dòng tổng/đối
-// chiếu cuối bảng — lọc bằng quy tắc CHUNG: chỉ dòng nào cột "Order" là
-// số nguyên dương mới là dòng dữ liệu thật (dòng nhóm/dòng phụ/dòng tổng
-// đều để trống cột này) — 1 quy tắc lọc được hết mọi loại dòng rác.
 function findFcvnHeaderRow(grid: string[][]): number | null {
   const norm = (s: string) => (s || '').toLowerCase().trim()
   for (let i = 0; i < grid.length; i++) {
@@ -346,13 +258,8 @@ function findFcvnHeaderRow(grid: string[][]): number | null {
   return null
 }
 
-function isFcvnDataRow(row: string[]): boolean {
-  return /^\d+$/.test((row[0] ?? '').trim())
-}
-
-// Dò dòng "rác" khi nhập nguyên xi (submitRaw, dùng chung cho cả 4 tab NCC,
-// không riêng FCVN nên không dùng được quy tắc "Order" của isFcvnDataRow ở
-// trên) — dựa vào cột mã vé/PNR đã nhận diện được qua findIdColumnIndex
+// Dò dòng "rác" khi nhập nguyên xi (submitRaw, dùng chung cho cả 4 tab NCC)
+// — dựa vào cột mã vé/PNR đã nhận diện được qua findIdColumnIndex
 // (raw-column-roles.ts, đã dùng ổn cho cả 4 NCC ở tính năng khớp mã khách).
 // Dòng dữ liệu thật luôn có mã vé/PNR đủ dài; dòng tiêu đề phụ lặp lại
 // (mỗi ô chỉ có 1 chữ cái chú thích cột) hoặc dòng ngăn cách section (các
@@ -360,14 +267,6 @@ function isFcvnDataRow(row: string[]): boolean {
 function isLikelyJunkRow(row: string[], idColIdx: number | null): boolean {
   if (idColIdx == null) return false
   return (row[idColIdx] ?? '').trim().length < 4
-}
-
-// "Issue date" gộp 3 ngày trong 1 chuỗi: ngày xuất vé - ngày bay đi -
-// ngày bay về (đã xác nhận với user 2026-08-04), vd:
-// "01/08/2026 - 04/08/2026 - 04/08/2026".
-function splitFcvnIssueDate(raw: string): { issued: string; departure: string; returnDate: string } {
-  const parts = (raw || '').split(/\s*-\s*/).map(s => s.trim()).filter(Boolean)
-  return { issued: parts[0] ?? '', departure: parts[1] ?? '', returnDate: parts[2] ?? '' }
 }
 
 // File .xls (nhị phân cũ, OLE2 — khác hẳn .xlsx là file zip) không đọc
@@ -383,9 +282,6 @@ async function parseXlsFile(file: File): Promise<SheetData[]> {
     grid: XLSX.utils.sheet_to_json<string[]>(wb.Sheets[name], { header: 1, raw: false, defval: '' }),
   }))
 }
-
-
-const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
 
 // 4 NCC cố định (khớp yêu cầu 2026-08-13) — luôn hiện tab dù NCC đó chưa
 // có dòng dữ liệu nào (khác cách cũ chỉ liệt kê NCC đã có sẵn trong rows).
@@ -411,153 +307,6 @@ const NCC_HEADER_HINTS: Record<string, string[]> = {
 // ring-inset để viền nằm gọn trong ô, không đẩy layout xê dịch.
 const CELL_INPUT = 'w-full h-full bg-transparent text-xs px-1 py-0.5 rounded-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#107C41]'
 
-// `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
-// trình duyệt (xấu, không style được, có mã trùng/không đọc được như báo
-// lỗi) — vẫn là input tự do, gõ giá trị mới chưa có trong danh sách vẫn
-// lưu bình thường, dropdown chỉ để chọn nhanh từ gợi ý cho đỡ gõ trùng/lệch.
-function EditableCell({ value, onSave, placeholder, align, suggestions }: { value: string | null; onSave: (v: string) => void; placeholder?: string; align?: 'right'; suggestions?: string[] }) {
-  const [v, setV] = useState(value ?? '')
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => setV(value ?? ''), [value])
-
-  useEffect(() => {
-    if (!suggestions) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-        setV(cur => { if (cur !== (value ?? '')) onSave(cur); return cur })
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [suggestions, value, onSave])
-
-  if (!suggestions) {
-    return (
-      <input value={v} placeholder={placeholder} onChange={e => setV(e.target.value)}
-        onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
-        className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
-    )
-  }
-
-  const q = v.trim().toLowerCase()
-  const filtered = (q ? suggestions.filter(s => s.toLowerCase().includes(q)) : suggestions).slice(0, 50)
-
-  function choose(s: string) {
-    setV(s)
-    setOpen(false)
-    if (s !== (value ?? '')) onSave(s)
-  }
-
-  return (
-    <div className="relative" ref={ref}>
-      <input value={v} placeholder={placeholder}
-        onChange={e => { setV(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { setOpen(false); if (v !== (value ?? '')) onSave(v) }
-          if (e.key === 'Escape') setOpen(false)
-        }}
-        className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
-      {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto w-56">
-          {filtered.map(s => (
-            <button key={s} type="button" onMouseDown={e => e.preventDefault()} onClick={() => choose(s)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition-colors truncate">
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Ô "Tìm mã khách" riêng — khác EditableCell ở chỗ mở MODAL to giữa màn
-// hình (không phải dropdown nhỏ neo dưới ô) và hiện kèm tên đầy đủ, vì
-// danh mục khách hàng VMB giờ đã có tên (xem migration_vmb_khach_hang.sql),
-// không chỉ có mã trơn như trước — vẫn cho gõ tự do, chọn trong danh sách
-// chỉ để điền nhanh.
-function MaKhachCell({ value, onSave, options }: { value: string | null; onSave: (v: string) => void; options: KhachOpt[] }) {
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
-    if (open) document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open])
-
-  function openModal() {
-    setQ('')
-    setOpen(true)
-  }
-
-  function choose(ma: string) {
-    setOpen(false)
-    if (ma !== (value ?? '')) onSave(ma)
-  }
-
-  const filtered = filterKhachOptions(options, q)
-
-  return (
-    <>
-      <button type="button" onClick={openModal}
-        className={`${CELL_INPUT} text-left truncate ${value ? '' : 'text-gray-300'}`}>
-        {value || 'Tìm mã khách...'}
-      </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-100 flex-shrink-0">
-              <input autoFocus value={q} onChange={e => setQ(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && q.trim()) choose(q.trim()) }}
-                placeholder="Tìm mã khách hoặc tên khách..."
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {filtered.length === 0 ? (
-                <div className="px-5 py-10 text-center text-sm text-gray-400">
-                  Không tìm thấy trong danh mục.
-                  {q.trim() && (
-                    <button onClick={() => choose(q.trim())}
-                      className="block mx-auto mt-3 text-sm font-semibold text-brand-600 hover:text-brand-700">
-                      Dùng nguyên văn &quot;{q.trim()}&quot;
-                    </button>
-                  )}
-                </div>
-              ) : (
-                filtered.map(o => {
-                  const isSelected = o.ma_khach === value
-                  return (
-                    <div key={o.ma_khach} onClick={() => choose(o.ma_khach)}
-                      className={`w-full px-5 py-3 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between gap-2 cursor-pointer ${isSelected ? 'bg-brand-50' : 'hover:bg-gray-50'}`}>
-                      <div>
-                        <div className={`text-sm font-semibold ${isSelected ? 'text-brand-700' : 'text-gray-800'}`}>{o.ma_khach}</div>
-                        {o.ten_khach && <div className="text-xs text-gray-400 mt-0.5">{o.ten_khach}</div>}
-                      </div>
-                      {isSelected ? (
-                        <button type="button" title="Bỏ chọn" onClick={e => { e.stopPropagation(); choose('') }}
-                          className="flex-shrink-0 p-1.5 rounded-lg text-brand-600 hover:bg-red-50 hover:text-red-500 transition-colors">
-                          <X size={16} />
-                        </button>
-                      ) : (
-                        <Check size={16} className="text-transparent flex-shrink-0" />
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
-  )
-}
-
 // Hiện số có phân cách hàng nghìn (toLocaleString) khi không focus, đổi
 // sang chuỗi số thô khi focus để gõ/dán tự nhiên — không thể vừa gõ vừa
 // hiện dấu chấm phân cách bằng 1 giá trị input duy nhất.
@@ -577,8 +326,6 @@ function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (
       className={`${CELL_INPUT} text-right`} />
   )
 }
-
-type ViewMode = 'bang' | 'list' | 'card'
 
 // Lô công nợ NCC upload nguyên xi (chưa chuẩn hoá) — dùng cho 4 tab NCC cố
 // định (FCVN/SAO ĐỎ/VIETJET/SUN PQC), giữ đúng cột như file gốc.
@@ -600,1019 +347,6 @@ type RawBatch = {
   rows: string[][]
   created_at: string
   ve_debt_records_raw_match: RawMatchInfo[]
-}
-
-export default function CongNoVePage() {
-  const { setBreadcrumb, setOnRefresh } = useTopbar()
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const [rows, setRows] = useState<DebtRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('bang')
-
-  // Upload wizard
-  const [sheets, setSheets] = useState<SheetData[]>([])
-  const [selectedSheet, setSelectedSheet] = useState<number | null>(null)
-  const [rawGrid, setRawGrid] = useState<string[][]>([])
-  const [fileName, setFileName] = useState('')
-  const [headerRowIndex, setHeaderRowIndex] = useState<number | null>(null)
-  const [mapping, setMapping] = useState<Record<MapKey, number | ''>>(EMPTY_MAPPING)
-  const [nccInput, setNccInput] = useState('')
-  const [importing, setImporting] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [vietjetMode, setVietjetMode] = useState(false)
-  const [fcvnMode, setFcvnMode] = useState(false)
-  // Chỉ số (trong dataRows) của các dòng bị nghi là "rác" (tiêu đề phụ lặp
-  // lại, dòng ngăn cách section...) nhưng kế toán đã bấm "Giữ dòng này" —
-  // những dòng đó vẫn được nhập dù bị tô đỏ. Xem isLikelyJunkRow().
-  const [keptJunkRows, setKeptJunkRows] = useState<Set<number>>(new Set())
-  // Chiều ngược lại: dòng KHÔNG bị isLikelyJunkRow() tự phát hiện (vd dòng
-  // "Người lập/Người kiểm" cuối file, cột mã vé/PNR tình cờ không rỗng)
-  // nhưng kế toán nhìn thấy vẫn là rác — bấm "Đánh dấu là rác" để tự thêm
-  // vào đây, loại khỏi lượt nhập dù thuật toán bỏ sót.
-  const [manualJunkRows, setManualJunkRows] = useState<Set<number>>(new Set())
-
-  // Filters
-  const [search, setSearch] = useState('')
-  const [nccFilter, setNccFilter] = useState('')
-  // rowNccFilter: lọc theo cột NCC ngay TRONG tab "Tổng hợp" (khác nccFilter
-  // ở trên — đó là chọn TAB FCVN/SAO ĐỎ/VIETJET/SUN PQC, luôn rỗng khi đang
-  // ở Tổng hợp) — chỉ dùng/hiện dropdown này khi nccFilter === ''.
-  const [rowNccFilter, setRowNccFilter] = useState('')
-  const [tktFilter, setTktFilter] = useState('')
-  const [khFilter, setKhFilter] = useState('')
-
-  // Khớp mã khách theo tin nhắn Telegram — tab "Tổng hợp" dùng
-  // ve_debt_records (viewingMatchRow), 4 tab NCC raw dùng
-  // ve_debt_records_raw + bảng sidecar ve_debt_records_raw_match
-  // (viewingRawMatch). Nút "Khớp lại mã khách" gọi đúng endpoint theo tab
-  // đang xem (nccFilter rỗng = Tổng hợp).
-  const [rematching, setRematching] = useState(false)
-  const [viewingMatchRow, setViewingMatchRow] = useState<DebtRow | null>(null)
-  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
-  // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
-  // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
-  // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
-  const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
-  const { widths: rawPanelWidths, startResize: startRawPanelResize } = useResizableColumns('cong-no-raw-panel', { panel: 360 })
-  const [resizingRawPanel, setResizingRawPanel] = useState(false)
-  function startResizeRawPanel(e: React.MouseEvent) {
-    setResizingRawPanel(true)
-    startRawPanelResize('panel', e)
-    const onUp = () => { setResizingRawPanel(false); window.removeEventListener('mouseup', onUp) }
-    window.addEventListener('mouseup', onUp)
-  }
-
-  async function runRematch() {
-    setRematching(true)
-    try {
-      if (nccFilter) {
-        await fetch('/api/ve-may-bay/cong-no-raw/match-ma-khach', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}',
-        })
-        await loadRawData()
-      } else {
-        await fetch('/api/ve-may-bay/cong-no/match-ma-khach', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}',
-        })
-        await loadData()
-      }
-    } finally {
-      setRematching(false)
-    }
-  }
-
-  // Gán mã khách TAY cho 1 dòng trong lô raw (qua slide-over). matchedBookingId
-  // khác null chỉ khi chọn từ 1 candidate cụ thể — giữ vết truy vết, đúng
-  // semantics của saveMaKhachManual (bản structured) bên dưới. giaMua/giaBan
-  // đi kèm khi chọn đúng 1 pax cụ thể (có giá riêng từ tin nhắn) — luôn ghi
-  // đè (khác auto-match chỉ điền khi đang rỗng) vì đây là hành động kế toán
-  // chủ động chọn, không phải chạy nền tự động.
-  async function saveRawMaKhachManual(batchId: string, rowIndex: number, maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) {
-    const trimmed = maKhach.trim()
-    const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
-    const hasGia = trimmed && matchedBookingId && (giaMua != null || giaBan != null)
-    setRawBatches(prev => prev.map(b => {
-      if (b.id !== batchId) return b
-      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
-      return {
-        ...b,
-        ve_debt_records_raw_match: [
-          ...others,
-          {
-            row_index: rowIndex,
-            ma_khach: trimmed || null,
-            match_status: nextStatus,
-            matched_booking_id: trimmed ? matchedBookingId : null,
-            gia_mua: hasGia ? (giaMua ?? existing?.gia_mua ?? null) : (existing?.gia_mua ?? null),
-            gia_ban: hasGia ? (giaBan ?? existing?.gia_ban ?? null) : (existing?.gia_ban ?? null),
-            gia_source: hasGia ? 'message' : (existing?.gia_source ?? null),
-          },
-        ],
-      }
-    }))
-    const body: Record<string, unknown> = { ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }
-    if (hasGia) {
-      if (giaMua != null) body.gia_mua = giaMua
-      if (giaBan != null) body.gia_ban = giaBan
-    }
-    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  }
-
-  // Sửa tay 1 giá (bấm cây viết) — KHÔNG kèm matched_booking_id nên server
-  // tự gắn gia_source='manual' (xem PATCH .../rows/[rowIndex]/route.ts).
-  async function saveRawGiaManual(batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) {
-    setRawBatches(prev => prev.map(b => {
-      if (b.id !== batchId) return b
-      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
-      return {
-        ...b,
-        ve_debt_records_raw_match: [
-          ...others,
-          {
-            row_index: rowIndex,
-            ma_khach: existing?.ma_khach ?? null,
-            match_status: existing?.match_status ?? 'unmatched',
-            matched_booking_id: existing?.matched_booking_id ?? null,
-            gia_mua: field === 'gia_mua' ? value : (existing?.gia_mua ?? null),
-            gia_ban: field === 'gia_ban' ? value : (existing?.gia_ban ?? null),
-            gia_source: 'manual',
-          },
-        ],
-      }
-    }))
-    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-  }
-
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setLoadError(false)
-    try {
-      const res = await fetch('/api/ve-may-bay/cong-no')
-      if (!res.ok) throw new Error('load failed')
-      const { data } = await res.json()
-      setRows(Array.isArray(data) ? data : [])
-    } catch {
-      setLoadError(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData()
-  }, [loadData])
-
-  const [rawBatches, setRawBatches] = useState<RawBatch[]>([])
-
-  const loadRawData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ve-may-bay/cong-no-raw')
-      if (!res.ok) return
-      const { data } = await res.json()
-      setRawBatches(Array.isArray(data) ? data : [])
-    } catch { /* im lặng — chỉ ảnh hưởng 4 tab NCC, không chặn trang */ }
-  }, [setRawBatches])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadRawData()
-  }, [loadRawData])
-
-  const loadAll = useCallback(() => {
-    loadData()
-    loadRawData()
-  }, [loadData, loadRawData])
-
-  async function deleteRawBatch(id: string) {
-    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
-    try {
-      await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
-      loadRawData()
-    } catch { /* im lặng */ }
-  }
-
-  useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Công nợ NCC</span>)
-    setOnRefresh(loadAll)
-    return () => {
-      setBreadcrumb(null)
-      setOnRefresh(null)
-    }
-  }, [setBreadcrumb, setOnRefresh, loadAll])
-
-  // Danh mục để gợi ý autocomplete cho "Tìm mã khách/TKT/sale chính" — kéo
-  // từ nguồn CHUẨN thay vì chỉ suy ra từ các dòng đã gắn tay trong chính
-  // bảng này (rows hầu hết còn trống 3 trường này nên tự suy ra gần như
-  // rỗng): mã khách lấy từ /ve-may-bay/vmb-khach-hang (danh mục chuẩn có
-  // tên đầy đủ, xem migration_vmb_khach_hang.sql — thay cho
-  // /ve-may-bay/khach-hang-vmb cũ, chỉ có mã không có tên), TKT lấy từ bảng
-  // ve_tkt thật, sale chính lấy từ danh sách nhân viên (users,
-  // is_active=true) — RLS bảng users đã cho authenticated đọc thẳng, cùng
-  // cách trang /nhan-vien đang dùng.
-  const [dirMaKhach, setDirMaKhach] = useState<KhachOpt[]>([])
-  const [dirTkt, setDirTkt] = useState<string[]>([])
-  const [dirSaleChinh, setDirSaleChinh] = useState<string[]>([])
-
-  const loadDirectories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ve-may-bay/vmb-khach-hang')
-      const { data } = await res.json()
-      if (Array.isArray(data)) setDirMaKhach(data.map((d: { ma_khach: string; ten_khach: string | null }) => ({ ma_khach: d.ma_khach, ten_khach: d.ten_khach })).filter((d: KhachOpt) => d.ma_khach))
-    } catch { /* im lặng — chỉ ảnh hưởng gợi ý, không chặn trang */ }
-
-    try {
-      const res = await fetch('/api/ve-may-bay/tkt')
-      const { data } = await res.json()
-      if (Array.isArray(data)) setDirTkt(data.filter((t: { active: boolean }) => t.active).map((t: { tkt_code: string }) => t.tkt_code).filter(Boolean))
-    } catch { /* im lặng */ }
-
-    try {
-      const res = await fetch('/api/ve-may-bay/users')
-      const { data } = await res.json()
-      if (Array.isArray(data)) setDirSaleChinh(data.map((u: { full_name: string }) => u.full_name).filter(Boolean))
-    } catch { /* im lặng */ }
-  }, [])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadDirectories()
-  }, [loadDirectories])
-
-  function resetWizard() {
-    setSheets([]); setSelectedSheet(null); setRawGrid([]); setFileName('')
-    setHeaderRowIndex(null); setMapping(EMPTY_MAPPING); setNccInput(''); setImportError('')
-    setVietjetMode(false); setFcvnMode(false); setKeptJunkRows(new Set()); setManualJunkRows(new Set())
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
-  // vẫn TỰ NHẬN DIỆN đúng dòng tiêu đề + tên NCC theo chữ ký Vietjet/FCVN đã
-  // biết (đỡ phải tự cuộn/bấm chọn dòng tay), nhưng KHÔNG tự tách sẵn cột
-  // (ngày bay/hành trình từ SEGMENTS, ngày xuất/đi/về từ issue date FCVN...)
-  // nữa — luồng chung giờ là xem nguyên xi/map cột tay, việc "biến đổi"
-  // (tách/chuẩn hoá cột) làm ở bước riêng sau. Vì vậy KHÔNG bật
-  // vietjetMode/fcvnMode (2 cờ đó vẫn giữ, chỉ dùng lại khi làm bước biến
-  // đổi) — cứ để rơi vào nhánh "chọn cột tay" như file NCC khác.
-  function applyGrid(grid: string[][]) {
-    setRawGrid(grid)
-    const vjRow = findVietjetHeaderRow(grid)
-    if (vjRow != null) {
-      setHeaderRowIndex(vjRow)
-      setNccInput('Vietjet')
-      return
-    }
-    const fcvnRow = findFcvnHeaderRow(grid)
-    if (fcvnRow != null) {
-      setHeaderRowIndex(fcvnRow)
-      setNccInput('FCVN')
-      return
-    }
-    setHeaderRowIndex(null)
-  }
-
-  async function handleFilePick(f: File) {
-    setImportError('')
-    setFileName(f.name)
-    setSelectedSheet(null)
-    setRawGrid([])
-    setHeaderRowIndex(null)
-    setMapping(EMPTY_MAPPING)
-    setVietjetMode(false)
-    setFcvnMode(false)
-    try {
-      const isCsv = f.name.toLowerCase().endsWith('.csv')
-      const isXls = f.name.toLowerCase().endsWith('.xls')
-      if (isCsv) {
-        const grid = parseCsvGrid(await f.text())
-        if (grid.length === 0) { setImportError('File này không đọc được dòng nào.'); return }
-        setSheets([{ name: f.name, grid }])
-        setSelectedSheet(0)
-        applyGrid(grid)
-        return
-      }
-      const parsedSheets = (isXls ? await parseXlsFile(f) : await parseXlsxSheetsAny(f))
-        .filter(s => s.grid.some(r => r?.some(c => c.trim() !== '')))
-      if (parsedSheets.length === 0) {
-        setImportError('File này không đọc được sheet/dòng nào.')
-        return
-      }
-      setSheets(parsedSheets)
-      if (parsedSheets.length === 1) {
-        setSelectedSheet(0)
-        applyGrid(parsedSheets[0].grid)
-      }
-    } catch {
-      setImportError('Không đọc được file này — kiểm tra lại định dạng .xlsx/.xls/.csv.')
-    }
-  }
-
-  function pickSheet(idx: number) {
-    setSelectedSheet(idx)
-    setMapping(EMPTY_MAPPING)
-    applyGrid(sheets[idx].grid)
-  }
-
-  function pickHeaderRow(idx: number) {
-    setHeaderRowIndex(idx)
-    setVietjetMode(false)
-    setFcvnMode(false)
-    const headers = rawGrid[idx] ?? []
-    const guess: Record<MapKey, number | ''> = { ...EMPTY_MAPPING }
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[^\x00-\x7f]/g, '')
-    headers.forEach((h, i) => {
-      const n = norm(h)
-      if (guess.ticket_no === '' && /ve|ticket|pnr|code/.test(n)) guess.ticket_no = i
-      if (guess.pax_name === '' && /pax|khach|ten/.test(n)) guess.pax_name = i
-      if (guess.issued_date === '' && /xuat|issue/.test(n)) guess.issued_date = i
-      if (guess.routing === '' && /hanh trinh|routing|chang|segment/.test(n)) guess.routing = i
-      if (guess.gia_mua === '' && /gia mua|fare|price|tien|amount/.test(n)) guess.gia_mua = i
-      if (guess.cktm === '' && /cktm|chiet khau/.test(n)) guess.cktm = i
-      if (guess.gia_ban === '' && /gia ban/.test(n)) guess.gia_ban = i
-      if (guess.com_khach === '' && /com khach|hoa hong/.test(n)) guess.com_khach = i
-    })
-    setMapping(guess)
-  }
-
-  const dataRows = headerRowIndex == null ? [] : rawGrid.slice(headerRowIndex + 1).filter(r => r.some(c => c.trim() !== ''))
-  const headers = headerRowIndex == null ? [] : (rawGrid[headerRowIndex] ?? [])
-  // Chỉ áp dụng cho luồng nhập nguyên xi (submitRaw) — vietjetMode/fcvnMode
-  // đã có quy tắc lọc rác riêng của mình (isFcvnDataRow...), không cần đụng.
-  const rawImportIdColIdx = findIdColumnIndex(headers)
-  const junkRowIndexes = new Set(
-    dataRows.reduce<number[]>((acc, r, i) => {
-      // Rác tự phát hiện thì loại trừ khi kế toán bấm "Giữ dòng này"; dòng
-      // KHÔNG tự phát hiện thì chỉ loại khi kế toán tự bấm "Đánh dấu là rác"
-      // (isLikelyJunkRow bỏ sót — xem comment ở manualJunkRows).
-      const isJunk = isLikelyJunkRow(r, rawImportIdColIdx) ? !keptJunkRows.has(i) : manualJunkRows.has(i)
-      if (isJunk) acc.push(i)
-      return acc
-    }, []),
-  )
-  const rowsToImport = dataRows.filter((_, i) => !junkRowIndexes.has(i))
-
-  // Vị trí cột cố định theo đúng file mẫu Vietjet — xem findVietjetHeaderRow.
-  // Lưu ý tên cột trong file gốc GÂY NHẦM: cột "PAYMENT DATE" (r[2]) thực
-  // chất là ngày xuất vé của Vietjet, không phải ngày thanh toán (Vietjet
-  // không có khái niệm ngày thanh toán riêng trong file này) — còn ngày
-  // tách được từ SEGMENTS (r[3]) là ngày bay đi, không phải ngày xuất vé.
-  const vietjetRows = !vietjetMode ? [] : dataRows.map(r => {
-    const { flightDate, routing } = splitVietjetSegments(r[3] ?? '')
-    return {
-      ticket_no: r[0] ?? '',
-      pax_name: r[1] ?? '',
-      issued_date: r[2] ?? '',
-      departure_date: flightDate,
-      routing,
-      gia_mua: parseVndNumber(r[7] ?? ''),
-    }
-  })
-
-  async function submitVietjetImport() {
-    if (!nccInput.trim()) {
-      setImportError('Chưa nhập NCC (nhà cung cấp) cho lô này.')
-      return
-    }
-    setImporting(true)
-    setImportError('')
-    try {
-      const res = await fetch('/api/ve-may-bay/cong-no', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc: nccInput.trim(), source_file: fileName, rows: vietjetRows }),
-      })
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
-        setImportError(error || 'Nhập thất bại')
-        return
-      }
-      resetWizard()
-      loadData()
-    } catch {
-      setImportError('Nhập thất bại, thử lại.')
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  // Vị trí cột cố định theo đúng file mẫu FCVN — xem findFcvnHeaderRow.
-  // Lọc bỏ dòng nhóm/dòng phụ/dòng tổng bằng isFcvnDataRow (Order phải là
-  // số nguyên dương) — dataRows (lọc "not all-empty" chung) không đủ vì
-  // các dòng đó vẫn có vài ô không rỗng (tên hãng, chữ "Total"...).
-  const fcvnRows = !fcvnMode ? [] : dataRows.filter(isFcvnDataRow).map(r => {
-    const { issued, departure, returnDate } = splitFcvnIssueDate(r[2] ?? '')
-    return {
-      ticket_no: r[3] ?? '',
-      pax_name: r[4] ?? '',
-      issued_date: issued,
-      departure_date: departure,
-      return_date: returnDate,
-      routing: r[5] ?? '',
-      gia_mua: parseVndNumber(r[16] ?? ''),
-    }
-  })
-
-  async function submitFcvnImport() {
-    if (!nccInput.trim()) {
-      setImportError('Chưa nhập NCC (nhà cung cấp) cho lô này.')
-      return
-    }
-    setImporting(true)
-    setImportError('')
-    try {
-      const res = await fetch('/api/ve-may-bay/cong-no', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc: nccInput.trim(), source_file: fileName, rows: fcvnRows }),
-      })
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
-        setImportError(error || 'Nhập thất bại')
-        return
-      }
-      resetWizard()
-      loadData()
-    } catch {
-      setImportError('Nhập thất bại, thử lại.')
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  async function submitImport() {
-    const missing = REQUIRED_FIELDS.filter(f => mapping[f.key] === '')
-    if (missing.length > 0) {
-      setImportError(`Chưa chọn cột cho: ${missing.map(f => f.label).join(', ')}`)
-      return
-    }
-    if (!nccInput.trim()) {
-      setImportError('Chưa nhập NCC (nhà cung cấp) cho lô này.')
-      return
-    }
-    setImporting(true)
-    setImportError('')
-    try {
-      const importRows = dataRows.map(r => ({
-        ticket_no: r[mapping.ticket_no as number] ?? '',
-        pax_name: r[mapping.pax_name as number] ?? '',
-        issued_date: r[mapping.issued_date as number] ?? '',
-        routing: r[mapping.routing as number] ?? '',
-        gia_mua: parseVndNumber(r[mapping.gia_mua as number] ?? ''),
-        cktm: mapping.cktm === '' ? null : parseVndNumber(r[mapping.cktm as number] ?? ''),
-        gia_ban: mapping.gia_ban === '' ? null : parseVndNumber(r[mapping.gia_ban as number] ?? ''),
-        com_khach: mapping.com_khach === '' ? null : parseVndNumber(r[mapping.com_khach as number] ?? ''),
-      }))
-      const res = await fetch('/api/ve-may-bay/cong-no', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc: nccInput.trim(), source_file: fileName, rows: importRows }),
-      })
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
-        setImportError(error || 'Nhập thất bại')
-        return
-      }
-      resetWizard()
-      loadData()
-    } catch {
-      setImportError('Nhập thất bại, thử lại.')
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  // Nhập không map cột — lưu y hệt header + dữ liệu thô của file gốc vào
-  // ve_debt_records_raw. Dùng cho cả 4 tab NCC cố định (ncc = nccFilter)
-  // lẫn tab "Tổng hợp" (ncc = nhập tay/tự nhận diện qua nccInput) — việc
-  // chuẩn hoá về định dạng chung cho Tổng hợp làm ở bước riêng sau.
-  async function submitRaw() {
-    const ncc = nccFilter || nccInput.trim()
-    if (!ncc) {
-      setImportError('Chưa nhập NCC (nhà cung cấp) cho lô này.')
-      return
-    }
-    setImporting(true)
-    setImportError('')
-    try {
-      const res = await fetch('/api/ve-may-bay/cong-no-raw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ncc, source_file: fileName, headers, rows: rowsToImport }),
-      })
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
-        setImportError(error || 'Nhập thất bại')
-        return
-      }
-      resetWizard()
-      loadRawData()
-    } catch {
-      setImportError('Nhập thất bại, thử lại.')
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  async function saveField(id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value || null } : r))
-    await fetch(`/api/ve-may-bay/cong-no/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-  }
-
-  // Gán mã khách TAY (qua ô MaKhachCell hoặc slide-over) — khác saveField ở
-  // chỗ luôn kéo theo đổi match_status. matchedBookingId khác null chỉ khi
-  // gọi từ slide-over (chọn đúng 1 candidate cụ thể, giữ vết truy vết); null
-  // khi gõ tự do/chọn từ danh mục chuẩn (MaKhachCell) — không có booking cụ
-  // thể nào đứng sau lựa chọn đó. Rỗng ('') = bỏ chọn → quay lại 'unmatched'
-  // (đỏ) thay vì giữ trạng thái cũ, đúng ngữ nghĩa "chưa có mã khách nào".
-  async function saveMaKhachManual(id: string, maKhach: string, matchedBookingId: string | null) {
-    const trimmed = maKhach.trim()
-    const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
-    setRows(prev => prev.map(r => r.id === id
-      ? { ...r, ma_khach: trimmed || null, match_status: nextStatus, matched_booking_id: trimmed ? matchedBookingId : null }
-      : r))
-    await fetch(`/api/ve-may-bay/cong-no/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }),
-    })
-  }
-
-  async function saveNumberField(id: string, field: 'gia_mua' | 'cktm' | 'gia_ban' | 'com_khach', value: number | null) {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r))
-    await fetch(`/api/ve-may-bay/cong-no/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-  }
-
-  async function deleteRow(id: string) {
-    setRows(prev => prev.filter(r => r.id !== id))
-    await fetch(`/api/ve-may-bay/cong-no/${id}`, { method: 'DELETE' })
-  }
-
-  // So khớp không phân biệt hoa/thường/khoảng trắng — tab NCC cố định
-  // (FCVN/SAO ĐỎ/VIETJET/SUN PQC) chưa chắc khớp Y HỆT cách viết hoa/thường
-  // đã lưu trong dữ liệu (vd "Vietjet" lúc nhập file vs tab "VIETJET").
-  const byNcc = rows.filter(r => !nccFilter || (r.ncc ?? '').trim().toUpperCase() === nccFilter.trim().toUpperCase())
-  const nccOptions = Array.from(new Set(rows.map(r => r.ncc).filter(Boolean))) as string[]
-  const byRowNcc = byNcc.filter(r => !rowNccFilter || r.ncc === rowNccFilter)
-  const tkts = Array.from(new Set(byRowNcc.map(r => r.tkt_tag).filter(Boolean))) as string[]
-  const byTkt = byRowNcc.filter(r => !tktFilter || r.tkt_tag === tktFilter)
-  const khs = Array.from(new Set(byTkt.map(r => r.ma_khach).filter(Boolean))) as string[]
-  const byKh = byTkt.filter(r => !khFilter || r.ma_khach === khFilter)
-
-  const filtered = byKh.filter(r => {
-    if (!search.trim()) return true
-    const q = search.trim().toLowerCase()
-    const hay = [r.ticket_no, r.pax_name, r.routing, r.ncc, r.tkt_tag, r.ma_khach].filter(Boolean).join(' ').toLowerCase()
-    return hay.includes(q)
-  })
-
-  // Gợi ý autocomplete cho ô "Tìm TKT"/"Tìm mã khách"/"Tìm sale chính" —
-  // hợp cả danh mục CHUẨN (dirTkt/dirMaKhach/dirSaleChinh, xem loadDirectories)
-  // VÀ giá trị đã từng gắn tay trong chính bảng này (rows), phòng khi có
-  // tag cũ không khớp danh mục chuẩn (gõ tự do trước khi có autocomplete).
-  const allTktTags = Array.from(new Set([...dirTkt, ...rows.map(r => r.tkt_tag).filter(Boolean) as string[]]))
-  const allMaKhach: KhachOpt[] = (() => {
-    const map = new Map<string, KhachOpt>()
-    for (const d of dirMaKhach) map.set(d.ma_khach.toUpperCase(), d)
-    for (const r of rows) {
-      if (r.ma_khach && !map.has(r.ma_khach.toUpperCase())) map.set(r.ma_khach.toUpperCase(), { ma_khach: r.ma_khach, ten_khach: null })
-    }
-    return Array.from(map.values()).sort((a, b) => a.ma_khach.localeCompare(b.ma_khach))
-  })()
-  const allSaleChinh = Array.from(new Set([...dirSaleChinh, ...rows.map(r => r.sale_chinh).filter(Boolean) as string[]]))
-
-  return (
-    <>
-    <div className="px-5 pb-5 space-y-4">
-      {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
-          (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
-          padding-top) để 2 thanh liền mạch nhau. */}
-      <div className="min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
-        <div className="flex items-center gap-1 flex-wrap">
-          {(['', ...NCC_TABS] as const).map(n => (
-            <button key={n || 'tong-hop'} type="button"
-              onClick={() => { setNccFilter(n); setTktFilter(''); setKhFilter(''); resetWizard() }}
-              className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}>
-              {n || 'Tổng hợp'}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
-          <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
-            Tải file công nợ NCC
-          </button>
-          {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
-          <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
-            {rematching && <Loader2 size={13} className="animate-spin" />} Tìm mã khách
-          </button>
-          <button onClick={loadAll} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
-          (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
-      {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
-      <div className="fixed inset-0 z-[100] bg-black/40" onClick={resetWizard}>
-      <div className="bg-white w-screen h-screen overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
-          <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-        {importError && sheets.length === 0 && <p className="text-xs text-red-500">{importError}</p>}
-
-        {sheets.length > 1 && selectedSheet == null && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-semibold text-gray-500">
-              File &quot;{fileName}&quot; có {sheets.length} sheet — chọn sheet cần nhập:
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {sheets.map((s, i) => (
-                <button key={i} onClick={() => pickSheet(i)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-brand-500 hover:text-white transition-colors">
-                  {s.name} <span className="text-[10px] opacity-70">({s.grid.length} dòng)</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedSheet != null && rawGrid.length > 0 && headerRowIndex == null && (
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-gray-500">
-                Bấm chọn dòng nào là tiêu đề cột trong sheet &quot;{sheets[selectedSheet]?.name}&quot; (nhiều file công nợ hãng có mấy dòng thông tin công ty/ngày tháng phía trên, tiêu đề thật không phải lúc nào cũng ở dòng 1):
-              </p>
-              {sheets.length > 1 && (
-                <button onClick={() => { setSelectedSheet(null); setRawGrid([]) }} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
-                  ← Chọn sheet khác
-                </button>
-              )}
-            </div>
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
-              <table className="text-xs">
-                <tbody>
-                  {rawGrid.slice(0, 20).map((r, i) => (
-                    <tr key={i} className="hover:bg-brand-50 cursor-pointer border-b border-gray-100 last:border-0" onClick={() => pickHeaderRow(i)}>
-                      <td className="px-2 py-1.5 text-gray-300 border-r border-gray-100 whitespace-nowrap sticky left-0 bg-white">
-                        <button className="px-2 py-0.5 rounded bg-gray-100 hover:bg-brand-500 hover:text-white text-gray-500 font-semibold transition-colors">
-                          Dòng {i + 1}
-                        </button>
-                      </td>
-                      {r.slice(0, 12).map((c, j) => (
-                        <td key={j} className="px-2 py-1.5 text-gray-600 whitespace-nowrap max-w-[160px] truncate">{c || '—'}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {headerRowIndex != null && vietjetMode && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-emerald-600">
-                ✓ Nhận diện: file công nợ Vietjet — tự tách sẵn ngày bay/hành trình từ SEGMENTS, {vietjetRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
-              </p>
-              <button onClick={() => { setVietjetMode(false); setHeaderRowIndex(null) }} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
-                Không phải Vietjet? Chọn cột thủ công
-              </button>
-            </div>
-
-            <div className="max-w-xs">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">NCC (nhà cung cấp) *</label>
-              <input value={nccInput} onChange={e => setNccInput(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
-              <table className="text-xs w-full">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500">
-                    {['Mã vé (PNR)', 'Pax', 'Ngày xuất vé', 'Ngày bay đi', 'Hành trình', 'Giá mua'].map(h => (
-                      <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {vietjetRows.map((r, i) => (
-                    <tr key={i} className="border-t border-gray-100">
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.ticket_no || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.pax_name || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.issued_date || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.departure_date || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.routing || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-right">{r.gia_mua != null ? r.gia_mua.toLocaleString('vi-VN') : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-            <div className="flex items-center gap-2">
-              <button onClick={submitVietjetImport} disabled={importing}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {vietjetRows.length} dòng vào hệ thống
-              </button>
-              <button onClick={resetWizard} disabled={importing} type="button"
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
-                Hủy
-              </button>
-            </div>
-          </div>
-        )}
-
-        {headerRowIndex != null && fcvnMode && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-emerald-600">
-                ✓ Nhận diện: file công nợ FCVN — tự tách sẵn ngày xuất/ngày bay đi/về, bỏ qua dòng tiêu đề nhóm hãng, {fcvnRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
-              </p>
-              <button onClick={() => { setFcvnMode(false); setHeaderRowIndex(null) }} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
-                Không phải FCVN? Chọn cột thủ công
-              </button>
-            </div>
-
-            <div className="max-w-xs">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">NCC (nhà cung cấp) *</label>
-              <input value={nccInput} onChange={e => setNccInput(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
-              <table className="text-xs w-full">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500">
-                    {['Mã vé', 'Pax', 'Ngày xuất', 'Ngày bay đi', 'Ngày bay về', 'Hành trình', 'Giá mua'].map(h => (
-                      <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {fcvnRows.map((r, i) => (
-                    <tr key={i} className="border-t border-gray-100">
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.ticket_no || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.pax_name || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.issued_date || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.departure_date || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.return_date || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.routing || '—'}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-right">{r.gia_mua != null ? r.gia_mua.toLocaleString('vi-VN') : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-            <div className="flex items-center gap-2">
-              <button onClick={submitFcvnImport} disabled={importing}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {fcvnRows.length} dòng vào hệ thống
-              </button>
-              <button onClick={resetWizard} disabled={importing} type="button"
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
-                Hủy
-              </button>
-            </div>
-          </div>
-        )}
-
-        {headerRowIndex != null && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">
-                {nccFilter ? `Nhập vào tab "${nccFilter}"` : 'Nhập vào tab "Tổng hợp"'} — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
-                {junkRowIndexes.size > 0 && (
-                  <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
-                )}
-                {' '}Thấy dòng rác nào chưa bị tô đỏ? Rê chuột vào dòng đó, bấm &quot;Bỏ dòng này&quot; để loại luôn.
-              </span>
-              <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
-                ← Chọn lại dòng tiêu đề
-              </button>
-            </div>
-
-            {!nccFilter && (
-              <div className="max-w-xs">
-                <label className="block text-xs font-semibold text-gray-500 mb-1">NCC (nhà cung cấp) *</label>
-                <input value={nccInput} onChange={e => setNccInput(e.target.value)} placeholder="VD: Vietnam Airlines, Đại lý ABC..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              </div>
-            )}
-
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-[70vh]">
-              <table className="text-xs w-full">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500">
-                    {rawImportIdColIdx != null && <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap"></th>}
-                    {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {dataRows.map((r, i) => {
-                    const isJunk = junkRowIndexes.has(i)
-                    const isAutoJunk = isLikelyJunkRow(r, rawImportIdColIdx)
-                    return (
-                    <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''} group`}>
-                      {rawImportIdColIdx != null && (
-                        <td className="px-2 py-1.5 align-top">
-                          {isJunk ? (
-                            <button type="button"
-                              onClick={() => isAutoJunk
-                                ? setKeptJunkRows(prev => new Set(prev).add(i))
-                                : setManualJunkRows(prev => { const next = new Set(prev); next.delete(i); return next })}
-                              className="text-[10px] font-semibold text-red-600 hover:text-red-700 underline whitespace-nowrap">
-                              Giữ dòng này
-                            </button>
-                          ) : (
-                            <button type="button" onClick={() => setManualJunkRows(prev => new Set(prev).add(i))}
-                              className="text-[10px] font-semibold text-gray-300 hover:text-red-600 underline whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                              Bỏ dòng này
-                            </button>
-                          )}
-                        </td>
-                      )}
-                      {headers.map((h, j) => (
-                        <td key={j} className={`px-2 py-1.5 align-top max-w-[200px] ${isJunk ? 'text-red-500' : ''}`}>
-                          {h?.trim().toUpperCase() === 'SEGMENTS' ? (
-                            <div className="space-y-0.5">
-                              {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap truncate">{seg}</div>)}
-                            </div>
-                          ) : (
-                            <span className="whitespace-nowrap truncate block">{r[j] || '—'}</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-            <div className="flex items-center gap-2">
-              <button onClick={submitRaw} disabled={importing}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {rowsToImport.length} dòng vào tab &quot;{nccFilter || nccInput || '—'}&quot;
-                {junkRowIndexes.size > 0 && <span className="opacity-75"> (đã bỏ {junkRowIndexes.size} dòng rác)</span>}
-              </button>
-              <button onClick={resetWizard} disabled={importing} type="button"
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
-                Hủy
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      </div>,
-      document.body
-      )}
-
-      {nccFilter === '' ? (
-        <>
-          {/* Filters + view mode */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-1/2 min-w-[220px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-            <select value={rowNccFilter} onChange={e => { setRowNccFilter(e.target.value); setTktFilter(''); setKhFilter('') }} className={SELECT}>
-              <option value="">Tất cả NCC</option>
-              {nccOptions.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
-              <option value="">Tất cả TKT</option>
-              {tkts.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={khFilter} onChange={e => setKhFilter(e.target.value)} className={SELECT}>
-              <option value="">Tất cả khách hàng</option>
-              {khs.map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
-
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 ml-auto">
-              {([
-                { key: 'bang', icon: Table2, title: 'Bảng (giống Excel)' },
-                { key: 'list', icon: List, title: 'Danh sách' },
-                { key: 'card', icon: LayoutGrid, title: 'Thẻ' },
-              ] as const).map(v => (
-                <button key={v.key} title={v.title} onClick={() => setViewMode(v.key)}
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === v.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <v.icon size={14} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-300">Đang tải...</div>
-          ) : loadError ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
-              <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-              <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.</div>
-          ) : viewMode === 'bang' ? (
-            <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
-          ) : viewMode === 'list' ? (
-            <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
-          ) : (
-            <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
-          )}
-        </>
-      ) : (
-        <div className="flex items-start">
-          <div
-            className={`relative shrink-0 sticky top-4 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
-            style={viewingRawMatch ? { width: rawPanelWidths.panel } : undefined}>
-            <div style={{ width: rawPanelWidths.panel }}>
-              <RawMatchPanel
-                target={viewingRawMatch ? {
-                  id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
-                  ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
-                  contextLabel: viewingRawMatch.paxLabel,
-                  matchStatus: viewingRawMatch.matchStatus,
-                } : null}
-                candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
-                onClose={() => setViewingRawMatch(null)}
-                onSelectMessage={setSelectedRawMessage}
-              />
-            </div>
-            {viewingRawMatch && (
-              <div onMouseDown={startResizeRawPanel} title="Kéo để đổi độ rộng"
-                className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-300/50 active:bg-brand-400/60 transition-colors" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0 space-y-4">
-            {selectedRawMessage && (
-              <SelectedMessagePaxTable
-                key={selectedRawMessage.message.parse_log_id}
-                message={selectedRawMessage.message}
-                khachInfo={selectedRawMessage.khachInfo}
-                onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
-              />
-            )}
-            <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
-              onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
-          </div>
-        </div>
-      )}
-    </div>
-    {viewingMatchRow && (
-      <MatchSlideOver
-        target={{
-          id: viewingMatchRow.id,
-          ticketLabel: viewingMatchRow.ticket_no ?? 'Không có mã vé',
-          contextLabel: `${viewingMatchRow.pax_name ?? '—'} · ${viewingMatchRow.routing ?? '—'}`,
-          matchStatus: viewingMatchRow.match_status,
-        }}
-        candidatesUrl={`/api/ve-may-bay/cong-no/${viewingMatchRow.id}/candidates`}
-        khSuggestions={allMaKhach}
-        onSaved={(maKhach, matchedBookingId) => saveMaKhachManual(viewingMatchRow.id, maKhach, matchedBookingId)}
-        onClose={() => setViewingMatchRow(null)} />
-    )}
-    </>
-  )
 }
 
 // Bảng hành khách của TIN NHẮN đang chọn ở RawMatchPanel (bên trái) — hiện
@@ -1774,7 +508,7 @@ function RawPriceCell({ value, source, onSave }: { value: number | null; source:
 
 // Khung bảng dùng chung cho cả lô đã upload lẫn tab chưa có dữ liệu (rows
 // rỗng → tự kẻ lưới trống theo đúng số cột header) — có cùng thanh đếm
-// dòng + nút "Phóng to" (portal thẳng document.body, giống BangExcelView)
+// dòng + nút "Phóng to" (portal thẳng document.body, giống bảng Tổng hợp)
 // như bảng "Tổng hợp" để đồng nhất trải nghiệm giữa các tab.
 //
 // Cột "Mã khách" là cột THÊM VÀO ở UI (không nằm trong headers gốc — dữ
@@ -1873,10 +607,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                     ) : j === paxColIdx ? (
                       // Vé đoàn FCVN gộp nhiều pax vào 1 ô, nối bằng "+" (vd
                       // "5 PAX ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH..."
-                      // — tách xuống dòng cho dễ đọc, dùng lại đúng
-                      // splitPaxNames đã có cho bảng Tổng hợp. NCC nào không
-                      // khớp mẫu "N PAX..." thì trả về nguyên 1 dòng, không
-                      // đổi gì so với trước.
+                      // — tách xuống dòng cho dễ đọc bằng splitPaxLinesForDisplay.
                       <button type="button" onClick={() => onOpenMatch(i)}
                         className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                         <div className="space-y-0.5">
@@ -1928,338 +659,486 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   return <>{content}{menu}</>
 }
 
-type FieldSaver = (id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) => void
-type MaKhachSaver = (id: string, maKhach: string, matchedBookingId: string | null) => void
-type NumberFieldSaver = (id: string, field: 'gia_mua' | 'cktm' | 'gia_ban' | 'com_khach', value: number | null) => void
+export default function CongNoVePage() {
+  const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const fileRef = useRef<HTMLInputElement>(null)
 
-// Chế độ "Bảng" — cố tình giống Excel nhất có thể: 1 kiểu chữ/1 size/1 màu
-// đồng nhất cho mọi ô (không dùng badge màu, không bo góc, viền kẻ ô như
-// gridline thật), số căn phải.
-type ColDef = { key: string; label: string; align?: 'right'; width: number }
-const BANG_COLS: ColDef[] = [
-  { key: 'stt', label: 'STT', width: 40 },
-  { key: 'ncc', label: 'NCC', width: 70 },
-  { key: 'ngay_xuat', label: 'Ngày xuất vé', width: 110 },
-  { key: 'ma_ve', label: 'Mã vé', width: 100 },
-  { key: 'pax', label: 'Pax', width: 150 },
-  { key: 'ngay_di', label: 'Ngày bay đi', width: 100 },
-  { key: 'ngay_ve', label: 'Ngày bay về', width: 100 },
-  { key: 'hanh_trinh', label: 'Hành trình', width: 170 },
-  { key: 'gia_mua', label: 'Giá mua', align: 'right', width: 100 },
-  { key: 'cktm', label: 'CKTM', align: 'right', width: 80 },
-  { key: 'tong_mua', label: 'Tổng mua', align: 'right', width: 100 },
-  { key: 'gia_ban', label: 'Giá bán', align: 'right', width: 100 },
-  { key: 'com_khach', label: 'COM khách', align: 'right', width: 90 },
-  { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right', width: 100 },
-  { key: 'ma_khach', label: 'Mã khách', width: 120 },
-  { key: 'tkt', label: 'TKT', width: 90 },
-  { key: 'sale_chinh', label: 'Sale chính', width: 110 },
-  { key: 'ln_truoc_com', label: 'LN trước COM', align: 'right', width: 110 },
-  { key: 'ln_tinh_thue', label: 'LN tính thuế', align: 'right', width: 100 },
-  { key: 'ty_le_thue', label: '% Thuế TNDN', align: 'right', width: 90 },
-  { key: 'thue_tndn', label: 'Thuế TNDN', align: 'right', width: 100 },
-  { key: 'thue_gtgt', label: 'Thuế GTGT 8%', align: 'right', width: 100 },
-  { key: 'quy_cskh', label: 'Quỹ CSKH 5%', align: 'right', width: 100 },
-  { key: 'ln_con_lai_hh', label: 'LN còn lại chia HH', align: 'right', width: 130 },
-  { key: 'hh_tkt', label: 'HH TKT 10%', align: 'right', width: 100 },
-  { key: 'hh_kt1', label: 'HH KT1 3%', align: 'right', width: 100 },
-  { key: 'hh_kt2', label: 'HH KT2 1,5%', align: 'right', width: 100 },
-  { key: 'hh_sale_chinh', label: 'HH Sale chính 25%', align: 'right', width: 110 },
-  { key: 'ln_cty', label: 'LN Cty còn lại', align: 'right', width: 110 },
-  { key: 'ghi_chu', label: 'Ghi chú', width: 160 },
-  { key: 'action', label: '', width: 36 },
-]
-const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
+  // Upload wizard
+  const [sheets, setSheets] = useState<SheetData[]>([])
+  const [selectedSheet, setSelectedSheet] = useState<number | null>(null)
+  const [rawGrid, setRawGrid] = useState<string[][]>([])
+  const [fileName, setFileName] = useState('')
+  const [headerRowIndex, setHeaderRowIndex] = useState<number | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  // Chỉ số (trong dataRows) của các dòng bị nghi là "rác" (tiêu đề phụ lặp
+  // lại, dòng ngăn cách section...) nhưng kế toán đã bấm "Giữ dòng này" —
+  // những dòng đó vẫn được nhập dù bị tô đỏ. Xem isLikelyJunkRow().
+  const [keptJunkRows, setKeptJunkRows] = useState<Set<number>>(new Set())
+  // Chiều ngược lại: dòng KHÔNG bị isLikelyJunkRow() tự phát hiện nhưng kế
+  // toán nhìn thấy vẫn là rác — bấm "Bỏ dòng này" để tự thêm vào đây, loại
+  // khỏi lượt nhập dù thuật toán bỏ sót.
+  const [manualJunkRows, setManualJunkRows] = useState<Set<number>>(new Set())
 
-function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: {
-  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const { widths, startResize } = useResizableColumns('ve-cong-no-bang', BANG_COL_DEFAULTS)
+  // Tab NCC đang xem — luôn có 1 trong 4 tab cố định được chọn (không còn
+  // khái niệm "Tổng hợp" ở trang này nữa, xem /ve-may-bay/tong-hop-cong-no-ncc).
+  const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
-  // BẮT BUỘC phải set width tường minh cho <table>: theo chuẩn CSS,
-  // `table-layout: fixed` CHỈ có hiệu lực khi bảng có width khác `auto`.
-  // Thiếu nó, trình duyệt âm thầm quay về auto layout — lúc đó `width` đặt
-  // trên từng <th> chỉ là "gợi ý", độ rộng thật do NỘI DUNG ô quyết định,
-  // nên kéo giãn cột đổi state/inline style nhưng màn hình không nhúc nhích
-  // (triệu chứng đã gặp: cột render ra 35-49px trong khi startResize chặn
-  // cứng tối thiểu 60px — chứng tỏ layout không hề đọc width của mình).
-  const totalWidth = BANG_COLS.reduce((sum, c) => sum + (widths[c.key] ?? c.width), 0)
+  const [rematching, setRematching] = useState(false)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
+  // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
+  // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
+  // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
+  const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
+  const { widths: rawPanelWidths, startResize: startRawPanelResize } = useResizableColumns('cong-no-raw-panel', { panel: 360 })
+  const [resizingRawPanel, setResizingRawPanel] = useState(false)
+  function startResizeRawPanel(e: React.MouseEvent) {
+    setResizingRawPanel(true)
+    startRawPanelResize('panel', e)
+    const onUp = () => { setResizingRawPanel(false); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mouseup', onUp)
+  }
 
-  const TH = 'relative px-2 py-1.5 border border-gray-300 bg-gray-100 font-semibold text-gray-700 whitespace-nowrap text-left overflow-hidden'
-  const TD = 'px-2 py-1 border border-gray-300 text-gray-800 whitespace-nowrap font-normal overflow-hidden text-ellipsis'
+  async function runRematch() {
+    setRematching(true)
+    try {
+      await fetch('/api/ve-may-bay/cong-no-raw/match-ma-khach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      await loadRawData()
+    } finally {
+      setRematching(false)
+    }
+  }
 
-  // "Phóng to": render qua Portal thẳng vào document.body — tránh mọi rủi
-  // ro về containing block bị lệch nếu 1 ancestor nào đó (AppShell/Sidebar)
-  // vô tình có transform/filter khiến fixed không bám đúng viewport thật;
-  // portal thoát hẳn khỏi cây DOM của trang, chắc chắn phủ kín màn hình.
-  // 1 div DUY NHẤT vừa cuộn dọc vừa cuộn ngang, chiều cao bị chặn đúng
-  // viewport (flex-1) nên thanh cuộn ngang luôn nằm cố định ở đáy màn
-  // hình thật. Header sticky top-0 để bám lại khi cuộn dọc bên trong.
-  const content = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-300 list-table-container'}>
-      <style jsx>{`
-        .cong-no-scroll::-webkit-scrollbar { height: 18px; width: 18px; }
-        .cong-no-scroll::-webkit-scrollbar-track { background: #f3f4f6; }
-        .cong-no-scroll::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 9px; border: 4px solid #f3f4f6; }
-        .cong-no-scroll::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        .cong-no-scroll::-webkit-scrollbar-corner { background: #f3f4f6; }
-      `}</style>
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
-        <span className="text-xs text-gray-400">{rows.length} dòng</span>
-        <button onClick={() => setExpanded(e => !e)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
-          {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-          {expanded ? 'Thu nhỏ' : 'Phóng to'}
-        </button>
-      </div>
-      <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
-      <table className="text-xs border-collapse list-table fixed-cols-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
-        <thead className="sticky top-0 z-10">
-          <tr>
-            {BANG_COLS.map(c => (
-              <th key={c.key} style={{ width: widths[c.key] ?? c.width }}
-                className={`${TH} select-none ${c.align === 'right' ? 'text-right' : ''}`}>
-                {c.label}
-                <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startResize(c.key, e)} />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.flatMap((r, i) => {
-            const d = tinhCongNo(r)
-            const names = splitPaxNames(r.pax_name)
-            if (names.length <= 1) {
-              return (
-                <tr key={r.id}>
-                  <td className={TD}>{i + 1}</td>
-                  <td className={TD}>{r.ncc ?? '—'}</td>
-                  <td className={TD}>{r.issued_date ?? '—'}</td>
-                  <td className={TD}>{r.ticket_no ?? '—'}</td>
-                  <td className={TD}>{r.pax_name ?? '—'}</td>
-                  <td className={TD}>{r.departure_date ?? '—'}</td>
-                  <td className={TD}>{r.return_date ?? '—'}</td>
-                  <td className={TD}>{r.routing ?? '—'}</td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.tong_mua)}</td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                  <td className={`${TD} p-0`}>
-                    <div className="flex items-center gap-1 px-1">
-                      <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
-                      <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
-                    </div>
-                  </td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
-                  <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.thue_tndn)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.thue_gtgt)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.quy_cskh)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.ln_con_lai_hoa_hong)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_tkt)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt1)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
-                  <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                  <td className={`${TD} text-center`}>
-                    <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={12} />
-                    </button>
-                  </td>
-                </tr>
-              )
-            }
-            // Vé đoàn nhiều pax: dòng đầu (pax thứ nhất) hiện đủ thông tin
-            // + ô sửa như bình thường; các dòng phụ (pax thứ 2 trở đi) chỉ
-            // hiện tên, còn lại để trống — vì tất cả vẫn CHUNG 1 bản ghi
-            // DB (r.id), sửa ở dòng nào cũng ảnh hưởng chung, tránh để ô
-            // input lặp lại gây hiểu nhầm mỗi pax có dữ liệu riêng.
-            return names.map((name, j) => (
-              <tr key={`${r.id}-${j}`} className={j > 0 ? 'bg-gray-50/60' : undefined}>
-                <td className={TD}>{names.length > 1 ? `${i + 1}.${j + 1}` : i + 1}</td>
-                {j === 0 ? (
-                  <>
-                    <td className={TD}>{r.ncc ?? '—'}</td>
-                    <td className={TD}>{r.issued_date ?? '—'}</td>
-                    <td className={TD}>{r.ticket_no ?? '—'}</td>
-                    <td className={`${TD} font-semibold`}>{name}</td>
-                    <td className={TD}>{r.departure_date ?? '—'}</td>
-                    <td className={TD}>{r.return_date ?? '—'}</td>
-                    <td className={TD}>{r.routing ?? '—'}</td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.tong_mua)}</td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                    <td className={`${TD} p-0`}>
-                      <div className="flex items-center gap-1 px-1">
-                        <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
-                        <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
-                      </div>
-                    </td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
-                    <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.thue_tndn)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.thue_gtgt)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.quy_cskh)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.ln_con_lai_hoa_hong)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_tkt)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt1)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
-                    <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                    <td className={`${TD} text-center`}>
-                      <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    {/* ncc, ngày xuất, mã vé — để trống */}
-                    {Array.from({ length: 3 }).map((_, k) => <td key={`b1-${k}`} className={TD}></td>)}
-                    <td className={`${TD} text-gray-500`}>↳ {name}</td>
-                    {/* ngày đi, ngày về, hành trình + 23 cột công thức/tag/ghi chú/action còn lại — để trống */}
-                    {Array.from({ length: 26 }).map((_, k) => <td key={`b2-${k}`} className={TD}></td>)}
-                  </>
-                )}
-              </tr>
-            ))
-          })}
-        </tbody>
-      </table>
-      </div>
-    </div>
+  // Gán mã khách TAY cho 1 dòng trong lô raw (qua slide-over). matchedBookingId
+  // khác null chỉ khi chọn từ 1 candidate cụ thể — giữ vết truy vết. giaMua/
+  // giaBan đi kèm khi chọn đúng 1 pax cụ thể (có giá riêng từ tin nhắn) —
+  // luôn ghi đè (khác auto-match chỉ điền khi đang rỗng) vì đây là hành động
+  // kế toán chủ động chọn, không phải chạy nền tự động.
+  async function saveRawMaKhachManual(batchId: string, rowIndex: number, maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) {
+    const trimmed = maKhach.trim()
+    const nextStatus: MatchStatus = trimmed ? 'manual' : 'unmatched'
+    const hasGia = trimmed && matchedBookingId && (giaMua != null || giaBan != null)
+    setRawBatches(prev => prev.map(b => {
+      if (b.id !== batchId) return b
+      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
+      return {
+        ...b,
+        ve_debt_records_raw_match: [
+          ...others,
+          {
+            row_index: rowIndex,
+            ma_khach: trimmed || null,
+            match_status: nextStatus,
+            matched_booking_id: trimmed ? matchedBookingId : null,
+            gia_mua: hasGia ? (giaMua ?? existing?.gia_mua ?? null) : (existing?.gia_mua ?? null),
+            gia_ban: hasGia ? (giaBan ?? existing?.gia_ban ?? null) : (existing?.gia_ban ?? null),
+            gia_source: hasGia ? 'message' : (existing?.gia_source ?? null),
+          },
+        ],
+      }
+    }))
+    const body: Record<string, unknown> = { ma_khach: trimmed, matched_booking_id: trimmed ? matchedBookingId : null }
+    if (hasGia) {
+      if (giaMua != null) body.gia_mua = giaMua
+      if (giaBan != null) body.gia_ban = giaBan
+    }
+    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  // Sửa tay 1 giá (bấm cây viết) — KHÔNG kèm matched_booking_id nên server
+  // tự gắn gia_source='manual' (xem PATCH .../rows/[rowIndex]/route.ts).
+  async function saveRawGiaManual(batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) {
+    setRawBatches(prev => prev.map(b => {
+      if (b.id !== batchId) return b
+      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
+      return {
+        ...b,
+        ve_debt_records_raw_match: [
+          ...others,
+          {
+            row_index: rowIndex,
+            ma_khach: existing?.ma_khach ?? null,
+            match_status: existing?.match_status ?? 'unmatched',
+            matched_booking_id: existing?.matched_booking_id ?? null,
+            gia_mua: field === 'gia_mua' ? value : (existing?.gia_mua ?? null),
+            gia_ban: field === 'gia_ban' ? value : (existing?.gia_ban ?? null),
+            gia_source: 'manual',
+          },
+        ],
+      }
+    }))
+    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    })
+  }
+
+  const [rawBatches, setRawBatches] = useState<RawBatch[]>([])
+
+  const loadRawData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ve-may-bay/cong-no-raw')
+      if (!res.ok) return
+      const { data } = await res.json()
+      setRawBatches(Array.isArray(data) ? data : [])
+    } catch { /* im lặng — chỉ ảnh hưởng 4 tab NCC, không chặn trang */ }
+  }, [setRawBatches])
+
+  useEffect(() => {
+    loadRawData()
+  }, [loadRawData])
+
+  async function deleteRawBatch(id: string) {
+    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
+    try {
+      await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
+      loadRawData()
+    } catch { /* im lặng */ }
+  }
+
+  useEffect(() => {
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào CNO NCC</span>)
+    setOnRefresh(loadRawData)
+    return () => {
+      setBreadcrumb(null)
+      setOnRefresh(null)
+    }
+  }, [setBreadcrumb, setOnRefresh, loadRawData])
+
+  function resetWizard() {
+    setSheets([]); setSelectedSheet(null); setRawGrid([]); setFileName('')
+    setHeaderRowIndex(null); setImportError('')
+    setKeptJunkRows(new Set()); setManualJunkRows(new Set())
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
+  // tự nhận diện đúng dòng tiêu đề + gợi ý sẵn tên NCC theo chữ ký
+  // Vietjet/FCVN đã biết (đỡ phải tự cuộn/bấm chọn dòng tay), KHÔNG tự
+  // tách sẵn cột — việc "biến đổi" (tách/chuẩn hoá cột) làm ở bước riêng
+  // sau, cứ để rơi vào nhánh "chọn cột tay" như file NCC khác.
+  function applyGrid(grid: string[][]) {
+    setRawGrid(grid)
+    const vjRow = findVietjetHeaderRow(grid)
+    if (vjRow != null) {
+      setHeaderRowIndex(vjRow)
+      return
+    }
+    const fcvnRow = findFcvnHeaderRow(grid)
+    if (fcvnRow != null) {
+      setHeaderRowIndex(fcvnRow)
+      return
+    }
+    setHeaderRowIndex(null)
+  }
+
+  async function handleFilePick(f: File) {
+    setImportError('')
+    setFileName(f.name)
+    setSelectedSheet(null)
+    setRawGrid([])
+    setHeaderRowIndex(null)
+    try {
+      const isCsv = f.name.toLowerCase().endsWith('.csv')
+      const isXls = f.name.toLowerCase().endsWith('.xls')
+      if (isCsv) {
+        const grid = parseCsvGrid(await f.text())
+        if (grid.length === 0) { setImportError('File này không đọc được dòng nào.'); return }
+        setSheets([{ name: f.name, grid }])
+        setSelectedSheet(0)
+        applyGrid(grid)
+        return
+      }
+      const parsedSheets = (isXls ? await parseXlsFile(f) : await parseXlsxSheetsAny(f))
+        .filter(s => s.grid.some(r => r?.some(c => c.trim() !== '')))
+      if (parsedSheets.length === 0) {
+        setImportError('File này không đọc được sheet/dòng nào.')
+        return
+      }
+      setSheets(parsedSheets)
+      if (parsedSheets.length === 1) {
+        setSelectedSheet(0)
+        applyGrid(parsedSheets[0].grid)
+      }
+    } catch {
+      setImportError('Không đọc được file này — kiểm tra lại định dạng .xlsx/.xls/.csv.')
+    }
+  }
+
+  function pickSheet(idx: number) {
+    setSelectedSheet(idx)
+    applyGrid(sheets[idx].grid)
+  }
+
+  function pickHeaderRow(idx: number) {
+    setHeaderRowIndex(idx)
+  }
+
+  const dataRows = headerRowIndex == null ? [] : rawGrid.slice(headerRowIndex + 1).filter(r => r.some(c => c.trim() !== ''))
+  const headers = headerRowIndex == null ? [] : (rawGrid[headerRowIndex] ?? [])
+  const rawImportIdColIdx = findIdColumnIndex(headers)
+  const junkRowIndexes = new Set(
+    dataRows.reduce<number[]>((acc, r, i) => {
+      const isJunk = isLikelyJunkRow(r, rawImportIdColIdx) ? !keptJunkRows.has(i) : manualJunkRows.has(i)
+      if (isJunk) acc.push(i)
+      return acc
+    }, []),
   )
+  const rowsToImport = dataRows.filter((_, i) => !junkRowIndexes.has(i))
 
-  if (expanded && mounted) return createPortal(content, document.body)
-  return content
-}
+  // Nhập không map cột — lưu y hệt header + dữ liệu thô của file gốc vào
+  // ve_debt_records_raw. ncc lấy thẳng từ tab đang chọn (nccFilter).
+  async function submitRaw() {
+    const ncc = nccFilter
+    setImporting(true)
+    setImportError('')
+    try {
+      const res = await fetch('/api/ve-may-bay/cong-no-raw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ncc, source_file: fileName, headers, rows: rowsToImport }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Nhập thất bại' }))
+        setImportError(error || 'Nhập thất bại')
+        return
+      }
+      resetWizard()
+      loadRawData()
+    } catch {
+      setImportError('Nhập thất bại, thử lại.')
+    } finally {
+      setImporting(false)
+    }
+  }
 
-function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
-      {rows.map(r => {
-        const d = tinhCongNo(r)
-        return (
-          <div key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-gray-50/70 transition-colors">
-            <div className="w-24 shrink-0">
-              <div className="text-xs font-semibold text-gray-800">{r.ncc ?? '—'}</div>
-              <div className="text-[11px] text-gray-400">{r.issued_date ?? '—'}</div>
-              {r.payment_date && <div className="text-[11px] text-gray-400">TT: {r.payment_date}</div>}
-              {(r.departure_date || r.return_date) && (
-                <div className="text-[11px] text-gray-400">Đi/về: {r.departure_date ?? '—'} → {r.return_date ?? '—'}</div>
+    <div className="px-5 pb-5 space-y-4">
+      {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
+          (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
+          padding-top) để 2 thanh liền mạch nhau. */}
+      <div className="min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
+        <div className="flex items-center gap-1 flex-wrap">
+          {NCC_TABS.map(n => (
+            <button key={n} type="button"
+              onClick={() => { setNccFilter(n); resetWizard() }}
+              className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
+          <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
+            Tải file công nợ NCC
+          </button>
+          {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
+          <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+            {rematching && <Loader2 size={13} className="animate-spin" />} Tìm mã khách
+          </button>
+          <button onClick={loadRawData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
+          (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
+      {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
+      <div className="fixed inset-0 z-[100] bg-black/40" onClick={resetWizard}>
+      <div className="bg-white w-screen h-screen overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
+          <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        {importError && sheets.length === 0 && <p className="text-xs text-red-500">{importError}</p>}
+
+        {sheets.length > 1 && selectedSheet == null && (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-semibold text-gray-500">
+              File &quot;{fileName}&quot; có {sheets.length} sheet — chọn sheet cần nhập:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {sheets.map((s, i) => (
+                <button key={i} onClick={() => pickSheet(i)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-brand-500 hover:text-white transition-colors">
+                  {s.name} <span className="text-[10px] opacity-70">({s.grid.length} dòng)</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedSheet != null && rawGrid.length > 0 && headerRowIndex == null && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500">
+                Bấm chọn dòng nào là tiêu đề cột trong sheet &quot;{sheets[selectedSheet]?.name}&quot; (nhiều file công nợ hãng có mấy dòng thông tin công ty/ngày tháng phía trên, tiêu đề thật không phải lúc nào cũng ở dòng 1):
+              </p>
+              {sheets.length > 1 && (
+                <button onClick={() => { setSelectedSheet(null); setRawGrid([]) }} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
+                  ← Chọn sheet khác
+                </button>
               )}
             </div>
-            <div className="min-w-[140px]">
-              <div className="text-sm text-gray-800">{r.pax_name ?? '—'}</div>
-              <div className="text-xs text-gray-400">{r.ticket_no ?? '—'} · {r.routing ?? '—'}</div>
+            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
+              <table className="text-xs">
+                <tbody>
+                  {rawGrid.slice(0, 20).map((r, i) => (
+                    <tr key={i} className="hover:bg-brand-50 cursor-pointer border-b border-gray-100 last:border-0" onClick={() => pickHeaderRow(i)}>
+                      <td className="px-2 py-1.5 text-gray-300 border-r border-gray-100 whitespace-nowrap sticky left-0 bg-white">
+                        <button className="px-2 py-0.5 rounded bg-gray-100 hover:bg-brand-500 hover:text-white text-gray-500 font-semibold transition-colors">
+                          Dòng {i + 1}
+                        </button>
+                      </td>
+                      {r.slice(0, 12).map((c, j) => (
+                        <td key={j} className="px-2 py-1.5 text-gray-600 whitespace-nowrap max-w-[160px] truncate">{c || '—'}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="ml-auto flex items-center gap-4 text-right">
-              <div>
-                <div className="text-[10px] text-gray-400">Giá mua</div>
-                <div className="text-sm text-gray-700">{formatGiaVe(r.gia_mua)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400">CKTM</div>
-                <div className="text-sm text-gray-700">{formatGiaVe(r.cktm)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400">Tổng mua</div>
-                <div className="text-sm text-gray-700">{formatGiaVe(d.tong_mua)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400">Giá bán</div>
-                <div className="text-sm text-gray-700">{formatGiaVe(r.gia_ban)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400">COM khách</div>
-                <div className="text-sm text-gray-700">{formatGiaVe(r.com_khach)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400">Lợi nhuận</div>
-                <div className="text-sm font-semibold text-emerald-600">{formatGiaVe(d.loi_nhuan)}</div>
-              </div>
-            </div>
-            <div className="w-32 shrink-0 space-y-0.5">
-              <MatchStatusBadge status={r.match_status ?? 'unmatched'} onClick={() => onOpenMatch(r)} />
-              <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
-            </div>
-            <div className="w-28 shrink-0">
-              <EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} />
-            </div>
-            <div className="w-28 shrink-0">
-              <EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} />
-            </div>
-            <button onClick={() => onDelete(r.id)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
-              <Trash2 size={14} />
-            </button>
           </div>
-        )
-      })}
-    </div>
-  )
-}
+        )}
 
-function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[] }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {rows.map(r => {
-        const d = tinhCongNo(r)
-        return (
-          <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-all">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <div className="text-xs font-semibold text-brand-600">{r.ncc ?? '—'}</div>
-                <div className="text-sm font-bold text-gray-900">{r.pax_name ?? '—'}</div>
-              </div>
-              <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                <Trash2 size={13} />
+        {headerRowIndex != null && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                Nhập vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+                {junkRowIndexes.size > 0 && (
+                  <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
+                )}
+                {' '}Thấy dòng rác nào chưa bị tô đỏ? Rê chuột vào dòng đó, bấm &quot;Bỏ dòng này&quot; để loại luôn.
+              </span>
+              <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
+                ← Chọn lại dòng tiêu đề
               </button>
             </div>
-            <div className="text-xs text-gray-500 space-y-0.5 mb-3">
-              <div>Mã vé: <span className="text-gray-800">{r.ticket_no ?? '—'}</span></div>
-              <div>Hành trình: <span className="text-gray-800">{r.routing ?? '—'}</span></div>
-              <div>Ngày xuất: <span className="text-gray-800">{r.issued_date ?? '—'}</span></div>
-              {r.payment_date && <div>Ngày thanh toán: <span className="text-gray-800">{r.payment_date}</span></div>}
-              {(r.departure_date || r.return_date) && (
-                <div>Đi/về: <span className="text-gray-800">{r.departure_date ?? '—'} → {r.return_date ?? '—'}</span></div>
-              )}
+
+            <div className="border border-gray-200 rounded-xl overflow-auto max-h-[70vh]">
+              <table className="text-xs w-full">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500">
+                    {rawImportIdColIdx != null && <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap"></th>}
+                    {headers.map((h, i) => <th key={i} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h || `Cột ${i + 1}`}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dataRows.map((r, i) => {
+                    const isJunk = junkRowIndexes.has(i)
+                    const isAutoJunk = isLikelyJunkRow(r, rawImportIdColIdx)
+                    return (
+                    <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''} group`}>
+                      {rawImportIdColIdx != null && (
+                        <td className="px-2 py-1.5 align-top">
+                          {isJunk ? (
+                            <button type="button"
+                              onClick={() => isAutoJunk
+                                ? setKeptJunkRows(prev => new Set(prev).add(i))
+                                : setManualJunkRows(prev => { const next = new Set(prev); next.delete(i); return next })}
+                              className="text-[10px] font-semibold text-red-600 hover:text-red-700 underline whitespace-nowrap">
+                              Giữ dòng này
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => setManualJunkRows(prev => new Set(prev).add(i))}
+                              className="text-[10px] font-semibold text-gray-300 hover:text-red-600 underline whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                              Bỏ dòng này
+                            </button>
+                          )}
+                        </td>
+                      )}
+                      {headers.map((h, j) => (
+                        <td key={j} className={`px-2 py-1.5 align-top max-w-[200px] ${isJunk ? 'text-red-500' : ''}`}>
+                          {h?.trim().toUpperCase() === 'SEGMENTS' ? (
+                            <div className="space-y-0.5">
+                              {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap truncate">{seg}</div>)}
+                            </div>
+                          ) : (
+                            <span className="whitespace-nowrap truncate block">{r[j] || '—'}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="flex items-center justify-between text-xs mb-3 pt-2 border-t border-gray-100">
-              <div>
-                <div className="text-gray-400">Giá bán</div>
-                <div className="font-semibold text-gray-700">{formatGiaVe(r.gia_ban)}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-gray-400">Lợi nhuận</div>
-                <div className="font-semibold text-emerald-600">{formatGiaVe(d.loi_nhuan)}</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} />
-              <div className="flex items-center gap-1">
-                <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
-                <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
-              </div>
+
+            {importError && <p className="text-xs text-red-500">{importError}</p>}
+
+            <div className="flex items-center gap-2">
+              <button onClick={submitRaw} disabled={importing}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {rowsToImport.length} dòng vào tab &quot;{nccFilter}&quot;
+                {junkRowIndexes.size > 0 && <span className="opacity-75"> (đã bỏ {junkRowIndexes.size} dòng rác)</span>}
+              </button>
+              <button onClick={resetWizard} disabled={importing} type="button"
+                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors">
+                Hủy
+              </button>
             </div>
           </div>
-        )
-      })}
+        )}
+      </div>
+      </div>,
+      document.body
+      )}
+
+      <div className="flex items-start">
+        <div
+          className={`relative shrink-0 sticky top-4 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
+          style={viewingRawMatch ? { width: rawPanelWidths.panel } : undefined}>
+          <div style={{ width: rawPanelWidths.panel }}>
+            <RawMatchPanel
+              target={viewingRawMatch ? {
+                id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
+                ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
+                contextLabel: viewingRawMatch.paxLabel,
+                matchStatus: viewingRawMatch.matchStatus,
+              } : null}
+              candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
+              onClose={() => setViewingRawMatch(null)}
+              onSelectMessage={setSelectedRawMessage}
+            />
+          </div>
+          {viewingRawMatch && (
+            <div onMouseDown={startResizeRawPanel} title="Kéo để đổi độ rộng"
+              className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-300/50 active:bg-brand-400/60 transition-colors" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0 space-y-4">
+          {selectedRawMessage && (
+            <SelectedMessagePaxTable
+              key={selectedRawMessage.message.parse_log_id}
+              message={selectedRawMessage.message}
+              khachInfo={selectedRawMessage.khachInfo}
+              onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
+            />
+          )}
+          <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
+            onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
+        </div>
+      </div>
     </div>
   )
 }
