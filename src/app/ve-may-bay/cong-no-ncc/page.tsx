@@ -406,7 +406,10 @@ const NCC_HEADER_HINTS: Record<string, string[]> = {
   'SAO ĐỎ': ['STT', 'NGAY XV', 'CODE/SO VE', 'TEN KHACH', 'HANH TRINH', 'NGAY DI', 'NGAY VE', 'Gia ve', 'Thue', 'Dich vu', 'CKTM', 'SL PAX', 'Ty gia', 'Thanh Tien', 'THANH TOAN', 'DƯ NỢ', 'GHI CHU'],
   'SUN PQC': ['STT', 'Loại giao dịch', 'Ngày giao dịch', 'Office ID', 'Loại chứng từ', 'Loại hành trình', 'Mã đặt chỗ (PNR)', 'Số vé', 'Tên khách', 'Hành trình', 'Hình thức thanh toán', 'Lý do phát hành', 'Ngày bay', 'Hãng vận chuyển', 'Số hiệu chuyến bay', 'Hạng vé', 'Loại khách', 'Giá vé', 'Phí hoàn vé', 'Phí xuất vé', 'Phí đổi', 'Phí phụ thu nhiên liệu', 'Phí quản trị hệ thống', 'Thuế suất', 'Thuế VAT', 'Phí sân bay', 'Phí soi chiếu', 'Thuế, phí khác', 'Tổng tiền', 'Loại tiền tệ', 'Người xuất vé'],
 }
-const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white'
+// Viền xanh lá đậm, góc vuông khi focus — giống ô đang nhập trong Excel
+// thật (không phải nhẫn xanh dương bo tròn kiểu form web thông thường).
+// ring-inset để viền nằm gọn trong ô, không đẩy layout xê dịch.
+const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#107C41]'
 
 // `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
 // trình duyệt (xấu, không style được, có mã trùng/không đọc được như báo

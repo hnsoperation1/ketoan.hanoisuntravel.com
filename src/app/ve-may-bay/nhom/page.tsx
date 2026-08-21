@@ -59,7 +59,7 @@ function MaKhachCell({ groupId, value, saving, onSave }: {
           if (e.key === 'Escape') { setText(value ?? ''); setEditing(false) }
         }}
         placeholder="Mã khách..."
-        className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white w-44"
+        className="border-2 border-[#107C41] rounded-none px-[9px] py-[5px] text-sm focus:outline-none bg-white w-44"
       />
     )
   }

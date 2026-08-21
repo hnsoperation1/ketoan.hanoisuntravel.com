@@ -26,7 +26,10 @@ const XUAT_VE_COLS = [
 type MaKhachSource = 'chuan' | 'doi_chieu' | 'da_dung'
 type KhachOpt = { ma_khach: string; ten_khach: string | null; source: MaKhachSource }
 
-const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white'
+// Viền xanh lá đậm, góc vuông khi focus — giống ô đang nhập trong Excel
+// thật (không phải nhẫn xanh dương bo tròn kiểu form web thông thường).
+// ring-inset để viền nằm gọn trong ô, không đẩy layout xê dịch.
+const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#107C41]'
 
 const MA_KHACH_SOURCE_LABEL: Record<MaKhachSource, string> = {
   chuan: 'Danh mục chuẩn',
