@@ -1745,7 +1745,17 @@ type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' 
 function RawPriceCell({ value, source, onSave }: { value: number | null; source: 'message' | 'manual' | null; onSave: (v: number | null) => void }) {
   const [editing, setEditing] = useState(false)
   if (editing) {
-    return <EditableNumberCell value={value} onSave={v => { onSave(v); setEditing(false) }} />
+    // absolute inset-0 (thay vì h-full) — chiều cao <td> do CẢ HÀNG quyết
+    // định (phụ thuộc ô khác), height:100% tạo vòng lặp phụ thuộc nên trình
+    // duyệt bỏ qua, quay về chiều cao tự nhiên của input (thấp hơn hàng
+    // thật). absolute lấy input ra khỏi luồng, không góp phần tính chiều
+    // cao <td> nữa nên hết vòng lặp — input lấp đúng khít cả 4 cạnh ô sau
+    // khi hàng đã có chiều cao thật. Cần <td> tương ứng có "relative".
+    return (
+      <div className="absolute inset-0">
+        <EditableNumberCell value={value} onSave={v => { onSave(v); setEditing(false) }} />
+      </div>
+    )
   }
   return (
     // px-2 py-1.5 bù lại phần padding đã bỏ khỏi <td> (xem RawTableCard) —
@@ -1892,10 +1902,10 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
                 </td>
-                <td className="border border-gray-100 p-0 align-top overflow-hidden">
+                <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
                 </td>
-                <td className="border border-gray-100 p-0 align-top overflow-hidden">
+                <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
                 </td>
                 <td className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
