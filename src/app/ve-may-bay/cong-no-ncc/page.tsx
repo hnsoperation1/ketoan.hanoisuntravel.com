@@ -1177,8 +1177,6 @@ export default function CongNoVePage() {
     return hay.includes(q)
   })
 
-  const tongLoiNhuan = filtered.reduce((s, r) => s + tinhCongNo(r).loi_nhuan, 0)
-
   // Gợi ý autocomplete cho ô "Tìm TKT"/"Tìm mã khách"/"Tìm sale chính" —
   // hợp cả danh mục CHUẨN (dirTkt/dirMaKhach/dirSaleChinh, xem loadDirectories)
   // VÀ giá trị đã từng gắn tay trong chính bảng này (rows), phòng khi có
@@ -1521,8 +1519,6 @@ export default function CongNoVePage() {
                 </button>
               ))}
             </div>
-
-            <span className="text-xs text-gray-400 whitespace-nowrap">{filtered.length} dòng · lợi nhuận {formatGiaVe(tongLoiNhuan)}</span>
           </div>
 
           {loading ? (
