@@ -1110,7 +1110,7 @@ export default function TongHopCongNoNccPage() {
 
   return (
     <>
-    <div className="px-5 pb-5 space-y-4">
+    <div className="px-5 pb-5 space-y-2">
       {/* Nhập file + làm mới — cao bằng topbar (h-12 md:h-10, xem
           components/Topbar.tsx) và nằm sát topbar (không padding-top) để 2
           thanh liền mạch nhau. */}

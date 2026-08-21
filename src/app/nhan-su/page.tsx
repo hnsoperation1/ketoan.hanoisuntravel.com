@@ -543,7 +543,7 @@ export default function NhanSuPage() {
   const payTotalWidth = PAYMENT_COLS.reduce((sum, c) => sum + (payWidths[c.key] ?? c.width), 0)
 
   return (
-    <div className="px-5 pb-5 space-y-4">
+    <div className="px-5 pb-5 space-y-2">
       {/* min-h-12/md:min-h-10 + border-b, không padding-top ở div ngoài —
           cùng cách cong-no-ncc/page.tsx đang làm để hàng tab nằm sát
           Topbar (h-12 md:h-10, xem components/Topbar.tsx), 2 thanh liền
