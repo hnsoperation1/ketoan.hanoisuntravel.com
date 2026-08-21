@@ -808,7 +808,7 @@ export default function CongNoVePage() {
   }
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào CNO NCC</span>)
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào công nợ NCC</span>)
     setOnRefresh(loadRawData)
     return () => {
       setBreadcrumb(null)
