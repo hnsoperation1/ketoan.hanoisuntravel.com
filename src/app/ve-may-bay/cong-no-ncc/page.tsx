@@ -1419,7 +1419,7 @@ export default function CongNoVePage() {
                 {junkRowIndexes.size > 0 && (
                   <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
                 )}
-                {' '}Thấy dòng rác nào chưa bị tô đỏ? Rê chuột vào dòng đó, bấm &quot;Đánh dấu là rác&quot; để loại luôn.
+                {' '}Thấy dòng rác nào chưa bị tô đỏ? Rê chuột vào dòng đó, bấm &quot;Bỏ dòng này&quot; để loại luôn.
               </span>
               <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
                 ← Chọn lại dòng tiêu đề
@@ -1461,7 +1461,7 @@ export default function CongNoVePage() {
                           ) : (
                             <button type="button" onClick={() => setManualJunkRows(prev => new Set(prev).add(i))}
                               className="text-[10px] font-semibold text-gray-300 hover:text-red-600 underline whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                              Đánh dấu là rác
+                              Bỏ dòng này
                             </button>
                           )}
                         </td>
