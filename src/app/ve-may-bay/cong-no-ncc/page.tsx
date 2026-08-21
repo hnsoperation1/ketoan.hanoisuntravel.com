@@ -409,7 +409,7 @@ const NCC_HEADER_HINTS: Record<string, string[]> = {
 // Viền xanh lá đậm, góc vuông khi focus — giống ô đang nhập trong Excel
 // thật (không phải nhẫn xanh dương bo tròn kiểu form web thông thường).
 // ring-inset để viền nằm gọn trong ô, không đẩy layout xê dịch.
-const CELL_INPUT = 'w-full bg-transparent text-xs px-1 py-0.5 rounded-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#107C41]'
+const CELL_INPUT = 'w-full h-full bg-transparent text-xs px-1 py-0.5 rounded-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#107C41]'
 
 // `suggestions` (nếu có) hiện qua dropdown tự vẽ thay vì <datalist> gốc
 // trình duyệt (xấu, không style được, có mã trùng/không đọc được như báo
@@ -1748,7 +1748,11 @@ function RawPriceCell({ value, source, onSave }: { value: number | null; source:
     return <EditableNumberCell value={value} onSave={v => { onSave(v); setEditing(false) }} />
   }
   return (
-    <div className="flex items-center justify-end gap-1">
+    // px-2 py-1.5 bù lại phần padding đã bỏ khỏi <td> (xem RawTableCard) —
+    // để lúc CHƯA sửa, nội dung vẫn nằm đúng vị trí như trước; lúc bấm bút
+    // chuyển sang EditableNumberCell thì <td> trống padding, input tự
+    // choán trọn ô nên viền xanh focus khớp đúng mép ô (kiểu Excel thật).
+    <div className="flex items-center justify-end gap-1 px-2 py-1.5">
       <span className="text-right">{formatGiaVe(value)}</span>
       {source === 'message' && <span className="text-[10px] text-gray-400 whitespace-nowrap">từ tin nhắn</span>}
       <button type="button" onClick={() => setEditing(true)} title="Sửa" className="p-0.5 text-gray-300 hover:text-brand-600 shrink-0">
@@ -1888,10 +1892,10 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
                 </td>
-                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
+                <td className="border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
                 </td>
-                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
+                <td className="border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
                 </td>
                 <td className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
