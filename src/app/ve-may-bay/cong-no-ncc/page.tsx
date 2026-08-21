@@ -624,6 +624,11 @@ export default function CongNoVePage() {
   // lại, dòng ngăn cách section...) nhưng kế toán đã bấm "Giữ dòng này" —
   // những dòng đó vẫn được nhập dù bị tô đỏ. Xem isLikelyJunkRow().
   const [keptJunkRows, setKeptJunkRows] = useState<Set<number>>(new Set())
+  // Chiều ngược lại: dòng KHÔNG bị isLikelyJunkRow() tự phát hiện (vd dòng
+  // "Người lập/Người kiểm" cuối file, cột mã vé/PNR tình cờ không rỗng)
+  // nhưng kế toán nhìn thấy vẫn là rác — bấm "Đánh dấu là rác" để tự thêm
+  // vào đây, loại khỏi lượt nhập dù thuật toán bỏ sót.
+  const [manualJunkRows, setManualJunkRows] = useState<Set<number>>(new Set())
 
   // Filters
   const [search, setSearch] = useState('')
@@ -850,7 +855,7 @@ export default function CongNoVePage() {
   function resetWizard() {
     setSheets([]); setSelectedSheet(null); setRawGrid([]); setFileName('')
     setHeaderRowIndex(null); setMapping(EMPTY_MAPPING); setNccInput(''); setImportError('')
-    setVietjetMode(false); setFcvnMode(false); setKeptJunkRows(new Set())
+    setVietjetMode(false); setFcvnMode(false); setKeptJunkRows(new Set()); setManualJunkRows(new Set())
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -949,7 +954,11 @@ export default function CongNoVePage() {
   const rawImportIdColIdx = findIdColumnIndex(headers)
   const junkRowIndexes = new Set(
     dataRows.reduce<number[]>((acc, r, i) => {
-      if (isLikelyJunkRow(r, rawImportIdColIdx) && !keptJunkRows.has(i)) acc.push(i)
+      // Rác tự phát hiện thì loại trừ khi kế toán bấm "Giữ dòng này"; dòng
+      // KHÔNG tự phát hiện thì chỉ loại khi kế toán tự bấm "Đánh dấu là rác"
+      // (isLikelyJunkRow bỏ sót — xem comment ở manualJunkRows).
+      const isJunk = isLikelyJunkRow(r, rawImportIdColIdx) ? !keptJunkRows.has(i) : manualJunkRows.has(i)
+      if (isJunk) acc.push(i)
       return acc
     }, []),
   )
@@ -1410,6 +1419,7 @@ export default function CongNoVePage() {
                 {junkRowIndexes.size > 0 && (
                   <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
                 )}
+                {' '}Thấy dòng rác nào chưa bị tô đỏ? Rê chuột vào dòng đó, bấm &quot;Đánh dấu là rác&quot; để loại luôn.
               </span>
               <button onClick={() => setHeaderRowIndex(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 shrink-0 ml-3">
                 ← Chọn lại dòng tiêu đề
@@ -1435,14 +1445,23 @@ export default function CongNoVePage() {
                 <tbody>
                   {dataRows.map((r, i) => {
                     const isJunk = junkRowIndexes.has(i)
+                    const isAutoJunk = isLikelyJunkRow(r, rawImportIdColIdx)
                     return (
-                    <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''}`}>
+                    <tr key={i} className={`border-t border-gray-100 ${isJunk ? 'bg-red-50' : ''} group`}>
                       {rawImportIdColIdx != null && (
                         <td className="px-2 py-1.5 align-top">
-                          {isJunk && (
-                            <button type="button" onClick={() => setKeptJunkRows(prev => new Set(prev).add(i))}
+                          {isJunk ? (
+                            <button type="button"
+                              onClick={() => isAutoJunk
+                                ? setKeptJunkRows(prev => new Set(prev).add(i))
+                                : setManualJunkRows(prev => { const next = new Set(prev); next.delete(i); return next })}
                               className="text-[10px] font-semibold text-red-600 hover:text-red-700 underline whitespace-nowrap">
                               Giữ dòng này
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => setManualJunkRows(prev => new Set(prev).add(i))}
+                              className="text-[10px] font-semibold text-gray-300 hover:text-red-600 underline whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                              Đánh dấu là rác
                             </button>
                           )}
                         </td>
