@@ -1507,7 +1507,7 @@ export default function CongNoVePage() {
               {khs.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
 
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 ml-auto">
               {([
                 { key: 'bang', icon: Table2, title: 'Bảng (giống Excel)' },
                 { key: 'list', icon: List, title: 'Danh sách' },
