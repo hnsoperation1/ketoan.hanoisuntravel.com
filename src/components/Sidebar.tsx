@@ -143,6 +143,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/tong-hop-cong-no-ncc" label="Tổng hợp công nợ NCC" icon={Table2} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/cong-no-ncc" label="Đầu vào công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/ve-may-bay/cong-no-ncc-v2" label="Đầu vào công nợ NCC v2" icon={FileStack} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/thong-tin-xuat-ve" label="Thông tin xuất vé" icon={Plane} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TC" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />

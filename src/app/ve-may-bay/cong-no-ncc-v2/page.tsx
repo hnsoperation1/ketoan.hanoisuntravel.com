@@ -6,104 +6,28 @@ import { RefreshCw, Loader2, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
-import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
-import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
+import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
 import {
   type SheetData, type RawBatch,
   parseCsvGrid, parseXlsFile, parseXlsxSheetsAny,
   findVietjetHeaderRow, findFcvnHeaderRow, isLikelyJunkRow, splitSegmentsForDisplay,
-  NCC_TABS, RawBatchesView, RawPriceCell,
-} from './raw-shared'
+  NCC_TABS, RawBatchesView,
+} from '../cong-no-ncc/raw-shared'
 
-// Bảng hành khách của TIN NHẮN đang chọn ở RawMatchPanel (bên trái) — hiện
-// ngay trên danh sách lô công nợ raw, dạng bảng rộng (đồng bộ style với
-// RawTableCard) thay vì card hẹp nhồi trong panel, dễ đọc/đối chiếu hơn khi
-// tin nhắn có nhiều pax. "Chọn" gán mã khách của đúng dòng công nợ đang mở
-// panel (viewingRawMatch) — y hệt hành vi choosePax cũ trong RawMatchPanel.
-function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
-  message: RawCandidateMessage
-  khachInfo: RawKhachInfo
-  onChoose: (p: RawCandidatePax, giaMua: number | null, giaBan: number | null) => void
-  maxHeight: number
-}) {
-  // Giá mua/bán AI đọc từ tin nhắn có thể sai — cho kế toán sửa NGAY tại
-  // đây trước khi bấm "Chọn" thay vì phải chọn xong rồi sửa lại ở bảng công
-  // nợ. Chỉ là state hiển thị tạm cho tin nhắn đang xem (không ghi DB ở
-  // đây) — "Chọn" gửi đúng giá đã sửa (hoặc giá gốc nếu chưa sửa) lên qua
-  // onChoose, page.tsx mới là nơi thật sự lưu vào ve_debt_records_raw_match.
-  const [priceOverrides, setPriceOverrides] = useState<Record<string, { gia_mua?: number | null; gia_ban?: number | null }>>({})
-
-  function setPrice(paxId: string, field: 'gia_mua' | 'gia_ban', value: number | null) {
-    setPriceOverrides(prev => ({ ...prev, [paxId]: { ...prev[paxId], [field]: value } }))
-  }
-
-  return (
-    <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
-        <span className="text-xs text-gray-500 truncate">
-          Hành khách trong tin nhắn của <span className="font-semibold text-emerald-600">{message.from_user_name ?? 'Không rõ người gửi'}</span>
-          {message.group_title && <span className="text-gray-400"> · Nhóm: {message.group_title}</span>}
-        </span>
-        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{message.pax.length} khách</span>
-      </div>
-      <div className="overflow-auto" style={{ maxHeight }}>
-        <table className="list-table text-xs w-full border-collapse">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50 text-gray-500">
-              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Hành khách</th>
-              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã vé</th>
-              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">TKT</th>
-              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap">Mã khách</th>
-              <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá mua</th>
-              <th className="px-2 py-1.5 text-right font-semibold border border-gray-200 whitespace-nowrap">Giá bán</th>
-              <th className="px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {message.pax.map(p => {
-              const info = p.ma_khach ? khachInfo[p.ma_khach] : undefined
-              const invalid = p.ma_khach && !info
-              const inactive = info && !info.active
-              const giaMua = priceOverrides[p.id]?.gia_mua !== undefined ? priceOverrides[p.id].gia_mua! : p.gia_mua
-              const giaBan = priceOverrides[p.id]?.gia_ban !== undefined ? priceOverrides[p.id].gia_ban! : p.gia_ban
-              return (
-                <tr key={p.id} className="border-t border-gray-100">
-                  <td className="border border-gray-100 px-2 py-1.5 text-gray-900 whitespace-nowrap">{p.full_name || p.ten_khach_hang || 'Không rõ tên khách'}</td>
-                  <td className="border border-gray-100 px-2 py-1.5 text-gray-500 whitespace-nowrap">{p.ticket_no ?? '—'}</td>
-                  <td className="border border-gray-100 px-2 py-1.5 text-gray-500 whitespace-nowrap">{p.ve_tkt?.tkt_code ?? '—'}</td>
-                  <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
-                    <span className="font-semibold text-gray-800">{p.ma_khach ?? '—'}</span>
-                    {info?.ten_khach && <span className="text-gray-400"> · {info.ten_khach}</span>}
-                    {(invalid || inactive) && (
-                      <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
-                        {invalid ? 'Không có trong danh mục' : 'Đã ngừng hoạt động'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="border border-gray-100 px-2 py-1.5">
-                    <RawPriceCell value={giaMua} source="message" onSave={v => setPrice(p.id, 'gia_mua', v)} />
-                  </td>
-                  <td className="border border-gray-100 px-2 py-1.5">
-                    <RawPriceCell value={giaBan} source="message" onSave={v => setPrice(p.id, 'gia_ban', v)} />
-                  </td>
-                  <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
-                    <button type="button" onClick={() => onChoose(p, giaMua, giaBan)} disabled={!p.ma_khach}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                      Chọn
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-
-export default function CongNoVePage() {
+// Bản v2 của màn "Đầu vào công nợ NCC" — KHÁC v1 (../cong-no-ncc) ĐÚNG 1
+// điểm: cách hiển thị phần khớp mã khách.
+//   v1: panel tin nhắn Telegram chiếm cố định 1 cột bên trái + bảng hành
+//       khách của tin nhắn đang chọn chèn phía trên bảng lô công nợ → bảng
+//       chính bị ép hẹp lại cả chiều ngang lẫn chiều dọc.
+//   v2: bảng lô công nợ chiếm TRỌN màn hình, bấm mã vé/PNR mới mở
+//       MatchSlideOver đè lên (đúng slide-over dùng chung với màn "Tổng hợp
+//       công nợ NCC") — trong slide-over có sẵn 3 cột: tin nhắn khớp | hành
+//       khách trong tin nhắn | tự tìm trong danh mục KH.
+// Toàn bộ phần còn lại (đọc file, wizard nhập, bảng lô, thanh tab "sheet"
+// theo lần tải) dùng CHUNG module ../cong-no-ncc/raw-shared.tsx — sửa ở đó
+// là cả 2 màn cùng đổi.
+export default function CongNoVeV2Page() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -124,36 +48,27 @@ export default function CongNoVePage() {
   // khỏi lượt nhập dù thuật toán bỏ sót.
   const [manualJunkRows, setManualJunkRows] = useState<Set<number>>(new Set())
 
-  // Tab NCC đang xem — luôn có 1 trong 4 tab cố định được chọn (không còn
-  // khái niệm "Tổng hợp" ở trang này nữa, xem /ve-may-bay/tong-hop-cong-no-ncc).
+  // Tab NCC đang xem — luôn có 1 trong 4 tab cố định được chọn.
   const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
   const [rematching, setRematching] = useState(false)
   const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
-  // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
-  // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
-  // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
-  const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
-  const { widths: rawPanelWidths, startResize: startRawPanelResize } = useResizableColumns('cong-no-raw-panel', { panel: 360 })
-  const [resizingRawPanel, setResizingRawPanel] = useState(false)
-  function startResizeRawPanel(e: React.MouseEvent) {
-    setResizingRawPanel(true)
-    startRawPanelResize('panel', e)
-    const onUp = () => { setResizingRawPanel(false); window.removeEventListener('mouseup', onUp) }
-    window.addEventListener('mouseup', onUp)
-  }
 
-  // Chiều cao bảng hành khách (SelectedMessagePaxTable) kéo giãn được —
-  // axis 'y' (xem useResizableColumns.ts), cùng cơ chế với thanh kéo giãn
-  // độ RỘNG panel bên trái ở trên, chỉ khác trục.
-  const { widths: paxTableSize, startResize: startPaxTableResizeRaw } = useResizableColumns('cong-no-raw-pax-table', { h: 360 }, 'y')
-  const [resizingPaxTable, setResizingPaxTable] = useState(false)
-  function startResizePaxTable(e: React.MouseEvent) {
-    setResizingPaxTable(true)
-    startPaxTableResizeRaw('h', e)
-    const onUp = () => { setResizingPaxTable(false); window.removeEventListener('mouseup', onUp) }
-    window.addEventListener('mouseup', onUp)
-  }
+  // Danh mục khách hàng chuẩn — chỉ để đổ vào cột "tự tìm trong danh mục"
+  // của MatchSlideOver (v1 không cần vì panel bên trái đã bỏ mục tìm tay).
+  const [dirMaKhach, setDirMaKhach] = useState<KhachOpt[]>([])
+  const loadDirectories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ve-may-bay/vmb-khach-hang')
+      const { data } = await res.json()
+      if (Array.isArray(data)) setDirMaKhach(data.map((d: { ma_khach: string; ten_khach: string | null }) => ({ ma_khach: d.ma_khach, ten_khach: d.ten_khach })).filter((d: KhachOpt) => d.ma_khach))
+    } catch { /* im lặng — chỉ ảnh hưởng gợi ý, không chặn trang */ }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDirectories()
+  }, [loadDirectories])
 
   async function runRematch() {
     setRematching(true)
@@ -264,9 +179,7 @@ export default function CongNoVePage() {
   }
 
   // Đổi tên hiển thị của 1 lô (tab "sheet") — chỉ ghi display_name, KHÔNG
-  // đụng source_file (tên file gốc, giữ nguyên để truy vết). Đổi được vô
-  // số lần; displayName = null khi để trống lúc lưu (quay lại hiển thị
-  // theo tên file gốc).
+  // đụng source_file (tên file gốc, giữ nguyên để truy vết).
   async function renameRawBatch(id: string, displayName: string | null) {
     setRawBatches(prev => prev.map(b => b.id === id ? { ...b, display_name: displayName } : b))
     await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, {
@@ -277,7 +190,7 @@ export default function CongNoVePage() {
   }
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào công nợ NCC</span>)
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào công nợ NCC v2</span>)
     setOnRefresh(loadRawData)
     return () => {
       setBreadcrumb(null)
@@ -293,10 +206,8 @@ export default function CongNoVePage() {
   }
 
   // Sau khi có rawGrid (chọn xong sheet, hoặc file chỉ có 1 sheet/CSV) —
-  // tự nhận diện đúng dòng tiêu đề + gợi ý sẵn tên NCC theo chữ ký
-  // Vietjet/FCVN đã biết (đỡ phải tự cuộn/bấm chọn dòng tay), KHÔNG tự
-  // tách sẵn cột — việc "biến đổi" (tách/chuẩn hoá cột) làm ở bước riêng
-  // sau, cứ để rơi vào nhánh "chọn cột tay" như file NCC khác.
+  // tự nhận diện đúng dòng tiêu đề theo chữ ký Vietjet/FCVN đã biết (đỡ
+  // phải tự cuộn/bấm chọn dòng tay), KHÔNG tự tách sẵn cột.
   function applyGrid(grid: string[][]) {
     setRawGrid(grid)
     const vjRow = findVietjetHeaderRow(grid)
@@ -394,15 +305,11 @@ export default function CongNoVePage() {
 
   return (
     // absolute inset-0 — <main> trong AppShell.tsx đã có "relative" nên khối
-    // này phủ ĐÚNG BẰNG vùng nội dung (không hơn, không kém) → main không
-    // sinh thanh cuộn dọc, mọi việc cuộn dồn vào trong bảng. Nhờ vậy thanh
-    // "sheet" ở đáy luôn dính đáy màn hình và bảng lấp trọn phần còn lại,
-    // giống Excel/Google Sheets (h-full/100% không dùng được ở đây vì chiều
-    // cao của main do flex quyết định, không phải giá trị tường minh).
+    // này phủ ĐÚNG BẰNG vùng nội dung → main không sinh thanh cuộn dọc, mọi
+    // việc cuộn dồn vào trong bảng, thanh "sheet" luôn dính đáy màn hình.
     <div className="absolute inset-0 flex flex-col px-5">
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
-          (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
-          padding-top) để 2 thanh liền mạch nhau. */}
+          (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar. */}
       <div className="shrink-0 min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
         <div className="flex items-center gap-1 flex-wrap">
           {NCC_TABS.map(n => (
@@ -579,67 +486,30 @@ export default function CongNoVePage() {
       document.body
       )}
 
-      <div className="flex-1 min-h-0 flex items-stretch pt-2">
-        <div
-          className={`relative shrink-0 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width] duration-300 ease-out'}`}
-          style={{ width: viewingRawMatch ? rawPanelWidths.panel : 0 }}>
-          <div className="h-full" style={{ width: rawPanelWidths.panel }}>
-            <RawMatchPanel
-              target={viewingRawMatch ? {
-                id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
-                ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
-                contextLabel: viewingRawMatch.paxLabel,
-                matchStatus: viewingRawMatch.matchStatus,
-              } : null}
-              candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
-              onClose={() => setViewingRawMatch(null)}
-              onSelectMessage={setSelectedRawMessage}
-            />
-          </div>
-        </div>
-        {/* Tay cầm kéo giãn NẰM NGAY TRONG khoảng trống giữa panel và bảng
-            (trước đây là 1 dải mỏng 6px nép sát mép trong của panel, lọt
-            thỏm dưới khoảng trống mr-4 nhìn thấy được — dễ hiểu nhầm chỗ
-            cầm) — giờ chính khoảng trống đó (rộng 16px, w-4) LÀ tay cầm,
-            có vạch tròn xám làm dấu hiệu luôn nhìn thấy được, không cần rê
-            trúng mới biết. Vẫn co giãn theo cùng nhịp với panel lúc
-            đóng/mở (transition width 0 ↔ 16px) để không bị giật hình. */}
-        <div
-          onMouseDown={viewingRawMatch ? startResizeRawPanel : undefined}
-          title={viewingRawMatch ? 'Kéo để đổi độ rộng' : undefined}
-          className={`shrink-0 flex items-center justify-center group ${resizingRawPanel ? '' : 'transition-[width] duration-300 ease-out'} ${viewingRawMatch ? 'w-4 cursor-col-resize' : 'w-0'}`}>
-          {viewingRawMatch && (
-            <div className="w-1 h-10 rounded-full bg-gray-200 group-hover:bg-brand-400 group-active:bg-brand-500 transition-colors" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          {selectedRawMessage && (
-            <>
-              <div className="shrink-0">
-                <SelectedMessagePaxTable
-                  key={selectedRawMessage.message.parse_log_id}
-                  message={selectedRawMessage.message}
-                  khachInfo={selectedRawMessage.khachInfo}
-                  maxHeight={paxTableSize.h}
-                  onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
-                />
-              </div>
-              {/* Thanh kéo giãn CHIỀU CAO giữa bảng hành khách và bảng lô
-                  công nợ bên dưới — cùng kiểu tay cầm (vạch tròn giữa 1 dải
-                  rộng) như thanh kéo giãn độ rộng panel bên trái, chỉ xoay
-                  ngang vì kéo theo trục dọc. */}
-              <div
-                onMouseDown={startResizePaxTable}
-                title="Kéo để đổi chiều cao"
-                className={`shrink-0 h-4 flex items-center justify-center cursor-row-resize group ${resizingPaxTable ? '' : 'transition-colors'}`}>
-                <div className="h-1 w-10 rounded-full bg-gray-200 group-hover:bg-brand-400 group-active:bg-brand-500 transition-colors" />
-              </div>
-            </>
-          )}
-          <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
-            onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
-        </div>
+      {/* Bảng lô công nợ chiếm TRỌN vùng còn lại — không còn cột panel bên
+          trái lẫn bảng hành khách chèn phía trên như v1. */}
+      <div className="flex-1 min-h-0 flex flex-col pt-2">
+        <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
+          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
       </div>
+
+      {/* Bấm mã vé/PNR trong bảng → mở slide-over đè lên (portal ra
+          document.body, xem MatchSlideOver.tsx). Đóng lại là bảng nguyên
+          vẹn như cũ, không đẩy/ép layout gì hết. */}
+      {viewingRawMatch && (
+        <MatchSlideOver
+          target={{
+            id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,
+            ticketLabel: viewingRawMatch.idValue ?? 'Không có mã vé/PNR',
+            contextLabel: viewingRawMatch.paxLabel,
+            matchStatus: viewingRawMatch.matchStatus,
+          }}
+          candidatesUrl={`/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates`}
+          khSuggestions={dirMaKhach}
+          onSaved={(maKhach, matchedBookingId, giaMua, giaBan) =>
+            saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}
+          onClose={() => setViewingRawMatch(null)} />
+      )}
     </div>
   )
 }
