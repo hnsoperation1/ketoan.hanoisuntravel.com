@@ -2,53 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>): React.RefCallback<T> {
-  return node => {
-    for (const ref of refs) {
-      if (!ref) continue
-      if (typeof ref === 'function') ref(node)
-      else (ref as React.RefObject<T | null>).current = node
-    }
-  }
-}
-
 // Thanh cuộn dọc TỰ VẼ, đè lên nội dung thay vì chiếm chỗ layout (giống
 // Telegram desktop) — thanh cuộn NGUYÊN BẢN của trình duyệt luôn chiếm 1
 // dải bề rộng cố định dù mảnh cỡ nào (Chrome/Windows không còn hỗ trợ
 // "overflow: overlay" từ bản 121), nên chỉ có cách ẩn hẳn thanh cuộn thật
 // (.overlay-scroll-hide-native, xem globals.css) rồi tự vẽ 1 "thumb" absolute
 // đặt chồng lên rìa phải, tính vị trí/chiều cao theo scrollTop/scrollHeight.
+// Hiện chỉ dùng cho khung tin nhắn Telegram (RawMatchPanel.tsx) — KHÔNG áp
+// cho các bảng khác, những chỗ đó vẫn giữ nguyên thanh cuộn thật kiểu mặc
+// định (mảnh, xem rule `*` trong globals.css).
 //
-// `className`/`style` áp cho khối NGOÀI (quyết định kích thước theo layout
-// cha — vd className="flex-1 min-h-0" trong 1 cột flex, HOẶC style={{maxHeight}}
-// khi muốn co theo nội dung nhưng chặn trần). Khối NGOÀI tự là flex-col +
-// khối cuộn bên trong flex-1 min-h-0 (thay vì h-full) — bắt buộc phải vậy
-// mới đúng khi khối ngoài chỉ có max-height (không có height tường minh):
-// height:100% (h-full) trên phần tử block thường KHÔNG tự tính được theo
-// max-height của cha (CSS chỉ resolve % theo height tường minh), còn flex-1
-// thì luôn ăn đúng phần còn lại đã resolve, dù cha cao theo max-height hay
-// theo flex cha xa hơn.
-//
-// `contentClassName` áp cho khối cuộn THẬT bên trong (padding/space-y của
-// nội dung, xem RawMatchPanel.tsx). `scrollRef` + các props DOM khác
-// (tabIndex, onKeyDown...) được gắn thẳng lên khối cuộn bên trong — dùng
-// khi khối đó cần thêm hành vi ngoài cuộn (vd wrapProps của useCellSelection
-// ở RawTableCard, cần ref/tabIndex/onKeyDown riêng để giữ tính năng
-// kéo-chọn-vùng + Ctrl+C + di chuyển bằng mũi tên).
-//
-// `keepHorizontalScrollbar` — mặc định false: ẩn CẢ thanh cuộn ngang lẫn
-// dọc nguyên bản (đa số bảng dùng component này chỉ cuộn dọc, ẩn cả 2 cho
-// chắc chắn không lộ thanh thật). Bật true cho bảng nào THỰC SỰ cần cuộn
-// ngang (nhiều cột, vd bảng công nợ NCC raw) — khi đó chỉ ẩn trục dọc, giữ
-// nguyên thanh cuộn ngang thật (đã làm mảnh sẵn qua rule `*` globals.css).
-export function OverlayScrollArea({ className, style, contentClassName, children, scrollRef: externalRef, keepHorizontalScrollbar, ...rest }: {
+// `className` áp cho khối NGOÀI (relative, quyết định kích thước theo layout
+// cha — vd flex-1 min-h-0). Khối NGOÀI tự là flex-col + khối cuộn bên trong
+// flex-1 min-h-0 (thay vì h-full) để luôn ăn đúng phần còn lại dù cha cao
+// theo cách nào. `contentClassName` áp cho khối cuộn THẬT bên trong
+// (padding/space-y của nội dung).
+export function OverlayScrollArea({ className, contentClassName, children }: {
   className?: string
-  style?: React.CSSProperties
   contentClassName?: string
   children: React.ReactNode
-  scrollRef?: React.Ref<HTMLDivElement>
-  keepHorizontalScrollbar?: boolean
-} & Omit<React.HTMLAttributes<HTMLDivElement>, 'className' | 'style' | 'children' | 'onScroll'>) {
+}) {
   const innerRef = useRef<HTMLDivElement>(null)
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null)
   const [hovering, setHovering] = useState(false)
@@ -122,14 +95,11 @@ export function OverlayScrollArea({ className, style, contentClassName, children
   const visible = hovering || scrolling
 
   return (
-    <div className={`relative flex flex-col ${className ?? ''}`} style={style}
+    <div className={`relative flex flex-col ${className ?? ''}`}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}>
-      {/* overflow-x-auto giữ nguyên cuộn ngang (native) khi keepHorizontalScrollbar
-          — component này chỉ tự vẽ lại cuộn DỌC, cuộn ngang không cần kiểu
-          overlay vì hiếm khi xảy ra đồng thời với cuộn dọc. */}
-      <div ref={mergeRefs(innerRef, externalRef)} onScroll={onScroll} {...rest}
-        className={`flex-1 min-h-0 overflow-y-auto overflow-x-auto ${keepHorizontalScrollbar ? 'overlay-scroll-hide-native-y' : 'overlay-scroll-hide-native'} ${contentClassName ?? ''}`}>
+      <div ref={innerRef} onScroll={onScroll}
+        className={`flex-1 min-h-0 overflow-y-auto overlay-scroll-hide-native ${contentClassName ?? ''}`}>
         {children}
       </div>
       {thumb && (

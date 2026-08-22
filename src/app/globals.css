@@ -72,28 +72,18 @@ body {
 }
 
 /* Ẩn thanh cuộn nguyên bản của trình duyệt — dùng bởi
-   components/OverlayScrollArea.tsx, nơi tự vẽ 1 thanh cuộn dọc riêng (đè
-   lên nội dung, không chiếm chỗ layout, ẩn/hiện theo hover/lúc đang cuộn)
-   thay cho thanh cuộn thật — Chrome/Windows không có "overflow: overlay"
-   (đã bỏ từ Chrome 121) nên không cách nào làm thanh cuộn NGUYÊN BẢN hết
-   chiếm chỗ, phải tự vẽ lại bằng JS mới đạt đúng hiệu ứng đó.
-   Mặc định ẩn CẢ 2 trục (đa số khung dùng component này không cần cuộn
-   ngang — khung tin nhắn Telegram, bảng hành khách). Bảng nào vẫn cần cuộn
-   ngang thật (vd bảng công nợ NCC raw, nhiều cột) thì OverlayScrollArea
-   truyền prop `keepHorizontalScrollbar` để chỉ ẩn trục dọc qua biến thể
-   `-y` bên dưới — trước đó nhắm nhầm chỉ mỗi `:vertical` cho MỌI trường
-   hợp nên khung tin nhắn Telegram (không cần :vertical riêng, cần ẩn hết)
-   vẫn lộ thanh cuộn thật chồng lên thanh tự vẽ. */
+   components/OverlayScrollArea.tsx (hiện chỉ áp cho khung tin nhắn Telegram
+   ở RawMatchPanel.tsx), nơi tự vẽ 1 thanh cuộn dọc riêng (đè lên nội dung,
+   không chiếm chỗ layout, ẩn/hiện theo hover/lúc đang cuộn) thay cho thanh
+   cuộn thật — Chrome/Windows không có "overflow: overlay" (đã bỏ từ Chrome
+   121) nên không cách nào làm thanh cuộn NGUYÊN BẢN hết chiếm chỗ, phải tự
+   vẽ lại bằng JS mới đạt đúng hiệu ứng đó. */
 .overlay-scroll-hide-native {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .overlay-scroll-hide-native::-webkit-scrollbar {
   display: none;
-}
-.overlay-scroll-hide-native-y::-webkit-scrollbar:vertical {
-  display: none;
-  width: 0;
 }
 
 /* Tailwind v4 reset để cursor của button về "default" (mũi tên) — ép lại thành

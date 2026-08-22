@@ -9,7 +9,6 @@ import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
-import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 
 function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -385,7 +384,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
         </span>
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{message.pax.length} khách</span>
       </div>
-      <OverlayScrollArea style={{ maxHeight }}>
+      <div className="overflow-auto" style={{ maxHeight }}>
         <table className="list-table text-xs w-full border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -436,7 +435,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
             })}
           </tbody>
         </table>
-      </OverlayScrollArea>
+      </div>
     </div>
   )
 }
@@ -759,8 +758,8 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
           </button>
         </div>
       </div>
-      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="select-none outline-none" keepHorizontalScrollbar
-        scrollRef={wrapProps.ref} tabIndex={wrapProps.tabIndex} onKeyDown={wrapProps.onKeyDown}>
+      <div {...wrapProps}
+        className="flex-1 min-h-0 overflow-auto select-none outline-none">
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -858,7 +857,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
             ))}
           </tbody>
         </table>
-      </OverlayScrollArea>
+      </div>
     </div>
   )
 
