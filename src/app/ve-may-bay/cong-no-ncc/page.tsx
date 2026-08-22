@@ -376,7 +376,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
   }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
         <span className="text-xs text-gray-500 truncate">
           Hành khách trong tin nhắn của <span className="font-semibold text-emerald-600">{message.from_user_name ?? 'Không rõ người gửi'}</span>
@@ -1344,7 +1344,7 @@ export default function CongNoVePage() {
         <div
           className={`relative shrink-0 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width] duration-300 ease-out'}`}
           style={{ width: viewingRawMatch ? rawPanelWidths.panel : 0 }}>
-          <div style={{ width: rawPanelWidths.panel }}>
+          <div className="h-full" style={{ width: rawPanelWidths.panel }}>
             <RawMatchPanel
               target={viewingRawMatch ? {
                 id: `${viewingRawMatch.batchId}:${viewingRawMatch.rowIndex}`,

@@ -106,14 +106,19 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
 
   if (!target) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-sm text-gray-400 text-center">
+      <div className="h-full bg-white border border-gray-100 shadow-sm p-6 text-sm text-gray-400 text-center flex items-center justify-center">
         Bấm vào mã vé/PNR trong bảng để xem tin nhắn Telegram khớp ở đây.
       </div>
     )
   }
 
   return (
-    <div key={target.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col max-h-[calc(100vh-140px)]">
+    // h-full (thay vì max-h theo viewport) — panel này đứng cạnh cả khối
+    // bảng hành khách + bảng lô công nợ bên phải (2 khối xếp chồng), luôn
+    // cao bằng ĐÚNG tổng chiều cao của khối đó dù có 1 hay nhiều tin nhắn,
+    // không co lại theo nội dung. Cha ở page.tsx đã set h-full xuyên suốt
+    // (items-stretch trên hàng flex ngoài cùng) nên chỉ cần h-full ở đây.
+    <div key={target.id} className="h-full bg-white border border-gray-100 shadow-sm flex flex-col">
       {/* Tách khỏi vùng overflow-y-auto bên dưới — trước đây tiêu đề nằm
           CHUNG trong khối cuộn nên cuộn danh sách tin nhắn xuống là tiêu đề
           + nút đóng trôi mất luôn, khỏi màn hình. Giờ luôn đứng yên ở đỉnh
@@ -124,7 +129,7 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
           <X size={14} />
         </button>
       </div>
-      <div className="overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         <div>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
