@@ -1275,8 +1275,8 @@ export default function CongNoVePage() {
 
       <div className="flex-1 min-h-0 flex items-stretch pt-2">
         <div
-          className={`relative shrink-0 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
-          style={viewingRawMatch ? { width: rawPanelWidths.panel } : undefined}>
+          className={`relative shrink-0 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width] duration-300 ease-out'}`}
+          style={{ width: viewingRawMatch ? rawPanelWidths.panel : 0 }}>
           <div style={{ width: rawPanelWidths.panel }}>
             <RawMatchPanel
               target={viewingRawMatch ? {
@@ -1290,9 +1290,20 @@ export default function CongNoVePage() {
               onSelectMessage={setSelectedRawMessage}
             />
           </div>
+        </div>
+        {/* Tay cầm kéo giãn NẰM NGAY TRONG khoảng trống giữa panel và bảng
+            (trước đây là 1 dải mỏng 6px nép sát mép trong của panel, lọt
+            thỏm dưới khoảng trống mr-4 nhìn thấy được — dễ hiểu nhầm chỗ
+            cầm) — giờ chính khoảng trống đó (rộng 16px, w-4) LÀ tay cầm,
+            có vạch tròn xám làm dấu hiệu luôn nhìn thấy được, không cần rê
+            trúng mới biết. Vẫn co giãn theo cùng nhịp với panel lúc
+            đóng/mở (transition width 0 ↔ 16px) để không bị giật hình. */}
+        <div
+          onMouseDown={viewingRawMatch ? startResizeRawPanel : undefined}
+          title={viewingRawMatch ? 'Kéo để đổi độ rộng' : undefined}
+          className={`shrink-0 flex items-center justify-center group ${resizingRawPanel ? '' : 'transition-[width] duration-300 ease-out'} ${viewingRawMatch ? 'w-4 cursor-col-resize' : 'w-0'}`}>
           {viewingRawMatch && (
-            <div onMouseDown={startResizeRawPanel} title="Kéo để đổi độ rộng"
-              className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-300/50 active:bg-brand-400/60 transition-colors" />
+            <div className="w-1 h-10 rounded-full bg-gray-200 group-hover:bg-brand-400 group-active:bg-brand-500 transition-colors" />
           )}
         </div>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-3">
