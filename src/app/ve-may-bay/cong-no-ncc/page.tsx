@@ -759,7 +759,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
           </button>
         </div>
       </div>
-      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="select-none outline-none"
+      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="select-none outline-none" keepHorizontalScrollbar
         scrollRef={wrapProps.ref} tabIndex={wrapProps.tabIndex} onKeyDown={wrapProps.onKeyDown}>
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
