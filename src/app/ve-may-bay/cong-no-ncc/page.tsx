@@ -358,10 +358,11 @@ type RawBatch = {
 // RawTableCard) thay vì card hẹp nhồi trong panel, dễ đọc/đối chiếu hơn khi
 // tin nhắn có nhiều pax. "Chọn" gán mã khách của đúng dòng công nợ đang mở
 // panel (viewingRawMatch) — y hệt hành vi choosePax cũ trong RawMatchPanel.
-function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
+function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
   message: RawCandidateMessage
   khachInfo: RawKhachInfo
   onChoose: (p: RawCandidatePax, giaMua: number | null, giaBan: number | null) => void
+  maxHeight: number
 }) {
   // Giá mua/bán AI đọc từ tin nhắn có thể sai — cho kế toán sửa NGAY tại
   // đây trước khi bấm "Chọn" thay vì phải chọn xong rồi sửa lại ở bảng công
@@ -383,7 +384,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
         </span>
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{message.pax.length} khách</span>
       </div>
-      <div className="overflow-auto max-h-[360px]">
+      <div className="overflow-auto" style={{ maxHeight }}>
         <table className="list-table text-xs w-full border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -903,6 +904,18 @@ export default function CongNoVePage() {
     window.addEventListener('mouseup', onUp)
   }
 
+  // Chiều cao bảng hành khách (SelectedMessagePaxTable) kéo giãn được —
+  // axis 'y' (xem useResizableColumns.ts), cùng cơ chế với thanh kéo giãn
+  // độ RỘNG panel bên trái ở trên, chỉ khác trục.
+  const { widths: paxTableSize, startResize: startPaxTableResizeRaw } = useResizableColumns('cong-no-raw-pax-table', { h: 360 }, 'y')
+  const [resizingPaxTable, setResizingPaxTable] = useState(false)
+  function startResizePaxTable(e: React.MouseEvent) {
+    setResizingPaxTable(true)
+    startPaxTableResizeRaw('h', e)
+    const onUp = () => { setResizingPaxTable(false); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mouseup', onUp)
+  }
+
   async function runRematch() {
     setRematching(true)
     try {
@@ -1360,16 +1373,29 @@ export default function CongNoVePage() {
             <div className="w-1 h-10 rounded-full bg-gray-200 group-hover:bg-brand-400 group-active:bg-brand-500 transition-colors" />
           )}
         </div>
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-3">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {selectedRawMessage && (
-            <div className="shrink-0">
-              <SelectedMessagePaxTable
-                key={selectedRawMessage.message.parse_log_id}
-                message={selectedRawMessage.message}
-                khachInfo={selectedRawMessage.khachInfo}
-                onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
-              />
-            </div>
+            <>
+              <div className="shrink-0">
+                <SelectedMessagePaxTable
+                  key={selectedRawMessage.message.parse_log_id}
+                  message={selectedRawMessage.message}
+                  khachInfo={selectedRawMessage.khachInfo}
+                  maxHeight={paxTableSize.h}
+                  onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
+                />
+              </div>
+              {/* Thanh kéo giãn CHIỀU CAO giữa bảng hành khách và bảng lô
+                  công nợ bên dưới — cùng kiểu tay cầm (vạch tròn giữa 1 dải
+                  rộng) như thanh kéo giãn độ rộng panel bên trái, chỉ xoay
+                  ngang vì kéo theo trục dọc. */}
+              <div
+                onMouseDown={startResizePaxTable}
+                title="Kéo để đổi chiều cao"
+                className={`shrink-0 h-4 flex items-center justify-center cursor-row-resize group ${resizingPaxTable ? '' : 'transition-colors'}`}>
+                <div className="h-1 w-10 rounded-full bg-gray-200 group-hover:bg-brand-400 group-active:bg-brand-500 transition-colors" />
+              </div>
+            </>
           )}
           <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
             onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />

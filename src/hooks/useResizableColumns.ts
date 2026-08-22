@@ -1,7 +1,10 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 
-export function useResizableColumns(key: string, defaults: Record<string, number>) {
+// axis 'y' — dùng cho thanh kéo giãn CHIỀU CAO (vd chia đôi 2 khối xếp
+// chồng dọc), tính theo clientY thay vì clientX. Mặc định 'x' để không đổi
+// hành vi của mọi chỗ đang gọi hook này cho độ RỘNG cột (đa số).
+export function useResizableColumns(key: string, defaults: Record<string, number>, axis: 'x' | 'y' = 'x') {
   // Luôn khởi tạo bằng `defaults` (giống hệt server) — KHÔNG đọc
   // localStorage ngay trong useState nữa, vì server không có window nên sẽ
   // render ra HTML khác client, gây hydration mismatch (React phải vứt bỏ
@@ -26,11 +29,12 @@ export function useResizableColumns(key: string, defaults: Record<string, number
   const startResize = useCallback((col: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const x0 = e.clientX
+    const pos0 = axis === 'y' ? e.clientY : e.clientX
     const w0 = ref.current[col] ?? 120
 
     function onMove(ev: MouseEvent) {
-      const w = Math.max(60, w0 + ev.clientX - x0)
+      const pos = axis === 'y' ? ev.clientY : ev.clientX
+      const w = Math.max(60, w0 + pos - pos0)
       setWidths(prev => {
         const next = { ...prev, [col]: w }
         ref.current = next
@@ -46,7 +50,7 @@ export function useResizableColumns(key: string, defaults: Record<string, number
 
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [key])
+  }, [key, axis])
 
   return { widths, startResize }
 }

@@ -114,14 +114,18 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
 
   return (
     <div key={target.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col max-h-[calc(100vh-140px)]">
+      {/* Tách khỏi vùng overflow-y-auto bên dưới — trước đây tiêu đề nằm
+          CHUNG trong khối cuộn nên cuộn danh sách tin nhắn xuống là tiêu đề
+          + nút đóng trôi mất luôn, khỏi màn hình. Giờ luôn đứng yên ở đỉnh
+          panel, chỉ phần danh sách bên dưới cuộn. */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-100 shrink-0">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Tin nhắn Telegram khớp mã vé</h3>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
+          <X size={14} />
+        </button>
+      </div>
       <div className="overflow-y-auto p-3 space-y-4">
         <div>
-          <div className="flex items-center justify-between gap-2 mb-2 px-1">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Tin nhắn Telegram khớp mã vé</h3>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
-              <X size={14} />
-            </button>
-          </div>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
               <Loader2 size={16} className="animate-spin" /> Đang tải...
