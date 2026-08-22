@@ -131,12 +131,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
         <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
           {!collapsed && (
-            <p
-              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
+            <Link
+              href="/ve-may-bay"
+              onClick={onMobileClose}
+              className="block text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3 hover:opacity-70 transition-opacity"
               style={{ color: '#0069a0' }}
             >
               Kế toán vé máy bay
-            </p>
+            </Link>
           )}
           <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/tong-hop-cong-no-ncc" label="Tổng hợp công nợ NCC" icon={Table2} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
