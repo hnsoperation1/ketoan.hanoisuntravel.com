@@ -460,7 +460,7 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { ba
   useEffect(() => setMounted(true), [])
 
   const tabBar = (
-    <div className={`shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 px-2 overflow-x-auto ${expanded ? '' : 'rounded-b-2xl'}`}>
+    <div className={`shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 px-2 overflow-x-auto ${expanded ? '' : 'rounded-b-sm'}`}>
       {ordered.length === 0 ? (
         <span className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">Chưa có lần tải nào</span>
       ) : ordered.map(b => {
@@ -603,7 +603,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   // sheet nằm dính ngay dưới sẽ bo góc dưới; lúc phóng to bỏ bo góc luôn
   // (khít cả 4 cạnh màn hình).
   const content = (
-    <div className={expanded ? 'bg-white flex flex-col h-full min-h-0 list-table-container' : 'bg-white border border-gray-100 rounded-t-2xl shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
+    <div className={expanded ? 'bg-white flex flex-col h-full min-h-0 list-table-container' : 'bg-white border border-gray-100 rounded-t-sm shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">

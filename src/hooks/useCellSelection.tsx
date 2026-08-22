@@ -93,8 +93,29 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
     setCtxMenu({ x: e.clientX, y: e.clientY })
   }
 
+  // Di chuyển ô đang chọn bằng phím mũi tên (giống Excel/Google Sheets) —
+  // không biết trước bảng có bao nhiêu hàng/cột (mỗi bảng gọi hook này tự
+  // quyết định), nên dò biên bằng chính DOM: mỗi <td> đã có data-cell-r/c
+  // (gắn qua cellProps), ô kế tiếp không tồn tại trong DOM = đã ra khỏi
+  // bảng → giữ nguyên, không di chuyển. Lấy selEnd làm điểm xuất phát (ô
+  // "đang đứng" sau khi kéo chọn vùng), rồi thu về còn đúng 1 ô.
+  function moveSelection(dr: number, dc: number) {
+    const base = selEnd ?? selStart
+    if (!base) return
+    const r = base.r + dr
+    const c = base.c + dc
+    if (r < 0 || c < 0) return
+    const target = wrapRef.current?.querySelector<HTMLElement>(`[data-cell-r="${r}"][data-cell-c="${c}"]`)
+    if (!target) return
+    setSelStart({ r, c })
+    setSelEnd({ r, c })
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }
+
   function cellProps(r: number, c: number) {
     return {
+      'data-cell-r': r,
+      'data-cell-c': c,
       onMouseDown: (e: React.MouseEvent) => startSelect(e, r, c),
       onMouseEnter: () => extendSelect(r, c),
       onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, r, c),
@@ -107,7 +128,18 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
   const wrapProps = {
     ref: wrapRef,
     tabIndex: 0,
-    onKeyDown: (e: React.KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') copySelection() },
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { copySelection(); return }
+      // Chỉ xử lý mũi tên khi phím bấm ngay trên chính div bọc bảng (đã có
+      // ô được click qua startSelect → wrapRef.focus()) — KHÔNG xử lý khi
+      // đang gõ trong input/textarea lồng bên trong 1 ô (vd EditableCell),
+      // nếu không sẽ cướp mất mũi tên dùng để di chuyển con trỏ chữ.
+      if (e.target !== e.currentTarget) return
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1, 0) }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1, 0) }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelection(0, -1) }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); moveSelection(0, 1) }
+    },
   }
 
   const menu = ctxMenu && mounted ? createPortal(
