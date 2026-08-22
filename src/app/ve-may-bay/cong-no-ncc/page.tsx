@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Trash2, Loader2, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
+import { RefreshCw, Trash2, Loader2, Maximize2, Minimize2, X, Pencil, Menu } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
@@ -343,6 +343,10 @@ type RawBatch = {
   id: string
   ncc: string
   source_file: string | null
+  // Tên hiển thị tuỳ chỉnh (đổi qua double-click/chuột phải tab) — khác
+  // source_file (tên file gốc lúc upload, không đổi) — null = chưa đổi tên,
+  // hiển thị dùng source_file như trước. Đổi được vô số lần.
+  display_name: string | null
   headers: string[]
   rows: string[][]
   created_at: string
@@ -442,7 +446,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
 // (không ép về schema chung).
 type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
 
-function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
+function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -459,31 +463,126 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { ba
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
+  // Danh sách "Tất cả sheet" — giống nút ☰ ở đáy Google Sheets: khi có
+  // nhiều lần tải, thanh tab cuộn ngang khó dò hết — bấm nút này để chọn
+  // thẳng từ danh sách đầy đủ thay vì cuộn tìm.
+  const [tabMenuOpen, setTabMenuOpen] = useState(false)
+  const tabMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!tabMenuOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (tabMenuRef.current && !tabMenuRef.current.contains(e.target as Node)) setTabMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [tabMenuOpen])
+
+  // Đổi tên hiển thị của tab — double-click hoặc chuột phải → "Đổi tên"
+  // (giống Excel/Google Sheets). Chỉ ghi display_name (xem onRename ở
+  // CongNoVePage), source_file gốc không đổi — đổi được vô số lần, để
+  // trống rồi lưu = xoá tên tuỳ chỉnh, quay lại hiển thị theo tên file gốc.
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [tabCtxMenu, setTabCtxMenu] = useState<{ x: number; y: number; batchId: string } | null>(null)
+
+  useEffect(() => {
+    if (!tabCtxMenu) return
+    const close = () => setTabCtxMenu(null)
+    window.addEventListener('click', close)
+    window.addEventListener('scroll', close, true)
+    return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true) }
+  }, [tabCtxMenu])
+
+  function startRename(b: RawBatch) {
+    setRenamingId(b.id)
+    setRenameDraft(b.display_name ?? b.source_file ?? '')
+  }
+  function commitRename(id: string) {
+    const trimmed = renameDraft.trim()
+    onRename(id, trimmed || null)
+    setRenamingId(null)
+  }
+
   const tabBar = (
-    <div className={`shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 px-2 overflow-x-auto ${expanded ? '' : 'rounded-b-sm'}`}>
-      {ordered.length === 0 ? (
-        <span className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">Chưa có lần tải nào</span>
-      ) : ordered.map(b => {
-        const isActive = b.id === active?.id
-        const label = b.source_file || 'Không rõ tên file'
-        return (
-          <button key={b.id} type="button" onClick={() => setActiveId(b.id)}
-            title={`${label} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
-            className={`px-3 py-1.5 text-xs whitespace-nowrap max-w-[220px] truncate border-t-2 transition-colors ${
-              isActive
-                ? 'bg-white border-brand-500 text-brand-700 font-semibold'
-                : 'border-transparent text-gray-500 hover:bg-gray-200/70'
-            }`}>
-            {label}
+    <div className={`shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200 ${expanded ? '' : 'rounded-b-sm'}`}>
+      <div className="relative shrink-0" ref={tabMenuRef}>
+        <button type="button" onClick={() => setTabMenuOpen(o => !o)} title="Tất cả các lần tải"
+          className="h-full px-2 flex items-center text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 border-r border-gray-200 transition-colors">
+          <Menu size={14} />
+        </button>
+        {tabMenuOpen && (
+          <div className="absolute bottom-full left-0 mb-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[240px] max-h-64 overflow-y-auto">
+            {ordered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-gray-400">Chưa có lần tải nào</div>
+            ) : ordered.map(b => {
+              const isActive = b.id === active?.id
+              return (
+                <button key={b.id} type="button" onClick={() => { setActiveId(b.id); setTabMenuOpen(false) }}
+                  title={new Date(b.created_at).toLocaleString('vi-VN')}
+                  className={`w-full text-left px-3 py-1.5 text-xs truncate transition-colors ${
+                    isActive ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'
+                  }`}>
+                  {b.display_name || b.source_file || 'Không rõ tên file'}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
+        {ordered.length === 0 ? (
+          <span className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">Chưa có lần tải nào</span>
+        ) : ordered.map(b => {
+          const isActive = b.id === active?.id
+          const label = b.display_name || b.source_file || 'Không rõ tên file'
+
+          if (renamingId === b.id) {
+            return (
+              <input key={b.id} autoFocus value={renameDraft}
+                onChange={e => setRenameDraft(e.target.value)}
+                onFocus={e => e.target.select()}
+                onBlur={() => commitRename(b.id)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitRename(b.id) }
+                  if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null) }
+                }}
+                className="w-40 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-white border-t-2 border-brand-500 outline-none" />
+            )
+          }
+          return (
+            <button key={b.id} type="button" onClick={() => setActiveId(b.id)}
+              onDoubleClick={() => startRename(b)}
+              onContextMenu={e => { e.preventDefault(); setActiveId(b.id); setTabCtxMenu({ x: e.clientX, y: e.clientY, batchId: b.id }) }}
+              title={`${label} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
+              className={`px-3 py-1.5 text-xs whitespace-nowrap max-w-[220px] truncate border-t-2 transition-colors ${
+                isActive
+                  ? 'bg-white border-brand-500 text-brand-700 font-semibold'
+                  : 'border-transparent text-gray-500 hover:bg-gray-200/70'
+              }`}>
+              {label}
+            </button>
+          )
+        })}
+      </div>
+      {tabCtxMenu && createPortal(
+        <div className="fixed z-[200] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[140px]"
+          style={{ left: tabCtxMenu.x, top: tabCtxMenu.y }} onClick={e => e.stopPropagation()}>
+          <button onClick={() => {
+            const b = ordered.find(x => x.id === tabCtxMenu.batchId)
+            if (b) startRename(b)
+            setTabCtxMenu(null)
+          }} className="w-full text-left px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+            Đổi tên
           </button>
-        )
-      })}
+        </div>,
+        document.body
+      )}
     </div>
   )
 
   const table = active ? (
     <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
-      info={`${active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
+      info={`${active.display_name || active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
       onDelete={() => onDelete(active.id)}
       matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
       onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
@@ -858,6 +957,19 @@ export default function CongNoVePage() {
     } catch { /* im lặng */ }
   }
 
+  // Đổi tên hiển thị của 1 lô (tab "sheet") — chỉ ghi display_name, KHÔNG
+  // đụng source_file (tên file gốc, giữ nguyên để truy vết). Đổi được vô
+  // số lần; displayName = null khi để trống lúc lưu (quay lại hiển thị
+  // theo tên file gốc).
+  async function renameRawBatch(id: string, displayName: string | null) {
+    setRawBatches(prev => prev.map(b => b.id === id ? { ...b, display_name: displayName } : b))
+    await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: displayName }),
+    })
+  }
+
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Đầu vào công nợ NCC</span>)
     setOnRefresh(loadRawData)
@@ -1194,7 +1306,7 @@ export default function CongNoVePage() {
               />
             </div>
           )}
-          <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
+          <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
             onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
         </div>
       </div>
