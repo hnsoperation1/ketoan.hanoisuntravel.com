@@ -435,36 +435,72 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose }: {
   )
 }
 
-// Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô 1 bảng riêng,
-// giữ đúng cột/tên cột như file gốc (không ép về schema chung).
+// Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô là 1 "sheet"
+// riêng, chọn qua thanh tab dính đáy màn hình giống Excel/Google Sheets
+// (trước đây xếp chồng dọc, phải cuộn dài mới thấy hết các lần upload).
+// Mỗi tab = 1 lần tải file từ NCC đó, giữ đúng cột/tên cột như file gốc
+// (không ép về schema chung).
 type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
 
 function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
-  if (batches.length === 0) {
-    return <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
-  }
+  // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
+  // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
+  // nhất nằm ngoài cùng bên phải và được chọn mặc định.
+  const ordered = [...batches].reverse()
+  const [activeId, setActiveId] = useState<string | null>(null)
+  // Không tìm thấy (chưa chọn bao giờ, hoặc lô đang xem vừa bị xoá) → rơi
+  // về lô mới nhất, không cần useEffect đồng bộ state.
+  const active = ordered.find(b => b.id === activeId) ?? ordered[ordered.length - 1]
+
+  const tabBar = (
+    <div className="shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 rounded-b-2xl px-2 overflow-x-auto">
+      {ordered.length === 0 ? (
+        <span className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">Chưa có lần tải nào</span>
+      ) : ordered.map(b => {
+        const isActive = b.id === active?.id
+        const label = b.source_file || 'Không rõ tên file'
+        return (
+          <button key={b.id} type="button" onClick={() => setActiveId(b.id)}
+            title={`${label} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
+            className={`px-3 py-1.5 text-xs whitespace-nowrap max-w-[220px] truncate border-t-2 transition-colors ${
+              isActive
+                ? 'bg-white border-brand-500 text-brand-700 font-semibold'
+                : 'border-transparent text-gray-500 hover:bg-gray-200/70'
+            }`}>
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   return (
-    <div className="space-y-4">
-      {batches.map(b => (
-        <RawTableCard key={b.id} ncc={ncc} headers={b.headers} rows={b.rows}
-          info={`${b.source_file || 'Không rõ tên file'} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
-          onDelete={() => onDelete(b.id)}
-          matches={new Map(b.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
-          onSaveGia={(rowIndex, field, value) => onSaveGia(b.id, rowIndex, field, value)}
-          onOpenMatch={rowIndex => {
-            const idColIdx = findIdColumnIndex(b.headers)
-            const paxColIdx = findPaxColumnIndex(b.headers)
-            const row = b.rows[rowIndex]
-            const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-            onOpenMatch({
-              batchId: b.id,
-              rowIndex,
-              idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
-              paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
-              matchStatus: existing?.match_status ?? null,
-            })
-          }} />
-      ))}
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0">
+        {active ? (
+          <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
+            info={`${active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
+            onDelete={() => onDelete(active.id)}
+            matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
+            onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
+            onOpenMatch={rowIndex => {
+              const idColIdx = findIdColumnIndex(active.headers)
+              const paxColIdx = findPaxColumnIndex(active.headers)
+              const row = active.rows[rowIndex]
+              const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+              onOpenMatch({
+                batchId: active.id,
+                rowIndex,
+                idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
+                paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
+                matchStatus: existing?.match_status ?? null,
+              })
+            }} />
+        ) : (
+          <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
+        )}
+      </div>
+      {tabBar}
     </div>
   )
 }
@@ -550,8 +586,13 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   const rawTotalWidth = headers.reduce((sum, _, i) => sum + (rawWidths[String(i)] ?? 110), 0)
     + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => sum + (rawWidths[c.key] ?? c.width), 0) : 0)
 
+  // Không phóng to: bảng CHOÁN HẾT chiều cao khung cha (h-full + min-h-0)
+  // thay vì max-h cố định — khung cha đã bị chặn chiều cao bởi layout cột
+  // của trang (xem CongNoVePage), nên bảng luôn vừa khít vùng còn lại giữa
+  // thanh tab NCC và thanh "sheet" ở đáy, giống Excel/Google Sheets. Chỉ bo
+  // góc TRÊN vì thanh sheet nằm dính ngay dưới sẽ bo góc dưới.
   const content = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-2xl shadow-sm list-table-container overflow-hidden'}>
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-t-2xl shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">
@@ -568,7 +609,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
         </div>
       </div>
       <div {...wrapProps}
-        className={`${expanded ? 'flex-1 overflow-auto' : 'overflow-auto max-h-[480px]'} select-none outline-none`}>
+        className="flex-1 min-h-0 overflow-auto select-none outline-none">
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -924,11 +965,17 @@ export default function CongNoVePage() {
   }
 
   return (
-    <div className="px-5 pb-5 space-y-2">
+    // absolute inset-0 — <main> trong AppShell.tsx đã có "relative" nên khối
+    // này phủ ĐÚNG BẰNG vùng nội dung (không hơn, không kém) → main không
+    // sinh thanh cuộn dọc, mọi việc cuộn dồn vào trong bảng. Nhờ vậy thanh
+    // "sheet" ở đáy luôn dính đáy màn hình và bảng lấp trọn phần còn lại,
+    // giống Excel/Google Sheets (h-full/100% không dùng được ở đây vì chiều
+    // cao của main do flex quyết định, không phải giá trị tường minh).
+    <div className="absolute inset-0 flex flex-col px-5 pb-3">
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
           (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
           padding-top) để 2 thanh liền mạch nhau. */}
-      <div className="min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
+      <div className="shrink-0 min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">
         <div className="flex items-center gap-1 flex-wrap">
           {NCC_TABS.map(n => (
             <button key={n} type="button"
@@ -1104,9 +1151,9 @@ export default function CongNoVePage() {
       document.body
       )}
 
-      <div className="flex items-start">
+      <div className="flex-1 min-h-0 flex items-stretch pt-2">
         <div
-          className={`relative shrink-0 sticky top-4 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
+          className={`relative shrink-0 overflow-hidden ${resizingRawPanel ? '' : 'transition-[width,margin] duration-300 ease-out'} ${viewingRawMatch ? 'mr-4' : 'w-0 mr-0'}`}
           style={viewingRawMatch ? { width: rawPanelWidths.panel } : undefined}>
           <div style={{ width: rawPanelWidths.panel }}>
             <RawMatchPanel
@@ -1126,14 +1173,16 @@ export default function CongNoVePage() {
               className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-300/50 active:bg-brand-400/60 transition-colors" />
           )}
         </div>
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-3">
           {selectedRawMessage && (
-            <SelectedMessagePaxTable
-              key={selectedRawMessage.message.parse_log_id}
-              message={selectedRawMessage.message}
-              khachInfo={selectedRawMessage.khachInfo}
-              onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
-            />
+            <div className="shrink-0">
+              <SelectedMessagePaxTable
+                key={selectedRawMessage.message.parse_log_id}
+                message={selectedRawMessage.message}
+                khachInfo={selectedRawMessage.khachInfo}
+                onChoose={(p, giaMua, giaBan) => p.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, p.ma_khach, p.id, giaMua, giaBan)}
+              />
+            </div>
           )}
           <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} ncc={nccFilter}
             onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
