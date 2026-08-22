@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
+import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 
 export type RawCandidatePax = {
   id: string
@@ -129,7 +130,7 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
           <X size={14} />
         </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="p-3 space-y-4">
         <div>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
@@ -168,7 +169,7 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
             </div>
           )}
         </div>
-      </div>
+      </OverlayScrollArea>
     </div>
   )
 }

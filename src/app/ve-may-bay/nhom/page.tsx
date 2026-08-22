@@ -238,7 +238,7 @@ export default function NhomTelegramPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 list-table-container">
+          <div className="bg-white border border-gray-100 shadow-sm p-5 list-table-container">
             <h2 className="font-bold text-gray-900 mb-3">Nhóm đã gán ({loading ? '…' : daGan.length})</h2>
             {loading ? (
               <p className="text-sm text-gray-400">Đang tải...</p>

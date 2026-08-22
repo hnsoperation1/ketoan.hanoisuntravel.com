@@ -711,7 +711,7 @@ export default function DanhMucKhachHangPage() {
   // Topbar) để bảng nhiều cột ở chế độ "Đầy đủ" chiếm trọn màn hình. Chỉ
   // phóng to riêng khối bảng, KHÔNG kèm thanh tìm kiếm/bộ lọc phía trên.
   const tableSection = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col' : 'bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container'}>
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col' : 'bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{filtered.length.toLocaleString('vi-VN')} mã khách</span>
         <button onClick={() => setExpanded(e => !e)}

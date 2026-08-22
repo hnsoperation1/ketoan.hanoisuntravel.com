@@ -634,7 +634,7 @@ export default function NhanSuPage() {
         <>
           <p className="text-sm text-gray-400">{tongHopRows.length.toLocaleString('vi-VN')} lượt tham gia</p>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+          <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
               <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: thTotalWidth }}>
                 <thead>
@@ -724,7 +724,7 @@ export default function NhanSuPage() {
         <>
           <p className="text-sm text-gray-400">{toanBoRows.length.toLocaleString('vi-VN')} nhân sự</p>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+          <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
               <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: tbTotalWidth }}>
                 <thead>
@@ -790,7 +790,7 @@ export default function NhanSuPage() {
         <>
           <p className="text-sm text-gray-400">{paymentRows.length.toLocaleString('vi-VN')} lượt tham gia</p>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+          <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
             <div className="overflow-x-auto">
               <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: payTotalWidth }}>
                 <thead>

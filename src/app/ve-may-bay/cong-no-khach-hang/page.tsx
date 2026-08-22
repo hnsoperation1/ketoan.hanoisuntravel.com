@@ -127,7 +127,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             row.phat_sinh_rows.length === 0 ? (
               <p className="text-sm text-gray-400">Không có dòng nào.</p>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+              <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
                 <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: psTotalWidth }}>
                   <thead>
@@ -160,7 +160,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
             row.da_thu_rows.length === 0 ? (
               <p className="text-sm text-gray-400">Không có dòng nào.</p>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+              <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
                 <div className="overflow-x-auto">
                 <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: dtTotalWidth }}>
                   <thead>
@@ -345,7 +345,7 @@ export default function CongNoKhachHangPage() {
         <span className={`font-semibold ${tongCongNo > 0 ? 'text-red-500' : 'text-emerald-600'}`}>Công nợ: {formatTien(tongCongNo)}</span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+      <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
         <div className="overflow-x-auto">
           <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: cnKhTotalWidth }}>
             <thead className="sticky top-0 z-10">

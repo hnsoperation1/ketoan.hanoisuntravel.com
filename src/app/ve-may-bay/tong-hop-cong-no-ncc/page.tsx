@@ -1171,7 +1171,7 @@ export default function TongHopCongNoNccPage() {
                 </button>
               )}
             </div>
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
+            <div className="border border-gray-200 overflow-auto max-h-72">
               <table className="text-xs">
                 <tbody>
                   {rawGrid.slice(0, 20).map((r, i) => (
@@ -1213,7 +1213,7 @@ export default function TongHopCongNoNccPage() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-[70vh]">
+            <div className="border border-gray-200 overflow-auto max-h-[70vh]">
               <table className="text-xs w-full">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">

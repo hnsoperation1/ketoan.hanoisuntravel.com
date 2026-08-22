@@ -175,7 +175,7 @@ export default function BieuMauHopDongPage() {
             Chưa có biểu mẫu nào. Nhấn &quot;Thêm biểu mẫu&quot; để tải lên file .docx đầu tiên.
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden list-table-container">
+          <div className="bg-white border border-gray-200 shadow-sm overflow-hidden list-table-container">
             <div {...wrapProps} className="select-none outline-none">
             <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: bmTotalWidth }}>
               <thead>

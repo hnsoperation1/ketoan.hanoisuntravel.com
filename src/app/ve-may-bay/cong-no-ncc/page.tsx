@@ -9,6 +9,7 @@ import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
+import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 
 function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -384,7 +385,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
         </span>
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{message.pax.length} khách</span>
       </div>
-      <div className="overflow-auto" style={{ maxHeight }}>
+      <OverlayScrollArea style={{ maxHeight }}>
         <table className="list-table text-xs w-full border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -435,7 +436,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
             })}
           </tbody>
         </table>
-      </div>
+      </OverlayScrollArea>
     </div>
   )
 }
@@ -535,7 +536,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
   const candidateRows = candidateInfo && candidateInfo.batchId === activeId2 ? candidateInfo.rows : null
 
   const tabBar = (
-    <div className={`shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200 ${expanded ? '' : 'rounded-b-sm'}`}>
+    <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
       <div className="relative shrink-0" ref={tabMenuRef}>
         <button type="button" onClick={() => setTabMenuOpen(o => !o)} title="Tất cả các lần tải"
           className="h-full px-2 flex items-center text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 border-r border-gray-200 transition-colors">
@@ -742,7 +743,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   // sheet nằm dính ngay dưới sẽ bo góc dưới; lúc phóng to bỏ bo góc luôn
   // (khít cả 4 cạnh màn hình).
   const content = (
-    <div className={expanded ? 'bg-white flex flex-col h-full min-h-0 list-table-container' : 'bg-white border border-gray-100 rounded-t-sm shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
+    <div className={expanded ? 'bg-white flex flex-col h-full min-h-0 list-table-container' : 'bg-white border border-gray-100 shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">
@@ -758,8 +759,8 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
           </button>
         </div>
       </div>
-      <div {...wrapProps}
-        className="flex-1 min-h-0 overflow-auto select-none outline-none">
+      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="select-none outline-none"
+        scrollRef={wrapProps.ref} tabIndex={wrapProps.tabIndex} onKeyDown={wrapProps.onKeyDown}>
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
@@ -857,7 +858,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
             ))}
           </tbody>
         </table>
-      </div>
+      </OverlayScrollArea>
     </div>
   )
 
@@ -1234,7 +1235,7 @@ export default function CongNoVePage() {
                 </button>
               )}
             </div>
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-72">
+            <div className="border border-gray-200 overflow-auto max-h-72">
               <table className="text-xs">
                 <tbody>
                   {rawGrid.slice(0, 20).map((r, i) => (
@@ -1270,7 +1271,7 @@ export default function CongNoVePage() {
               </button>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-auto max-h-[70vh]">
+            <div className="border border-gray-200 overflow-auto max-h-[70vh]">
               <table className="text-xs w-full">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">

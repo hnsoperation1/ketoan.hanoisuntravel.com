@@ -71,6 +71,23 @@ body {
   background: rgba(0, 0, 0, 0.32);
 }
 
+/* Ẩn thanh cuộn DỌC nguyên bản của trình duyệt — dùng bởi
+   components/OverlayScrollArea.tsx, nơi tự vẽ 1 thanh cuộn dọc riêng (đè
+   lên nội dung, không chiếm chỗ layout, ẩn/hiện theo hover/lúc đang cuộn)
+   thay cho thanh cuộn thật — Chrome/Windows không có "overflow: overlay"
+   (đã bỏ từ Chrome 121) nên không cách nào làm thanh cuộn NGUYÊN BẢN hết
+   chiếm chỗ, phải tự vẽ lại bằng JS mới đạt đúng hiệu ứng đó. Chỉ nhắm
+   :vertical (Chrome/Edge/Safari hỗ trợ chọn riêng theo trục) — cuộn NGANG
+   (nếu bảng bên trong rộng hơn khung) vẫn giữ nguyên thanh cuộn thật, chỉ
+   mảnh sẵn từ rule `*` phía trên, KHÔNG ẩn — vài bảng đang dùng component
+   này (vd bảng công nợ NCC raw) cần cuộn ngang thật sự. Firefox không có
+   scrollbar-width riêng theo trục nên vẫn hiện thanh cuộn dọc mảnh (rule
+   `*` phía trên) — chấp nhận được vì app chủ yếu dùng trên Chrome. */
+.overlay-scroll-hide-native::-webkit-scrollbar:vertical {
+  display: none;
+  width: 0;
+}
+
 /* Tailwind v4 reset để cursor của button về "default" (mũi tên) — ép lại thành
    "pointer" (bàn tay) cho mọi phần tử bấm được, đồng bộ toàn app. */
 button:not(:disabled),
@@ -90,7 +107,7 @@ a,
    chung các class rounded-2xl/shadow-sm. Bật qua [data-ui-theme="dense"]
    trên wrapper gốc ở AppShell.tsx. */
 [data-ui-theme="dense"] .list-table-container {
-  border-radius: 0.5rem;
+  border-radius: 0;
   box-shadow: none;
 }
 

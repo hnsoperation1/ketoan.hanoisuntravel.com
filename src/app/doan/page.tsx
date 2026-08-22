@@ -175,7 +175,7 @@ export default function QuyetToanTourPage() {
           {doanList.length === 0 ? <>Chưa có đoàn nào. Nhấn &quot;Thêm đoàn&quot; để bắt đầu.</> : 'Không có đoàn nào khớp bộ lọc.'}
         </div>
       ) : viewMode === 'table' ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden list-table-container">
+        <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
           <div className="overflow-x-auto">
             <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: doanTotalWidth }}>
               <thead>
