@@ -452,8 +452,15 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { ba
   // về lô mới nhất, không cần useEffect đồng bộ state.
   const active = ordered.find(b => b.id === activeId) ?? ordered[ordered.length - 1]
 
+  // "Phóng to" quản lý Ở ĐÂY (không phải trong RawTableCard) vì phải bọc
+  // fixed inset-0 quanh CẢ bảng lẫn thanh tab sheet bên dưới — để thanh tab
+  // vẫn hiện, chọn được lô khác, ngay cả khi đang phóng to.
+  const [expanded, setExpanded] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const tabBar = (
-    <div className="shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 rounded-b-2xl px-2 overflow-x-auto">
+    <div className={`shrink-0 flex items-stretch gap-0.5 bg-gray-100 border border-t-0 border-gray-200 px-2 overflow-x-auto ${expanded ? '' : 'rounded-b-2xl'}`}>
       {ordered.length === 0 ? (
         <span className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">Chưa có lần tải nào</span>
       ) : ordered.map(b => {
@@ -474,35 +481,39 @@ function RawBatchesView({ batches, onDelete, ncc, onOpenMatch, onSaveGia }: { ba
     </div>
   )
 
-  return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 min-h-0">
-        {active ? (
-          <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
-            info={`${active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
-            onDelete={() => onDelete(active.id)}
-            matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
-            onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
-            onOpenMatch={rowIndex => {
-              const idColIdx = findIdColumnIndex(active.headers)
-              const paxColIdx = findPaxColumnIndex(active.headers)
-              const row = active.rows[rowIndex]
-              const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-              onOpenMatch({
-                batchId: active.id,
-                rowIndex,
-                idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
-                paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
-                matchStatus: existing?.match_status ?? null,
-              })
-            }} />
-        ) : (
-          <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} />
-        )}
-      </div>
+  const table = active ? (
+    <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
+      info={`${active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
+      onDelete={() => onDelete(active.id)}
+      matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
+      onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
+      expanded={expanded} onToggleExpand={() => setExpanded(e => !e)}
+      onOpenMatch={rowIndex => {
+        const idColIdx = findIdColumnIndex(active.headers)
+        const paxColIdx = findPaxColumnIndex(active.headers)
+        const row = active.rows[rowIndex]
+        const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+        onOpenMatch({
+          batchId: active.id,
+          rowIndex,
+          idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
+          paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
+          matchStatus: existing?.match_status ?? null,
+        })
+      }} />
+  ) : (
+    <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}}
+      expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} />
+  )
+
+  const body = (
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col' : 'flex-1 min-h-0 flex flex-col'}>
+      <div className="flex-1 min-h-0">{table}</div>
       {tabBar}
     </div>
   )
+
+  return expanded && mounted ? createPortal(body, document.body) : body
 }
 
 type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' | 'gia_ban' | 'gia_source'>
@@ -561,15 +572,12 @@ const RAW_EXTRA_COLS = [
   { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 100 },
 ]
 
-function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia }: {
+function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, expanded, onToggleExpand }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
+  expanded: boolean; onToggleExpand: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
   const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
   const idColIdx = findIdColumnIndex(headers)
   const paxColIdx = findPaxColumnIndex(headers)
@@ -586,13 +594,16 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
   const rawTotalWidth = headers.reduce((sum, _, i) => sum + (rawWidths[String(i)] ?? 110), 0)
     + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => sum + (rawWidths[c.key] ?? c.width), 0) : 0)
 
-  // Không phóng to: bảng CHOÁN HẾT chiều cao khung cha (h-full + min-h-0)
-  // thay vì max-h cố định — khung cha đã bị chặn chiều cao bởi layout cột
-  // của trang (xem CongNoVePage), nên bảng luôn vừa khít vùng còn lại giữa
-  // thanh tab NCC và thanh "sheet" ở đáy, giống Excel/Google Sheets. Chỉ bo
-  // góc TRÊN vì thanh sheet nằm dính ngay dưới sẽ bo góc dưới.
+  // Bảng CHOÁN HẾT chiều cao khung cha (h-full + min-h-0) thay vì max-h cố
+  // định — khung cha (do RawBatchesView quyết định) đã bị chặn chiều cao
+  // bởi layout cột của trang lúc bình thường, hoặc bằng cả màn hình lúc
+  // "Phóng to" (RawBatchesView tự bọc fixed inset-0 + portal, bọc CẢ card
+  // này lẫn thanh tab sheet — không tự làm ở đây nữa để thanh tab không bị
+  // bỏ lại phía sau khi phóng to). Chỉ bo góc TRÊN lúc bình thường vì thanh
+  // sheet nằm dính ngay dưới sẽ bo góc dưới; lúc phóng to bỏ bo góc luôn
+  // (khít cả 4 cạnh màn hình).
   const content = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-100 rounded-t-2xl shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
+    <div className={expanded ? 'bg-white flex flex-col h-full min-h-0 list-table-container' : 'bg-white border border-gray-100 rounded-t-2xl shadow-sm list-table-container overflow-hidden flex flex-col h-full min-h-0'}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">
@@ -601,7 +612,7 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
               <Trash2 size={13} />
             </button>
           )}
-          <button onClick={() => setExpanded(e => !e)}
+          <button onClick={onToggleExpand}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
             {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             {expanded ? 'Thu nhỏ' : 'Phóng to'}
@@ -696,7 +707,6 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
     </div>
   )
 
-  if (expanded && mounted) return <>{createPortal(content, document.body)}{menu}</>
   return <>{content}{menu}</>
 }
 
@@ -971,7 +981,7 @@ export default function CongNoVePage() {
     // "sheet" ở đáy luôn dính đáy màn hình và bảng lấp trọn phần còn lại,
     // giống Excel/Google Sheets (h-full/100% không dùng được ở đây vì chiều
     // cao của main do flex quyết định, không phải giá trị tường minh).
-    <div className="absolute inset-0 flex flex-col px-5 pb-3">
+    <div className="absolute inset-0 flex flex-col px-5">
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
           (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
           padding-top) để 2 thanh liền mạch nhau. */}
