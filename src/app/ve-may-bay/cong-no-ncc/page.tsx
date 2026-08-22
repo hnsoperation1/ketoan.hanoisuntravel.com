@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Trash2, Loader2, Maximize2, Minimize2, X, Pencil, Menu } from 'lucide-react'
+import { RefreshCw, Trash2, Loader2, Maximize2, Minimize2, X, Pencil, Menu, MessageSquareText, MessageSquareOff } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useTopbar } from '@/contexts/topbar'
@@ -511,6 +511,28 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
     return b.display_name ? `${b.display_name} (${original})` : original
   }
 
+  // Dòng nào CÓ tin nhắn Telegram khớp mã vé — hỏi 1 lượt cho cả lô đang
+  // xem (xem route candidates-summary) để bảng chính hiện dấu hiệu sẵn cho
+  // mọi dòng, thay vì phải bấm từng dòng mở panel mới biết là rỗng.
+  // Lưu kèm batchId thay vì reset state khi đổi lô: state cũ của lô khác
+  // coi như "chưa có dữ liệu" (candidateRows = null → chưa hiện icon), nên
+  // không cần setState đồng bộ trong effect.
+  const [candidateInfo, setCandidateInfo] = useState<{ batchId: string; rows: Set<number> } | null>(null)
+  const activeId2 = active?.id
+  useEffect(() => {
+    if (!activeId2) return
+    let cancelled = false
+    fetch(`/api/ve-may-bay/cong-no-raw/${activeId2}/candidates-summary`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (cancelled || !j?.data) return
+        setCandidateInfo({ batchId: activeId2, rows: new Set<number>(j.data.rowsWithCandidates ?? []) })
+      })
+      .catch(() => { /* im lặng — chỉ mất dấu hiệu gợi ý, bảng vẫn dùng được */ })
+    return () => { cancelled = true }
+  }, [activeId2])
+  const candidateRows = candidateInfo && candidateInfo.batchId === activeId2 ? candidateInfo.rows : null
+
   const tabBar = (
     <div className={`shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200 ${expanded ? '' : 'rounded-b-sm'}`}>
       <div className="relative shrink-0" ref={tabMenuRef}>
@@ -600,6 +622,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
       matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
       onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)}
+      candidateRows={candidateRows}
       onOpenMatch={rowIndex => {
         const idColIdx = findIdColumnIndex(active.headers)
         const paxColIdx = findPaxColumnIndex(active.headers)
@@ -615,7 +638,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
       }} />
   ) : (
     <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}}
-      expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} />
+      expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
   )
 
   const body = (
@@ -684,11 +707,14 @@ const RAW_EXTRA_COLS = [
   { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 100 },
 ]
 
-function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, expanded, onToggleExpand }: {
+function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
   expanded: boolean; onToggleExpand: () => void
+  // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
+  // "không có tin nhắn" trong lúc còn đang hỏi server).
+  candidateRows: Set<number> | null
 }) {
   const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
   const idColIdx = findIdColumnIndex(headers)
@@ -794,6 +820,21 @@ function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch
                 <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
                   <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                     <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
+                    {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
+                        thái bên trái chỉ nói ĐÃ gán mã khách hay chưa, không
+                        cho biết có nguồn để gán hay không. Bọc <span> vì
+                        thuộc tính title đặt thẳng lên <svg> không phải trình
+                        duyệt nào cũng hiện tooltip. */}
+                    {candidateRows && (
+                      <span className="shrink-0 flex items-center"
+                        title={candidateRows.has(i)
+                          ? 'Có tin nhắn Telegram khớp mã vé — bấm để xem'
+                          : 'Không có tin nhắn Telegram nào khớp mã vé'}>
+                        {candidateRows.has(i)
+                          ? <MessageSquareText size={12} className="text-emerald-500" />
+                          : <MessageSquareOff size={12} className="text-gray-300" />}
+                      </span>
+                    )}
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
                 </td>
