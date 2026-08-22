@@ -142,9 +142,14 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
     },
   }
 
+  // Kẹp toạ độ trong viewport — chuột phải gần mép phải/dưới màn hình (vd
+  // bảng nằm sát đáy trang) mà đặt thẳng theo e.clientX/Y thì menu bị đẩy
+  // lọt ra ngoài, chỉ thấy 1 mẩu. 150×48 là kích thước ước lượng đủ cho
+  // menu 1 mục "Sao chép" hiện tại.
   const menu = ctxMenu && mounted ? createPortal(
     <div className="fixed z-[200] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[140px]"
-      style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
+      style={{ left: Math.min(ctxMenu.x, window.innerWidth - 158), top: Math.min(ctxMenu.y, window.innerHeight - 48) }}
+      onClick={e => e.stopPropagation()}>
       <button onClick={() => { copySelection(); setCtxMenu(null) }}
         className="w-full text-left px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
         <Copy size={13} /> Sao chép

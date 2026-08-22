@@ -503,6 +503,14 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
     setRenamingId(null)
   }
 
+  // Đã đổi tên hiển thị thì vẫn kèm tên file gốc trong ngoặc ngay bên cạnh
+  // — đổi tên nhiều lần dễ quên file gốc là file nào, nhất là lúc đối
+  // chiếu lại. Chưa đổi tên thì chỉ hiện tên file gốc như trước, không lặp.
+  function batchLabel(b: RawBatch): string {
+    const original = b.source_file || 'Không rõ tên file'
+    return b.display_name ? `${b.display_name} (${original})` : original
+  }
+
   const tabBar = (
     <div className={`shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200 ${expanded ? '' : 'rounded-b-sm'}`}>
       <div className="relative shrink-0" ref={tabMenuRef}>
@@ -522,7 +530,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
                   className={`w-full text-left px-3 py-1.5 text-xs truncate transition-colors ${
                     isActive ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'
                   }`}>
-                  {b.display_name || b.source_file || 'Không rõ tên file'}
+                  {batchLabel(b)}
                 </button>
               )
             })}
@@ -553,7 +561,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
             <button key={b.id} type="button" onClick={() => setActiveId(b.id)}
               onDoubleClick={() => startRename(b)}
               onContextMenu={e => { e.preventDefault(); setActiveId(b.id); setTabCtxMenu({ x: e.clientX, y: e.clientY, batchId: b.id }) }}
-              title={`${label} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
+              title={`${batchLabel(b)} · ${b.rows.length} dòng · ${new Date(b.created_at).toLocaleString('vi-VN')}`}
               className={`px-3 py-1.5 text-xs whitespace-nowrap max-w-[220px] truncate border-t-2 transition-colors ${
                 isActive
                   ? 'bg-white border-brand-500 text-brand-700 font-semibold'
@@ -564,9 +572,14 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
           )
         })}
       </div>
+      {/* Kẹp toạ độ trong viewport — thanh tab nằm sát đáy màn hình nên
+          chuột phải ở đó có toạ độ y rất gần mép dưới, đặt top thẳng theo
+          e.clientY sẽ đẩy menu lọt ra ngoài, chỉ thấy 1 mẩu. 150×40 là kích
+          thước ước lượng đủ cho menu 1 mục "Đổi tên" hiện tại. */}
       {tabCtxMenu && createPortal(
         <div className="fixed z-[200] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[140px]"
-          style={{ left: tabCtxMenu.x, top: tabCtxMenu.y }} onClick={e => e.stopPropagation()}>
+          style={{ left: Math.min(tabCtxMenu.x, window.innerWidth - 158), top: Math.min(tabCtxMenu.y, window.innerHeight - 48) }}
+          onClick={e => e.stopPropagation()}>
           <button onClick={() => {
             const b = ordered.find(x => x.id === tabCtxMenu.batchId)
             if (b) startRename(b)
@@ -582,7 +595,7 @@ function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveG
 
   const table = active ? (
     <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
-      info={`${active.display_name || active.source_file || 'Không rõ tên file'} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
+      info={`${batchLabel(active)} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
       onDelete={() => onDelete(active.id)}
       matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
       onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
