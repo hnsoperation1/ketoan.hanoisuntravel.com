@@ -44,6 +44,33 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Thanh cuộn mảnh, tinh tế kiểu Telegram — thay cho thanh cuộn mặc định to
+   bản, xám đục của trình duyệt/hệ điều hành. Áp dụng toàn app qua `*` vì
+   scrollbar-width/::-webkit-scrollbar chỉ có tác dụng trên chính phần tử
+   đang cuộn, không kế thừa xuống con như các thuộc tính CSS thông thường —
+   không có cách nào "bật cho mọi nơi" khác ngoài áp trực tiếp lên `*`.
+   Không ảnh hưởng .cong-no-scroll (bảng "Bảng" ở công nợ NCC, cố tình để
+   thanh cuộn TO hơn cho dễ kéo trên dữ liệu dày đặc) — selector theo class
+   có độ đặc hiệu cao hơn `*` nên vẫn thắng, ghi đè đúng như cũ. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
+}
+
 /* Tailwind v4 reset để cursor của button về "default" (mũi tên) — ép lại thành
    "pointer" (bàn tay) cho mọi phần tử bấm được, đồng bộ toàn app. */
 button:not(:disabled),
