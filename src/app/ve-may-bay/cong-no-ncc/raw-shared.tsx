@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Pencil, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
@@ -614,34 +614,19 @@ function TktPickerCell({ value, onSave, suggestions }: { value: string | null; o
   )
 }
 
-// Ô giá mua/giá bán cho bảng raw — mặc định hiện số, bấm cây viết mới lộ ra
-// ô nhập — tránh nhìn giống ô luôn-sửa-được như EditableNumberCell (dữ liệu
-// ở đây coi là số chính thức ngay khi tự điền, không phải ô nháp).
+// Ô giá mua/giá bán cho bảng raw — luôn là ô nhập được ngay (không cần bấm
+// gì để lộ ra), EditableNumberCell tự lo hiện số có phân cách hàng nghìn
+// lúc không focus / số thô lúc đang gõ.
 export function RawPriceCell({ value, onSave }: { value: number | null; onSave: (v: number | null) => void }) {
-  const [editing, setEditing] = useState(false)
-  if (editing) {
-    // absolute inset-0 (thay vì h-full) — chiều cao <td> do CẢ HÀNG quyết
-    // định (phụ thuộc ô khác), height:100% tạo vòng lặp phụ thuộc nên trình
-    // duyệt bỏ qua, quay về chiều cao tự nhiên của input (thấp hơn hàng
-    // thật). absolute lấy input ra khỏi luồng, không góp phần tính chiều
-    // cao <td> nữa nên hết vòng lặp — input lấp đúng khít cả 4 cạnh ô sau
-    // khi hàng đã có chiều cao thật. Cần <td> tương ứng có "relative".
-    return (
-      <div className="absolute inset-0">
-        <EditableNumberCell value={value} onSave={v => { onSave(v); setEditing(false) }} />
-      </div>
-    )
-  }
+  // absolute inset-0 (thay vì h-full) — chiều cao <td> do CẢ HÀNG quyết
+  // định (phụ thuộc ô khác), height:100% tạo vòng lặp phụ thuộc nên trình
+  // duyệt bỏ qua, quay về chiều cao tự nhiên của input (thấp hơn hàng
+  // thật). absolute lấy input ra khỏi luồng, không góp phần tính chiều cao
+  // <td> nữa nên hết vòng lặp — input lấp đúng khít cả 4 cạnh ô. Cần <td>
+  // tương ứng có "relative".
   return (
-    // px-2 py-1.5 bù lại phần padding đã bỏ khỏi <td> (xem RawTableCard) —
-    // để lúc CHƯA sửa, nội dung vẫn nằm đúng vị trí như trước; lúc bấm bút
-    // chuyển sang EditableNumberCell thì <td> trống padding, input tự
-    // choán trọn ô nên viền xanh focus khớp đúng mép ô (kiểu Excel thật).
-    <div className="flex items-center justify-end gap-1 px-2 py-1.5">
-      <span className="text-right">{formatGiaVe(value)}</span>
-      <button type="button" onClick={() => setEditing(true)} title="Sửa" className="p-0.5 text-gray-300 hover:text-brand-600 shrink-0">
-        <Pencil size={11} />
-      </button>
+    <div className="absolute inset-0">
+      <EditableNumberCell value={value} onSave={onSave} />
     </div>
   )
 }
