@@ -37,10 +37,18 @@ const PAX_TITLE_RE = /\b(?:MR|MRS|MS|MSTR|MISS|CHD|CHILD|INF|INFANT|ADT)\b\.?/gi
 // những từ khoá đủ dài để chắc chắn là đúng dữ liệu cần tìm.
 const MIN_TERM_LEN = 4
 
-// Ráp danh sách từ khoá cần tô từ NHÃN của dòng đang chọn: mã vé/PNR và tên
-// khách. Vé đoàn FCVN gộp nhiều pax vào 1 ô nối bằng "+" nên tách ra thành
-// nhiều từ khoá riêng. Nhãn rỗng/placeholder ("—", "Không có...") bị loại.
-export function buildMatchTerms(ticketLabel?: string | null, paxLabel?: string | null): string[] {
+// Ráp danh sách từ khoá cần tô từ dòng đang chọn: mã vé/PNR, tên khách, mã
+// khách ĐÃ LƯU và giá bán ĐÃ LƯU (2 cái sau để đối chiếu ngược — tin nhắn
+// nói "DLY_A"/"3.474k" có đúng khớp với những gì đang lưu trên dòng không).
+// Vé đoàn FCVN gộp nhiều pax vào 1 ô nối bằng "+" nên tách ra thành nhiều từ
+// khoá riêng. Nhãn rỗng/placeholder ("—", "Không có...") bị loại.
+export function buildMatchTerms(opts: {
+  ticketLabel?: string | null
+  paxLabel?: string | null
+  maKhach?: string | null
+  giaBan?: number | null
+}): string[] {
+  const { ticketLabel, paxLabel, maKhach, giaBan } = opts
   const terms: string[] = []
   const push = (raw: string) => {
     const cleaned = raw.replace(PAX_TITLE_RE, ' ').trim()
@@ -50,6 +58,14 @@ export function buildMatchTerms(ticketLabel?: string | null, paxLabel?: string |
   }
   if (ticketLabel && !ticketLabel.startsWith('Không có')) push(ticketLabel)
   if (paxLabel) for (const part of paxLabel.split('+')) push(part)
+  if (maKhach) push(maKhach)
+  // Giá bán trong tin nhắn có thể viết NGUYÊN SỐ ("1548000") hoặc rút gọn
+  // kiểu "1.548k"/"1548k" (nghìn đồng) — thử cả 2 dạng, dạng nào có trong
+  // tin nhắn sẽ tự khớp, không cần biết trước NCC nào viết kiểu gì.
+  if (giaBan != null && giaBan > 0) {
+    push(String(Math.round(giaBan)))
+    push(`${Math.round(giaBan / 1000)}K`)
+  }
   return terms
 }
 

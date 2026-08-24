@@ -48,7 +48,7 @@ export default function CongNoVeV3Page() {
   const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
   const [rematching, setRematching] = useState(false)
-  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } } | null>(null)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }; maKhach: string | null; giaBan: number | null } | null>(null)
   // Tin nhắn đang chọn ở RawMatchPanel — dùng để LỌC bảng lô công nợ bên
   // dưới (chỉ còn dòng cùng tin nhắn) thay vì vẽ ra 1 bảng phụ như v1.
   const [selectedRawMessage, setSelectedRawMessage] = useState<{ message: RawCandidateMessage; khachInfo: RawKhachInfo } | null>(null)
@@ -572,6 +572,8 @@ export default function CongNoVeV3Page() {
               onSelectMessage={setSelectedRawMessage}
               pendingSuggestions={pendingSuggestions}
               onChooseMatch={(rowIndex, pax) => pax.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
+              matchedMaKhach={viewingRawMatch?.maKhach}
+              matchedGiaBan={viewingRawMatch?.giaBan}
             />
           </div>
         </div>

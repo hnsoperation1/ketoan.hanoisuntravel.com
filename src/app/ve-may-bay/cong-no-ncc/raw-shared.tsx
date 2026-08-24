@@ -406,6 +406,10 @@ export type OpenRawMatch = (target: {
   // undefined = chưa có, nơi nhận (RawMatchPanel) tự rơi về gọi API riêng
   // cho đúng dòng đó như trước, không mất dữ liệu, chỉ mất phần "tức thì".
   preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }
+  // Mã khách/giá bán ĐÃ LƯU trên dòng này — để RawMatchPanel tô thêm 2 thứ
+  // này trong nguyên văn tin nhắn (đối chiếu ngược), xem buildMatchTerms.
+  maKhach: string | null
+  giaBan: number | null
 }) => void
 
 export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, candidatesCache }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
@@ -630,6 +634,8 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
       matchStatus: existing?.match_status ?? null,
       preloadedCandidates: cacheHit ? { messages: cacheHit.messages, khachInfo: batchCache!.khachInfo } : undefined,
+      maKhach: existing?.ma_khach ?? null,
+      giaBan: existing?.gia_ban ?? null,
     })
   } : undefined
 

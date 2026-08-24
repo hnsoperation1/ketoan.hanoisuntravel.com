@@ -60,7 +60,7 @@ function formatDateTime(iso: string): string {
 // còn qua bảng bên phải. `onSelectMessage` báo lên page.tsx mỗi khi tin
 // nhắn được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc
 // bị xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
-export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSelectMessage, pendingSuggestions, onChooseMatch }: {
+export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSelectMessage, pendingSuggestions, onChooseMatch, matchedMaKhach, matchedGiaBan }: {
   target: MatchSlideOverTarget | null
   candidatesUrl: string | null
   // Kết quả đã tải sẵn từ candidates-bulk (chạy nền lúc mở/đổi tab, xem
@@ -77,6 +77,11 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
   // cả mã khách lẫn giá mua/giá bán đọc được từ tin nhắn cho đúng dòng đó.
   pendingSuggestions?: { pax: RawCandidatePax; rowIndex: number }[]
   onChooseMatch?: (rowIndex: number, pax: RawCandidatePax) => void
+  // Mã khách/giá bán ĐÃ LƯU trên dòng đang xem (không phải đọc từ tin nhắn)
+  // — tô luôn 2 thứ này trong nguyên văn tin nhắn để đối chiếu ngược, xem
+  // buildMatchTerms.
+  matchedMaKhach?: string | null
+  matchedGiaBan?: number | null
 }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -145,10 +150,16 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
     )
   }
 
-  // Mã vé/PNR + tên khách của ĐÚNG dòng đang chọn — tô vàng ngay trong
-  // nguyên văn từng tin nhắn bên dưới (tô ở MỌI tin nhắn, không riêng tin
-  // đang chọn: nhờ vậy nhìn lướt là biết tin nào có dòng của mình).
-  const matchTerms = buildMatchTerms(target.ticketLabel, target.contextLabel)
+  // Mã vé/PNR + tên khách + mã khách/giá bán ĐÃ LƯU của ĐÚNG dòng đang chọn
+  // — tô vàng ngay trong nguyên văn từng tin nhắn bên dưới (tô ở MỌI tin
+  // nhắn, không riêng tin đang chọn: nhờ vậy nhìn lướt là biết tin nào có
+  // dòng của mình).
+  const matchTerms = buildMatchTerms({
+    ticketLabel: target.ticketLabel,
+    paxLabel: target.contextLabel,
+    maKhach: matchedMaKhach,
+    giaBan: matchedGiaBan,
+  })
 
   return (
     // h-full (thay vì max-h theo viewport) — panel này đứng cạnh cả khối

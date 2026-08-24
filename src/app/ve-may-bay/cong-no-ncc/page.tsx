@@ -129,7 +129,7 @@ export default function CongNoVePage() {
   const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
   const [rematching, setRematching] = useState(false)
-  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } } | null>(null)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }; maKhach: string | null; giaBan: number | null } | null>(null)
   // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
   // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
   // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
@@ -669,6 +669,8 @@ export default function CongNoVePage() {
               onSelectMessage={setSelectedRawMessage}
               pendingSuggestions={pendingSuggestions}
               onChooseMatch={(rowIndex, pax) => pax.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
+              matchedMaKhach={viewingRawMatch?.maKhach}
+              matchedGiaBan={viewingRawMatch?.giaBan}
             />
           </div>
         </div>
