@@ -1013,8 +1013,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               // đang xem, khác v1/v2 chỉ tô màu (relatedTicketNos vẫn dùng
               // chung logic isRelated ở trên).
               if (onlyShowRelated && relatedTicketNos && i !== selectedRow && !isRelated) return null
+              // v3 (onlyShowRelated) đã LỌC chỉ còn đúng nhóm dòng liên quan
+              // rồi — tô thêm màu tím phân biệt "liên quan" với dòng đang
+              // chọn (amber) trở nên thừa vì cả bảng lúc này đã là 1 nhóm.
+              // Chỉ v1 (không lọc, bảng còn đủ mọi dòng khác) mới cần tím để
+              // phân biệt.
+              const showRelatedColor = isRelated && !onlyShowRelated
               return (
-              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : isRelated ? 'bg-violet-50' : ''}`}>
+              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : showRelatedColor ? 'bg-violet-50' : ''}`}>
                 {visibleCols.map(col => {
                   // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
                   // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
