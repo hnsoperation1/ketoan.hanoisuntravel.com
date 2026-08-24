@@ -109,6 +109,7 @@ export default function CongNoVeV2Page() {
             gia_mua: hasGia ? (giaMua ?? existing?.gia_mua ?? null) : (existing?.gia_mua ?? null),
             gia_ban: hasGia ? (giaBan ?? existing?.gia_ban ?? null) : (existing?.gia_ban ?? null),
             gia_source: hasGia ? 'message' : (existing?.gia_source ?? null),
+            tkt_tag: existing?.tkt_tag ?? null,
           },
         ],
       }
@@ -144,6 +145,7 @@ export default function CongNoVeV2Page() {
             gia_mua: field === 'gia_mua' ? value : (existing?.gia_mua ?? null),
             gia_ban: field === 'gia_ban' ? value : (existing?.gia_ban ?? null),
             gia_source: 'manual',
+            tkt_tag: existing?.tkt_tag ?? null,
           },
         ],
       }
@@ -152,6 +154,37 @@ export default function CongNoVeV2Page() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: value }),
+    })
+  }
+
+  // Sửa tay TKT (gõ trực tiếp trong ô, không qua slide-over) — cùng cơ chế
+  // optimistic update + PATCH partial như saveRawGiaManual ở trên.
+  async function saveRawTktManual(batchId: string, rowIndex: number, value: string | null) {
+    setRawBatches(prev => prev.map(b => {
+      if (b.id !== batchId) return b
+      const existing = b.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+      const others = b.ve_debt_records_raw_match.filter(m => m.row_index !== rowIndex)
+      return {
+        ...b,
+        ve_debt_records_raw_match: [
+          ...others,
+          {
+            row_index: rowIndex,
+            ma_khach: existing?.ma_khach ?? null,
+            match_status: existing?.match_status ?? 'unmatched',
+            matched_booking_id: existing?.matched_booking_id ?? null,
+            gia_mua: existing?.gia_mua ?? null,
+            gia_ban: existing?.gia_ban ?? null,
+            gia_source: existing?.gia_source ?? null,
+            tkt_tag: value,
+          },
+        ],
+      }
+    }))
+    await fetch(`/api/ve-may-bay/cong-no-raw/${batchId}/rows/${rowIndex}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tkt_tag: value }),
     })
   }
 
@@ -490,7 +523,7 @@ export default function CongNoVeV2Page() {
           trái lẫn bảng hành khách chèn phía trên như v1. */}
       <div className="flex-1 min-h-0 flex flex-col pt-2">
         <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
-          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} />
+          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual} />
       </div>
 
       {/* Bấm mã vé/PNR trong bảng → mở slide-over đè lên (portal ra

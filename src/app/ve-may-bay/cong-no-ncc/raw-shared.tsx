@@ -346,6 +346,7 @@ export type RawMatchInfo = {
   gia_mua: number | null
   gia_ban: number | null
   gia_source: 'message' | 'manual' | null
+  tkt_tag: string | null
 }
 
 export type RawBatch = {
@@ -368,7 +369,7 @@ export type RawBatch = {
 // (không ép về schema chung).
 export type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void }) {
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -454,6 +455,26 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     return () => { cancelled = true }
   }, [activeId2])
   const candidateRows = candidateInfo && candidateInfo.batchId === activeId2 ? candidateInfo.rows : null
+
+  // Gợi ý mã TKT — tải 1 lần ở đây (component này không remount khi đổi lô,
+  // khác RawTableCard có key={active.id}) để không gọi lại API mỗi lần
+  // chuyển tab sheet. Chỉ lấy TKT còn active, giống danh mục gợi ý ở trang
+  // Tổng hợp công nợ NCC.
+  const [tktSuggestions, setTktSuggestions] = useState<string[]>([])
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/ve-may-bay/tkt')
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (cancelled || !j?.data) return
+        const codes = (j.data as { tkt_code: string; active: boolean }[])
+          .filter(t => t.active)
+          .map(t => t.tkt_code)
+        setTktSuggestions(codes)
+      })
+      .catch(() => { /* im lặng — chỉ mất gợi ý, vẫn gõ tự do được */ })
+    return () => { cancelled = true }
+  }, [])
 
   const tabBar = (
     <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
@@ -543,6 +564,8 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       onDelete={() => onDelete(active.id)}
       matches={new Map(active.ve_debt_records_raw_match.map(m => [m.row_index, m]))}
       onSaveGia={(rowIndex, field, value) => onSaveGia(active.id, rowIndex, field, value)}
+      onSaveTkt={(rowIndex, value) => onSaveTkt(active.id, rowIndex, value)}
+      tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)}
       candidateRows={candidateRows}
       onOpenMatch={rowIndex => {
@@ -559,7 +582,7 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
         })
       }} />
   ) : (
-    <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}}
+    <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} onSaveTkt={() => {}} tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
   )
 
@@ -573,7 +596,61 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
   return expanded && mounted ? createPortal(body, document.body) : body
 }
 
-export type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' | 'gia_ban' | 'gia_source'>
+export type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' | 'gia_ban' | 'gia_source' | 'tkt_tag'>
+
+// Ô TKT — free text có gợi ý (autocomplete), giống EditableCell ở trang
+// Tổng hợp công nợ NCC (không import thẳng từ đó vì file kia là page.tsx
+// riêng, không phải module dùng chung) — gõ tự do vẫn lưu được kể cả khi
+// TKT chưa có trong danh mục ve_tkt.
+function EditableTktCell({ value, onSave, suggestions }: { value: string | null; onSave: (v: string | null) => void; suggestions: string[] }) {
+  const [v, setV] = useState(value ?? '')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => setV(value ?? ''), [value])
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setV(cur => { const trimmed = cur.trim(); if (trimmed !== (value ?? '')) onSave(trimmed || null); return cur })
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [value, onSave])
+
+  const q = v.trim().toLowerCase()
+  const filtered = (q ? suggestions.filter(s => s.toLowerCase().includes(q)) : suggestions).slice(0, 50)
+
+  function choose(s: string) {
+    setV(s)
+    setOpen(false)
+    if (s !== (value ?? '')) onSave(s)
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <input value={v}
+        onChange={e => { setV(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { setOpen(false); const trimmed = v.trim(); if (trimmed !== (value ?? '')) onSave(trimmed || null) }
+          if (e.key === 'Escape') setOpen(false)
+        }}
+        className={CELL_INPUT} />
+      {open && filtered.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto w-40">
+          {filtered.map(s => (
+            <button key={s} type="button" onMouseDown={e => e.preventDefault()} onClick={() => choose(s)}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition-colors truncate">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Ô giá mua/giá bán cho bảng raw — mặc định hiện số + nhãn nhỏ "từ tin
 // nhắn" khi gia_source==='message' (tự điền lúc khớp mã khách/chọn pax từ
@@ -627,6 +704,7 @@ export const RAW_EXTRA_COLS = [
   { key: 'gia_mua', label: 'Giá mua', align: 'right' as const, width: 100 },
   { key: 'gia_ban', label: 'Giá bán', align: 'right' as const, width: 100 },
   { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 100 },
+  { key: 'tkt', label: 'TKT', align: undefined as 'right' | undefined, width: 90 },
 ]
 
 // So khớp tên cột KHÔNG phân biệt hoa/thường/khoảng trắng/dấu câu (vd
@@ -637,16 +715,18 @@ function normalizeHeader(s: string | undefined): string {
 }
 
 // Cột hiện SẴN khi user CHƯA từng tự chỉnh (chưa có cài đặt lưu trong DB) —
-// theo yêu cầu 2026-08-23: mỗi NCC chỉ hiện 1 tập cột "cần nhìn ngay", còn
-// lại ẩn bớt (vẫn bật lại được qua nút cột hiển thị). NCC không có trong
-// danh sách này (vd SUN PQC) → hiện đủ như cũ, không lọc gì.
+// theo yêu cầu 2026-08-23/24: mỗi NCC chỉ hiện 1 tập cột "cần nhìn ngay",
+// còn lại ẩn bớt (vẫn bật lại được qua nút cột hiển thị). "TKT" không phải
+// tên cột trong file gốc của NCC nào — đó là cột THÊM của app (xem
+// RAW_EXTRA_COLS/DEFAULT_VISIBLE_EXTRA_COLS bên dưới), không liệt kê ở đây.
 const DEFAULT_VISIBLE_HEADERS: Record<string, string[]> = {
-  'FCVN': ['issuedate', 'ticketnbr', 'paxname', 'route', 'tkt'],
-  'SAO ĐỎ': ['ngayxv', 'codesove', 'tenkhach', 'hanhtrinh', 'ngaydi', 'ngayve', 'thanhtien', 'tkt'],
-  'VIETJET': ['pnr', 'paxname', 'paymentdate', 'segments', 'amountconvertvnd', 'tkt'],
+  'FCVN': ['issuedate', 'ticketnbr', 'paxname', 'route'],
+  'SAO ĐỎ': ['ngayxv', 'codesove', 'tenkhach', 'hanhtrinh', 'ngaydi', 'ngayve', 'thanhtien'],
+  'VIETJET': ['pnr', 'paxname', 'paymentdate', 'segments', 'amountconvertvnd'],
+  'SUN PQC': ['mtchpnr', 'sv', 'tnkhch', 'hnhtrnh', 'ngybay', 'tngtin'],
 }
-// Mã khách/Giá bán mặc định hiện ở CẢ 4 NCC — Giá mua/Lợi nhuận mặc định ẩn.
-const DEFAULT_VISIBLE_EXTRA_COLS = ['ma_khach', 'gia_ban']
+// Mã khách/Giá bán/TKT mặc định hiện ở CẢ 4 NCC — Giá mua/Lợi nhuận mặc định ẩn.
+const DEFAULT_VISIBLE_EXTRA_COLS = ['ma_khach', 'gia_ban', 'tkt']
 
 // File gốc FCVN có 1 cột KHÔNG có tên (header rỗng, hiện tạm "Cột 20") mà
 // thực chất là "Net Amt VND" — không so khớp theo tên được (rỗng) nên phải
@@ -681,10 +761,12 @@ function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
   return hidden
 }
 
-export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, expanded, onToggleExpand, candidateRows }: {
+export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
+  onSaveTkt: (rowIndex: number, value: string | null) => void
+  tktSuggestions: string[]
   expanded: boolean; onToggleExpand: () => void
   // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
   // "không có tin nhắn" trong lúc còn đang hỏi server).
@@ -959,6 +1041,11 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
                     <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <RawPriceCell value={match?.[col.key] ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
+                    </td>
+                  )
+                  if (col.key === 'tkt') return (
+                    <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                      <EditableTktCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
                     </td>
                   )
                   return (

@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string; rowIndex: string }> }
 
-// PATCH { ma_khach?, matched_booking_id?, gia_mua?, gia_ban? } — sửa tay 1
+// PATCH { ma_khach?, matched_booking_id?, gia_mua?, gia_ban?, tkt_tag? } — sửa tay 1
 // dòng trong lô raw (qua slide-over hoặc bấm cây viết sửa giá). Partial
 // update thật sự — chỉ field nào có mặt trong body mới bị đụng tới, tránh
 // PATCH giá vô tình xoá mất mã khách đang có (và ngược lại). Upsert vì dòng
@@ -28,6 +28,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   const body = await req.json().catch(() => ({}))
   const payload: Record<string, string | number | null> = {}
+
+  if ('tkt_tag' in body) {
+    payload.tkt_tag = body.tkt_tag ? String(body.tkt_tag).trim() : null
+  }
 
   if ('ma_khach' in body) {
     const val = body.ma_khach ? String(body.ma_khach).trim() : null
