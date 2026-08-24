@@ -135,15 +135,6 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
     setSelStart({ r, c: 0 })
     setSelEnd({ r, c: 0 })
   }
-  // Chỉnh lại CHỈ mỗi hàng, giữ nguyên cột đang chọn — dùng khi bảng gọi tự
-  // XẾP LẠI THỨ TỰ HÀNG (vd nhóm các dòng cùng tin nhắn lên đầu) khiến "hàng
-  // r" giờ trỏ sang dòng KHÁC dòng người dùng thật sự đang xem: phải cập
-  // nhật r cho khớp lại, nhưng không được nhảy cột như selectRow (mất đúng ô
-  // đang bôi xanh nếu người dùng vừa bấm 1 ô cụ thể chứ không phải cả hàng).
-  function realignRow(r: number) {
-    setSelStart(s => s ? { ...s, r } : { r, c: 0 })
-    setSelEnd(s => s ? { ...s, r } : { r, c: 0 })
-  }
   function cellClassName(r: number, c: number, base = ''): string {
     return `${base} ${isSelected(r, c) ? 'bg-brand-100' : ''} ${selectionEdgeClass(r, c)}`.trim()
   }
@@ -181,5 +172,5 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
     document.body
   ) : null
 
-  return { cellProps, cellClassName, wrapProps, menu, isSelected, selectedRow, selectRow, realignRow }
+  return { cellProps, cellClassName, wrapProps, menu, isSelected, selectedRow, selectRow }
 }
