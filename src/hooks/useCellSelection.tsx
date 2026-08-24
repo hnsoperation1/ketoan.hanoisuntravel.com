@@ -121,6 +121,20 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
       onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, r, c),
     }
   }
+
+  // Hàng đang "đứng" (điểm cuối của vùng chọn, hoặc điểm bắt đầu nếu chưa
+  // kéo) — dùng để tô sáng CẢ HÀNG (khác bg-brand-100 chỉ tô riêng ô đang
+  // chọn) và để đồng bộ panel/slide-over khớp mã vé theo đúng hàng đang xem,
+  // kể cả khi đổi hàng bằng phím mũi tên lên/xuống chứ không chỉ bằng click.
+  const selectedRow = (selEnd ?? selStart)?.r ?? null
+  // Chọn nguyên 1 hàng từ 1 ô KHÔNG nằm trong vùng chọn dữ liệu (vd cột Mã
+  // khách/Giá mua/Giá bán/TKT — không tham gia lưới chọn-sao-chép) — neo tại
+  // cột 0 vì c ở đây chỉ dùng để xác định selectedRow, không ảnh hưởng ô nào
+  // đang thật sự được sao chép.
+  function selectRow(r: number) {
+    setSelStart({ r, c: 0 })
+    setSelEnd({ r, c: 0 })
+  }
   function cellClassName(r: number, c: number, base = ''): string {
     return `${base} ${isSelected(r, c) ? 'bg-brand-100' : ''} ${selectionEdgeClass(r, c)}`.trim()
   }
@@ -158,5 +172,5 @@ export function useCellSelection(getCellText: (r: number, c: number) => string) 
     document.body
   ) : null
 
-  return { cellProps, cellClassName, wrapProps, menu, isSelected }
+  return { cellProps, cellClassName, wrapProps, menu, isSelected, selectedRow, selectRow }
 }

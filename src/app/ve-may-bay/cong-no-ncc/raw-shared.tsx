@@ -369,7 +369,11 @@ export type RawBatch = {
 // (không ép về schema chung).
 export type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void }) {
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
+  // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
+  // nội dung — vô hại) — KHÔNG truyền (mặc định false) ở v2 vì onOpenMatch ở
+  // đó tự mở slide-over, đổi hàng liên tục sẽ tự bật slide-over gây phiền.
+  syncOnSelect?: boolean }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -558,6 +562,24 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     </div>
   )
 
+  // Dùng chung cho CẢ onOpenMatch (bấm thẳng vào ô mã vé/pax/Mã khách) LẪN
+  // onSelectionChange (đổi hàng đang chọn bằng click ô khác/mũi tên, chỉ v1
+  // truyền syncOnSelect=true) — để tránh viết lặp lại đúng cách tính
+  // idValue/paxLabel/matchStatus từ rowIndex ở 2 chỗ.
+  const openMatchForRow = active ? (rowIndex: number) => {
+    const idColIdx = findIdColumnIndex(active.headers)
+    const paxColIdx = findPaxColumnIndex(active.headers)
+    const row = active.rows[rowIndex]
+    const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+    onOpenMatch({
+      batchId: active.id,
+      rowIndex,
+      idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
+      paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
+      matchStatus: existing?.match_status ?? null,
+    })
+  } : undefined
+
   const table = active ? (
     <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
       info={`${batchLabel(active)} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
@@ -568,19 +590,8 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)}
       candidateRows={candidateRows}
-      onOpenMatch={rowIndex => {
-        const idColIdx = findIdColumnIndex(active.headers)
-        const paxColIdx = findPaxColumnIndex(active.headers)
-        const row = active.rows[rowIndex]
-        const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-        onOpenMatch({
-          batchId: active.id,
-          rowIndex,
-          idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
-          paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
-          matchStatus: existing?.match_status ?? null,
-        })
-      }} />
+      onOpenMatch={openMatchForRow!}
+      onSelectionChange={syncOnSelect ? openMatchForRow : undefined} />
   ) : (
     <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} onSaveTkt={() => {}} tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
@@ -705,12 +716,17 @@ function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
   return hidden
 }
 
-export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, expanded, onToggleExpand, candidateRows }: {
+export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
   onSaveTkt: (rowIndex: number, value: string | null) => void
   tktSuggestions: string[]
+  // Chỉ v1 truyền — hàng đang chọn đổi (click/mũi tên) → cập nhật khung panel
+  // trái đang LUÔN hiện sẵn (không phá gì). v2 KHÔNG truyền vì onOpenMatch ở
+  // đó bật slide-over (view che màn hình) — tự bật theo mỗi lần đổi hàng chọn
+  // sẽ gây phiền, chỉ nên bật khi bấm thẳng vào ô mã vé/pax như cũ.
+  onSelectionChange?: (rowIndex: number) => void
   expanded: boolean; onToggleExpand: () => void
   // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
   // "không có tin nhắn" trong lúc còn đang hỏi server).
@@ -808,9 +824,18 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   const selIndexOf = new Map<string, number>()
   visibleCols.filter(c => c.dataIndex != null).forEach((c, n) => selIndexOf.set(c.key, n))
 
-  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection(
+  const { cellProps, cellClassName, wrapProps, menu, selectedRow, selectRow } = useCellSelection(
     (r, c) => rows[r]?.[selColDataIndexes[c]] ?? ''
   )
+
+  // Đổi hàng đang chọn (click ô bất kỳ HOẶC mũi tên lên/xuống, xem
+  // useCellSelection) → báo lên cho nơi gọi (chỉ v1 truyền onSelectionChange,
+  // xem RawBatchesView) để đồng bộ khung "Tin nhắn Telegram khớp mã vé" theo
+  // đúng hàng đang xem, không chỉ lúc bấm thẳng vào ô mã vé/pax như trước.
+  useEffect(() => {
+    if (onSelectionChange && selectedRow != null && rows[selectedRow]) onSelectionChange(selectedRow)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRow])
 
   // Kéo đổi chỗ cột (HTML5 drag-and-drop gốc, không cần thư viện). Kéo từ
   // thanh đổi độ rộng KHÔNG kích hoạt kéo cột vì startResize gọi
@@ -914,7 +939,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
             {rows.length > 0 ? rows.map((r, i) => {
               const match = matches.get(i)
               return (
-              <tr key={i} className="border-t border-gray-100">
+              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : ''}`}>
                 {visibleCols.map(col => {
                   // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
                   // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
@@ -962,7 +987,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   }
                   // 4 cột THÊM của app (không có trong file gốc).
                   if (col.key === 'ma_khach') return (
-                    <td key={col.key} className={`border border-gray-100 px-2 py-1.5 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`border border-gray-100 px-2 py-1.5 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                         <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
                         {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
@@ -985,7 +1010,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     </td>
                   )
                   if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
-                    <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <RawPriceCell value={match?.[col.key] ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
                     </td>
                   )
@@ -995,14 +1020,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     // height:100% tạo vòng lặp phụ thuộc nên trình duyệt bỏ
                     // qua, ô co về chiều cao tự nhiên của input (thấp/lệch so
                     // với hàng thật) nếu không lấy input ra khỏi luồng.
-                    <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <div className="absolute inset-0">
                         <TktPickerCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
                       </div>
                     </td>
                   )
                   return (
-                    <td key={col.key} className={`border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden ${dragColClass(col.key)}`}>
                       {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                     </td>
                   )
