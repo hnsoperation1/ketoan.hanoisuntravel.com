@@ -51,9 +51,14 @@ function formatDateTime(iso: string): string {
 // còn qua bảng bên phải. `onSelectMessage` báo lên page.tsx mỗi khi tin
 // nhắn được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc
 // bị xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
-export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage }: {
+export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSelectMessage }: {
   target: MatchSlideOverTarget | null
   candidatesUrl: string | null
+  // Kết quả đã tải sẵn từ candidates-bulk (chạy nền lúc mở/đổi tab, xem
+  // RawBatchesView) — CÓ giá trị (kể cả rỗng) thì dùng luôn, không gọi API
+  // nữa. undefined = bulk cache chưa tải xong/không áp dụng → rơi về gọi
+  // candidatesUrl như cũ (đúng dữ liệu, chỉ chậm hơn vì phải chờ request).
+  preloaded?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } | null
   onClose: () => void
   onSelectMessage: (info: { message: RawCandidateMessage; khachInfo: RawKhachInfo } | null) => void
 }) {
@@ -73,6 +78,17 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
         setSelectedMsgId(null)
         setLoading(false)
         onSelectMessage(null)
+        return
+      }
+      if (preloaded !== undefined) {
+        const msgs = preloaded?.messages ?? []
+        const info = preloaded?.khachInfo ?? {}
+        setMessages(msgs)
+        setKhachInfo(info)
+        setSelectedMsgId(msgs[0]?.parse_log_id ?? null)
+        setLoading(false)
+        setLoadError(false)
+        onSelectMessage(msgs[0] ? { message: msgs[0], khachInfo: info } : null)
         return
       }
       setLoading(true)
@@ -98,7 +114,7 @@ export function RawMatchPanel({ target, candidatesUrl, onClose, onSelectMessage 
     loadCandidates()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidatesUrl])
+  }, [candidatesUrl, preloaded])
 
   function selectMessage(m: RawCandidateMessage) {
     setSelectedMsgId(m.parse_log_id)

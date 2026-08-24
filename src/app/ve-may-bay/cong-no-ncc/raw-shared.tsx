@@ -18,6 +18,7 @@ import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
+import type { RawCandidateMessage, RawKhachInfo } from './RawMatchPanel'
 
 export function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -367,7 +368,13 @@ export type RawBatch = {
 // (trước đây xếp chồng dọc, phải cuộn dài mới thấy hết các lần upload).
 // Mỗi tab = 1 lần tải file từ NCC đó, giữ đúng cột/tên cột như file gốc
 // (không ép về schema chung).
-export type OpenRawMatch = (target: { batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null }) => void
+export type OpenRawMatch = (target: {
+  batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null
+  // Có sẵn khi bulk cache của batch đã tải xong (xem RawBatchesView) —
+  // undefined = chưa có, nơi nhận (RawMatchPanel) tự rơi về gọi API riêng
+  // cho đúng dòng đó như trước, không mất dữ liệu, chỉ mất phần "tức thì".
+  preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }
+}) => void
 
 export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
   // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
@@ -459,6 +466,29 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     return () => { cancelled = true }
   }, [activeId2])
   const candidateRows = candidateInfo && candidateInfo.batchId === activeId2 ? candidateInfo.rows : null
+
+  // Tải sẵn tin nhắn Telegram khớp mã vé cho TOÀN BỘ dòng trong lô đang xem
+  // ngay khi mở/đổi tab (chạy nền) — để panel bên trái đổi nội dung tức thì
+  // theo hàng đang chọn (click/mũi tên) mà không phải gọi API riêng cho mỗi
+  // lần đổi hàng. Chỉ v1 truyền syncOnSelect=true nên chỉ v1 tốn query này —
+  // v2 (slide-over, bấm mới mở) không cần tải trước nên không gọi phí công.
+  const [candidatesCache, setCandidatesCache] = useState<{
+    batchId: string
+    rows: Record<number, { idValue: string | null; messages: RawCandidateMessage[] }>
+    khachInfo: RawKhachInfo
+  } | null>(null)
+  useEffect(() => {
+    if (!activeId2 || !syncOnSelect) return
+    let cancelled = false
+    fetch(`/api/ve-may-bay/cong-no-raw/${activeId2}/candidates-bulk`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (cancelled || !j?.data) return
+        setCandidatesCache({ batchId: activeId2, rows: j.data.rows ?? {}, khachInfo: j.data.khachInfo ?? {} })
+      })
+      .catch(() => { /* im lặng — panel tự rơi về gọi API riêng theo từng dòng như trước */ })
+    return () => { cancelled = true }
+  }, [activeId2, syncOnSelect])
 
   // Gợi ý mã TKT — tải 1 lần ở đây (component này không remount khi đổi lô,
   // khác RawTableCard có key={active.id}) để không gọi lại API mỗi lần
@@ -571,12 +601,14 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     const paxColIdx = findPaxColumnIndex(active.headers)
     const row = active.rows[rowIndex]
     const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
+    const cacheHit = candidatesCache && candidatesCache.batchId === active.id ? candidatesCache.rows[rowIndex] : undefined
     onOpenMatch({
       batchId: active.id,
       rowIndex,
       idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
       paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
       matchStatus: existing?.match_status ?? null,
+      preloadedCandidates: cacheHit ? { messages: cacheHit.messages, khachInfo: candidatesCache!.khachInfo } : undefined,
     })
   } : undefined
 

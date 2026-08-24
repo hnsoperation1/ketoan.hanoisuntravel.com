@@ -129,7 +129,7 @@ export default function CongNoVePage() {
   const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
   const [rematching, setRematching] = useState(false)
-  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } } | null>(null)
   // Tin nhắn đang chọn ở RawMatchPanel — đẩy lên đây để vẽ bảng hành khách
   // dạng bảng rộng bên phải (SelectedMessagePaxTable) thay vì card hẹp
   // trong panel bên trái, xem comment ở RawMatchPanel.tsx.
@@ -625,6 +625,7 @@ export default function CongNoVePage() {
                 matchStatus: viewingRawMatch.matchStatus,
               } : null}
               candidatesUrl={viewingRawMatch ? `/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates` : null}
+              preloaded={viewingRawMatch?.preloadedCandidates}
               onClose={() => setViewingRawMatch(null)}
               onSelectMessage={setSelectedRawMessage}
             />
