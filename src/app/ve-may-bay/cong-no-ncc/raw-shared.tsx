@@ -363,6 +363,38 @@ export type RawBatch = {
   created_at: string
   ve_debt_records_raw_match: RawMatchInfo[]
 }
+export type CandidatesBulkCache = Record<string, {
+  rows: Record<number, { idValue: string | null; messages: RawCandidateMessage[] }>
+  khachInfo: RawKhachInfo
+}>
+
+// Tải sẵn tin nhắn Telegram khớp mã vé cho TOÀN BỘ dòng của TOÀN BỘ lô
+// (không chỉ lô/tab NCC đang xem) — gọi 1 LẦN NGAY khi trang có danh sách lô
+// (rawBatches nạp xong ở page.tsx), không đợi bấm vào dòng nào hay đổi tab
+// NCC mới tải, theo đúng yêu cầu "vào màn là tải sẵn, chuyển tab/bấm dòng
+// chỉ đọc lại dữ liệu đã có trong trình duyệt" — khác bản trước chỉ tải cho
+// đúng lô đang active (dùng Ref theo dõi id đã tải để không tải trùng khi
+// rawBatches đổi reference do optimistic update giá/mã khách/TKT khác).
+export function useCandidatesBulkCache(batches: RawBatch[]): CandidatesBulkCache {
+  const [cache, setCache] = useState<CandidatesBulkCache>({})
+  const fetchedIds = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const toFetch = batches.filter(b => !fetchedIds.current.has(b.id))
+    if (toFetch.length === 0) return
+    for (const b of toFetch) {
+      fetchedIds.current.add(b.id)
+      fetch(`/api/ve-may-bay/cong-no-raw/${b.id}/candidates-bulk`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(j => {
+          if (!j?.data) return
+          setCache(prev => ({ ...prev, [b.id]: { rows: j.data.rows ?? {}, khachInfo: j.data.khachInfo ?? {} } }))
+        })
+        .catch(() => { /* im lặng — panel/slide-over tự rơi về gọi API riêng theo từng dòng như trước */ })
+    }
+  }, [batches])
+  return cache
+}
+
 // Danh sách các lô upload nguyên xi của 1 tab NCC — mỗi lô là 1 "sheet"
 // riêng, chọn qua thanh tab dính đáy màn hình giống Excel/Google Sheets
 // (trước đây xếp chồng dọc, phải cuộn dài mới thấy hết các lần upload).
@@ -376,7 +408,7 @@ export type OpenRawMatch = (target: {
   preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }
 }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, selectedMessagePax, onChooseMatch }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, selectedMessagePax, onChooseMatch, candidatesCache }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
   // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
   // nội dung — vô hại) — KHÔNG truyền (mặc định false) ở v2 vì onOpenMatch ở
   // đó tự mở slide-over, đổi hàng liên tục sẽ tự bật slide-over gây phiền.
@@ -391,7 +423,11 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
   // Danh sách pax của tin nhắn đang chọn (chỉ v3 truyền) — dùng để hiện nút
   // "Chọn" ngay trên từng dòng đã lọc thay vì bảng phụ riêng như v1.
   selectedMessagePax?: RawCandidatePax[] | null
-  onChooseMatch?: (batchId: string, rowIndex: number, pax: RawCandidatePax) => void }) {
+  onChooseMatch?: (batchId: string, rowIndex: number, pax: RawCandidatePax) => void
+  // Kết quả useCandidatesBulkCache(rawBatches) tính ở page.tsx (bao TOÀN BỘ
+  // lô, tải sẵn ngay khi trang có danh sách lô — không đợi mở tab/bấm dòng
+  // nào), dùng để đính preloadedCandidates vào onOpenMatch bên dưới.
+  candidatesCache?: CandidatesBulkCache | null }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -477,29 +513,6 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     return () => { cancelled = true }
   }, [activeId2])
   const candidateRows = candidateInfo && candidateInfo.batchId === activeId2 ? candidateInfo.rows : null
-
-  // Tải sẵn tin nhắn Telegram khớp mã vé cho TOÀN BỘ dòng trong lô đang xem
-  // ngay khi mở/đổi tab (chạy nền) — để panel bên trái đổi nội dung tức thì
-  // theo hàng đang chọn (click/mũi tên) mà không phải gọi API riêng cho mỗi
-  // lần đổi hàng. Chỉ v1 truyền syncOnSelect=true nên chỉ v1 tốn query này —
-  // v2 (slide-over, bấm mới mở) không cần tải trước nên không gọi phí công.
-  const [candidatesCache, setCandidatesCache] = useState<{
-    batchId: string
-    rows: Record<number, { idValue: string | null; messages: RawCandidateMessage[] }>
-    khachInfo: RawKhachInfo
-  } | null>(null)
-  useEffect(() => {
-    if (!activeId2 || !syncOnSelect) return
-    let cancelled = false
-    fetch(`/api/ve-may-bay/cong-no-raw/${activeId2}/candidates-bulk`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(j => {
-        if (cancelled || !j?.data) return
-        setCandidatesCache({ batchId: activeId2, rows: j.data.rows ?? {}, khachInfo: j.data.khachInfo ?? {} })
-      })
-      .catch(() => { /* im lặng — panel tự rơi về gọi API riêng theo từng dòng như trước */ })
-    return () => { cancelled = true }
-  }, [activeId2, syncOnSelect])
 
   // Gợi ý mã TKT — tải 1 lần ở đây (component này không remount khi đổi lô,
   // khác RawTableCard có key={active.id}) để không gọi lại API mỗi lần
@@ -612,14 +625,15 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     const paxColIdx = findPaxColumnIndex(active.headers)
     const row = active.rows[rowIndex]
     const existing = active.ve_debt_records_raw_match.find(m => m.row_index === rowIndex)
-    const cacheHit = candidatesCache && candidatesCache.batchId === active.id ? candidatesCache.rows[rowIndex] : undefined
+    const batchCache = candidatesCache?.[active.id]
+    const cacheHit = batchCache?.rows[rowIndex]
     onOpenMatch({
       batchId: active.id,
       rowIndex,
       idValue: idColIdx != null ? row?.[idColIdx]?.trim() || null : null,
       paxLabel: paxColIdx != null ? (row?.[paxColIdx]?.trim() || '—') : '—',
       matchStatus: existing?.match_status ?? null,
-      preloadedCandidates: cacheHit ? { messages: cacheHit.messages, khachInfo: candidatesCache!.khachInfo } : undefined,
+      preloadedCandidates: cacheHit ? { messages: cacheHit.messages, khachInfo: batchCache!.khachInfo } : undefined,
     })
   } : undefined
 

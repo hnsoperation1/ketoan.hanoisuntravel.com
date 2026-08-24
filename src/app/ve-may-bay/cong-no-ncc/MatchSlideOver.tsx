@@ -57,9 +57,14 @@ function formatDateTime(iso: string): string {
 // slide-over gần giống hệt nhau. Khung animation/portal copy từ
 // KhachDetailSlideOver (cong-no-khach-hang/page.tsx) — pattern slide-over
 // duy nhất hiện có trong app.
-export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, onClose }: {
+export function MatchSlideOver({ target, candidatesUrl, preloaded, khSuggestions, onSaved, onClose }: {
   target: MatchSlideOverTarget
   candidatesUrl: string
+  // Kết quả đã tải sẵn từ candidates-bulk (chạy nền ngay khi vào trang, xem
+  // useCandidatesBulkCache trong raw-shared.tsx) — CÓ giá trị (kể cả rỗng)
+  // thì dùng luôn, không gọi API nữa. undefined = chưa có (vd nơi gọi khác,
+  // như tab "Tổng hợp", không truyền) → rơi về gọi candidatesUrl như cũ.
+  preloaded?: { messages: Message[]; khachInfo: KhachInfo } | null
   khSuggestions: KhachOpt[]
   onSaved: (maKhach: string, matchedBookingId: string | null, giaMua?: number | null, giaBan?: number | null) => void
   onClose: () => void
@@ -81,6 +86,15 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
     let cancelled = false
 
     async function loadCandidates() {
+      if (preloaded !== undefined) {
+        const msgs = preloaded?.messages ?? []
+        setMessages(msgs)
+        setKhachInfo(preloaded?.khachInfo ?? {})
+        setSelectedMsgId(msgs[0]?.parse_log_id ?? null)
+        setLoading(false)
+        setLoadError(false)
+        return
+      }
       setLoading(true)
       setLoadError(false)
       try {
@@ -101,7 +115,7 @@ export function MatchSlideOver({ target, candidatesUrl, khSuggestions, onSaved, 
 
     loadCandidates()
     return () => { cancelled = true }
-  }, [candidatesUrl])
+  }, [candidatesUrl, preloaded])
 
   function close() {
     setVisible(false)

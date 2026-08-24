@@ -8,11 +8,12 @@ import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
+import { type RawCandidateMessage, type RawKhachInfo } from '../cong-no-ncc/RawMatchPanel'
 import {
   type SheetData, type RawBatch,
   parseCsvGrid, parseXlsFile, parseXlsxSheetsAny,
   findVietjetHeaderRow, findFcvnHeaderRow, isLikelyJunkRow, splitSegmentsForDisplay,
-  NCC_TABS, RawBatchesView,
+  NCC_TABS, RawBatchesView, useCandidatesBulkCache,
 } from '../cong-no-ncc/raw-shared'
 
 // Bản v2 của màn "Đầu vào công nợ NCC" — KHÁC v1 (../cong-no-ncc) ĐÚNG 1
@@ -52,7 +53,7 @@ export default function CongNoVeV2Page() {
   const [nccFilter, setNccFilter] = useState(NCC_TABS[0])
 
   const [rematching, setRematching] = useState(false)
-  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null } | null>(null)
+  const [viewingRawMatch, setViewingRawMatch] = useState<{ batchId: string; rowIndex: number; idValue: string | null; paxLabel: string; matchStatus: MatchStatus | null; preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } } | null>(null)
 
   // Danh mục khách hàng chuẩn — chỉ để đổ vào cột "tự tìm trong danh mục"
   // của MatchSlideOver (v1 không cần vì panel bên trái đã bỏ mục tìm tay).
@@ -189,6 +190,10 @@ export default function CongNoVeV2Page() {
   }
 
   const [rawBatches, setRawBatches] = useState<RawBatch[]>([])
+  // Tải sẵn tin nhắn Telegram khớp mã vé cho TOÀN BỘ lô ngay khi có danh
+  // sách lô (không đợi mở tab NCC hay bấm dòng nào) — đổi tab/bấm dòng chỉ
+  // đọc lại cache này, không gọi API nữa.
+  const candidatesCache = useCandidatesBulkCache(rawBatches)
 
   const loadRawData = useCallback(async () => {
     try {
@@ -523,7 +528,7 @@ export default function CongNoVeV2Page() {
           trái lẫn bảng hành khách chèn phía trên như v1. */}
       <div className="flex-1 min-h-0 flex flex-col pt-2">
         <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
-          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual} />
+          onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual} candidatesCache={candidatesCache} />
       </div>
 
       {/* Bấm mã vé/PNR trong bảng → mở slide-over đè lên (portal ra
@@ -538,6 +543,7 @@ export default function CongNoVeV2Page() {
             matchStatus: viewingRawMatch.matchStatus,
           }}
           candidatesUrl={`/api/ve-may-bay/cong-no-raw/${viewingRawMatch.batchId}/rows/${viewingRawMatch.rowIndex}/candidates`}
+          preloaded={viewingRawMatch.preloadedCandidates}
           khSuggestions={dirMaKhach}
           onSaved={(maKhach, matchedBookingId, giaMua, giaBan) =>
             saveRawMaKhachManual(viewingRawMatch.batchId, viewingRawMatch.rowIndex, maKhach, matchedBookingId, giaMua, giaBan)}

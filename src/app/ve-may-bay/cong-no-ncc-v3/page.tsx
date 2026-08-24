@@ -12,7 +12,7 @@ import {
   type SheetData, type RawBatch,
   parseCsvGrid, parseXlsFile, parseXlsxSheetsAny,
   findVietjetHeaderRow, findFcvnHeaderRow, isLikelyJunkRow, splitSegmentsForDisplay,
-  NCC_TABS, RawBatchesView,
+  NCC_TABS, RawBatchesView, useCandidatesBulkCache,
 } from '../cong-no-ncc/raw-shared'
 
 // Biến thể thứ 3 của màn "Đầu vào công nợ NCC" — khác v1 (panel trái +
@@ -179,6 +179,10 @@ export default function CongNoVeV3Page() {
   }
 
   const [rawBatches, setRawBatches] = useState<RawBatch[]>([])
+  // Tải sẵn tin nhắn Telegram khớp mã vé cho TOÀN BỘ lô ngay khi có danh
+  // sách lô (không đợi mở tab NCC hay bấm dòng nào) — đổi tab/bấm dòng chỉ
+  // đọc lại cache này, không gọi API nữa.
+  const candidatesCache = useCandidatesBulkCache(rawBatches)
 
   const loadRawData = useCallback(async () => {
     try {
@@ -560,7 +564,8 @@ export default function CongNoVeV3Page() {
             relatedTicketNos={selectedRawMessage ? new Set(selectedRawMessage.message.pax.map(p => p.ticket_no).filter((x): x is string => !!x)) : null}
             onlyShowRelated
             selectedMessagePax={selectedRawMessage?.message.pax ?? null}
-            onChooseMatch={(batchId, rowIndex, pax) => pax.ma_khach && saveRawMaKhachManual(batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)} />
+            onChooseMatch={(batchId, rowIndex, pax) => pax.ma_khach && saveRawMaKhachManual(batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
+            candidatesCache={candidatesCache} />
         </div>
       </div>
     </div>
