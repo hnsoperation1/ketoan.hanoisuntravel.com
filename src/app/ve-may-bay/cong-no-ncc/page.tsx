@@ -671,7 +671,8 @@ export default function CongNoVePage() {
             </>
           )}
           <RawBatchesView batches={rawBatches.filter(b => b.ncc.trim().toUpperCase() === nccFilter.trim().toUpperCase())} onDelete={deleteRawBatch} onRename={renameRawBatch} ncc={nccFilter}
-            onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual} syncOnSelect />
+            onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual} syncOnSelect
+            relatedTicketNos={selectedRawMessage ? new Set(selectedRawMessage.message.pax.map(p => p.ticket_no).filter((x): x is string => !!x)) : null} />
         </div>
       </div>
     </div>

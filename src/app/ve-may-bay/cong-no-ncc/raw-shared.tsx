@@ -376,11 +376,15 @@ export type OpenRawMatch = (target: {
   preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }
 }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
   // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
   // nội dung — vô hại) — KHÔNG truyền (mặc định false) ở v2 vì onOpenMatch ở
   // đó tự mở slide-over, đổi hàng liên tục sẽ tự bật slide-over gây phiền.
-  syncOnSelect?: boolean }) {
+  syncOnSelect?: boolean
+  // Mã vé của các pax CÙNG tin nhắn Telegram với dòng đang chọn (tin nhắn vé
+  // đoàn gộp nhiều pax, mỗi pax lại tách thành 1 dòng riêng trong bảng raw) —
+  // tô thêm 1 màu khác cho các dòng đó, phân biệt với dòng đang chọn thật sự.
+  relatedTicketNos?: Set<string> | null }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -623,7 +627,8 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)}
       candidateRows={candidateRows}
       onOpenMatch={openMatchForRow!}
-      onSelectionChange={syncOnSelect ? openMatchForRow : undefined} />
+      onSelectionChange={syncOnSelect ? openMatchForRow : undefined}
+      relatedTicketNos={relatedTicketNos} />
   ) : (
     <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} onSaveTkt={() => {}} tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
@@ -748,7 +753,7 @@ function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
   return hidden
 }
 
-export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, expanded, onToggleExpand, candidateRows }: {
+export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, relatedTicketNos, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
@@ -759,6 +764,9 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // đó bật slide-over (view che màn hình) — tự bật theo mỗi lần đổi hàng chọn
   // sẽ gây phiền, chỉ nên bật khi bấm thẳng vào ô mã vé/pax như cũ.
   onSelectionChange?: (rowIndex: number) => void
+  // Mã vé của các pax CÙNG tin nhắn Telegram với dòng đang chọn — tô 1 màu
+  // khác (khác màu dòng đang chọn) cho các dòng khớp, xem RawBatchesView.
+  relatedTicketNos?: Set<string> | null
   expanded: boolean; onToggleExpand: () => void
   // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
   // "không có tin nhắn" trong lúc còn đang hỏi server).
@@ -970,8 +978,13 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
           <tbody>
             {rows.length > 0 ? rows.map((r, i) => {
               const match = matches.get(i)
+              // Dòng khác dòng đang chọn nhưng CÙNG tin nhắn Telegram (vé
+              // đoàn — 1 tin nhắn gộp nhiều pax, mỗi pax tách 1 dòng riêng ở
+              // đây) — tô màu khác để phân biệt với dòng đang chọn thật sự.
+              const isRelated = i !== selectedRow && idColIdx != null
+                && !!relatedTicketNos?.has(r[idColIdx]?.trim() ?? '')
               return (
-              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : ''}`}>
+              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : isRelated ? 'bg-violet-50' : ''}`}>
                 {visibleCols.map(col => {
                   // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
                   // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
