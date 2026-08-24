@@ -440,7 +440,17 @@ export default function CongNoVePage() {
         <div className="flex items-center gap-1 flex-wrap">
           {NCC_TABS.map(n => (
             <button key={n} type="button"
-              onClick={() => { setNccFilter(n); resetWizard() }}
+              onClick={() => {
+                setNccFilter(n)
+                resetWizard()
+                // Đổi tab NCC = đổi hẳn danh sách lô đang xem — panel/bảng
+                // hành khách đang hiện thuộc về 1 dòng của lô NCC CŨ, không
+                // còn liên quan gì tới tab mới, phải đóng lại chứ không thể
+                // giữ nguyên nội dung cũ (viewingRawMatch trỏ đúng batchId
+                // cũ chứ không tự biết "đã đổi tab", xem RawMatchPanel).
+                setViewingRawMatch(null)
+                setSelectedRawMessage(null)
+              }}
               className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
                 nccFilter === n ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}>
