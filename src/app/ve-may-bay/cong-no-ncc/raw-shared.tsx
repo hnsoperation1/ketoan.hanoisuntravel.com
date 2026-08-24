@@ -12,9 +12,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Pencil, Menu, MessageSquareText, MessageSquareOff } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Pencil, Menu, MessageSquareText, MessageSquareOff, Columns3 } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
+import { useUserPreference } from '@/hooks/useUserPreference'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 
@@ -641,6 +642,28 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   const idColIdx = findIdColumnIndex(headers)
   const paxColIdx = findPaxColumnIndex(headers)
 
+  // Ẩn/hiện cột — lưu theo TÀI KHOẢN (user_preferences qua DB, không phải
+  // localStorage) nên đăng nhập máy khác vẫn giữ đúng lựa chọn. Định danh
+  // cột dùng ĐÚNG quy ước đang có sẵn cho độ rộng cột (rawWidths bên dưới):
+  // cột động = String(index), 4 cột thêm = key riêng — nhất quán, cùng
+  // chấp nhận giới hạn "đổi file khác cột thứ N có thể mang ý nghĩa khác"
+  // y hệt độ rộng cột đang chấp nhận từ trước.
+  const { value: hiddenCols, set: setHiddenCols } = useUserPreference<string[]>(`column_visibility.raw_table_${ncc}`, [])
+  const hiddenColSet = new Set(hiddenCols)
+  function toggleCol(key: string) {
+    setHiddenCols(hiddenColSet.has(key) ? hiddenCols.filter(k => k !== key) : [...hiddenCols, key])
+  }
+  const [colMenuOpen, setColMenuOpen] = useState(false)
+  const colMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!colMenuOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [colMenuOpen])
+
   // Cột raw không cố định (đọc thẳng từ file NCC upload) nên key theo INDEX
   // thay vì tên cột — key theo tên dễ trùng/đổi giữa các lần upload khác
   // nhau. Lưu theo `raw-table-{ncc}` để việc kéo giãn cột "nhớ" lại đúng
@@ -650,8 +673,8 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   headers.forEach((_, i) => { rawColDefaults[String(i)] = 110 })
   for (const c of RAW_EXTRA_COLS) rawColDefaults[c.key] = c.width
   const { widths: rawWidths, startResize: startRawResize } = useResizableColumns(`raw-table-${ncc}`, rawColDefaults)
-  const rawTotalWidth = headers.reduce((sum, _, i) => sum + (rawWidths[String(i)] ?? 110), 0)
-    + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => sum + (rawWidths[c.key] ?? c.width), 0) : 0)
+  const rawTotalWidth = headers.reduce((sum, _, i) => hiddenColSet.has(String(i)) ? sum : sum + (rawWidths[String(i)] ?? 110), 0)
+    + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => hiddenColSet.has(c.key) ? sum : sum + (rawWidths[c.key] ?? c.width), 0) : 0)
 
   // Bảng CHOÁN HẾT chiều cao khung cha (h-full + min-h-0) thay vì max-h cố
   // định — khung cha (do RawBatchesView quyết định) đã bị chặn chiều cao
@@ -671,6 +694,29 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               <Trash2 size={13} />
             </button>
           )}
+          <div className="relative" ref={colMenuRef}>
+            <button onClick={() => setColMenuOpen(o => !o)} title="Ẩn/hiện cột"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
+              <Columns3 size={13} />
+              Cột hiển thị
+            </button>
+            {colMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                {headers.map((h, i) => (
+                  <label key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={!hiddenColSet.has(String(i))} onChange={() => toggleCol(String(i))} />
+                    <span className="truncate">{h || `Cột ${i + 1}`}</span>
+                  </label>
+                ))}
+                {rows.length > 0 && RAW_EXTRA_COLS.map(c => (
+                  <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={!hiddenColSet.has(c.key)} onChange={() => toggleCol(c.key)} />
+                    <span className="truncate">{c.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={onToggleExpand}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
             {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
@@ -683,14 +729,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
-              {headers.map((h, i) => (
+              {headers.map((h, i) => hiddenColSet.has(String(i)) ? null : (
                 <th key={i} style={{ width: rawWidths[String(i)] ?? 110 }}
                   className="relative px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none">
                   {h || `Cột ${i + 1}`}
                   <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(String(i), e)} />
                 </th>
               ))}
-              {rows.length > 0 && RAW_EXTRA_COLS.map(c => (
+              {rows.length > 0 && RAW_EXTRA_COLS.map(c => hiddenColSet.has(c.key) ? null : (
                 <th key={c.key} style={{ width: rawWidths[c.key] ?? c.width }}
                   className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
                   {c.label}
@@ -705,6 +751,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               return (
               <tr key={i} className="border-t border-gray-100">
                 {headers.map((h, j) => {
+                  if (hiddenColSet.has(String(j))) return null
                   const numericValue = j !== idColIdx && j !== paxColIdx ? parseRawNumericCell(r[j]) : null
                   return (
                   <td key={j}
@@ -738,6 +785,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   </td>
                   )
                 })}
+                {!hiddenColSet.has('ma_khach') && (
                 <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
                   <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                     <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
@@ -759,20 +807,27 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                   </div>
                 </td>
+                )}
+                {!hiddenColSet.has('gia_mua') && (
                 <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
                 </td>
+                )}
+                {!hiddenColSet.has('gia_ban') && (
                 <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
                   <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
                 </td>
+                )}
+                {!hiddenColSet.has('loi_nhuan') && (
                 <td className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
                   {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                 </td>
+                )}
               </tr>
               )
             }) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
               <tr key={i}>
-                {headers.map((_, j) => <td key={j} className="border border-gray-100 h-8">&nbsp;</td>)}
+                {headers.map((_, j) => hiddenColSet.has(String(j)) ? null : <td key={j} className="border border-gray-100 h-8">&nbsp;</td>)}
               </tr>
             ))}
           </tbody>

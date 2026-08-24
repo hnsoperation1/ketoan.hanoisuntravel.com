@@ -65,9 +65,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/user-preferences')
+      const res = await fetch('/api/user-preferences?key=ui.theme')
       if (res.ok) {
-        const { theme } = await res.json()
+        const { value } = await res.json()
+        const theme = (value as { theme?: UiTheme } | null)?.theme
         const resolved: UiTheme = theme === 'default' ? 'default' : 'dense'
         setThemeState(resolved)
         writeCache(resolved)
@@ -90,7 +91,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     fetch('/api/user-preferences', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: next }),
+      body: JSON.stringify({ key: 'ui.theme', value: { theme: next } }),
     }).catch(() => {})
   }, [])
 
