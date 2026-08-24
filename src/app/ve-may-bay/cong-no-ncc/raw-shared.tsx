@@ -789,6 +789,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // preventDefault() trên mousedown — trình duyệt không khởi động drag nữa.
   const [dragColKey, setDragColKey] = useState<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+  // Tô sáng CẢ CỘT (đầu lẫn thân) lúc đang kéo — giống Google Sheets bôi
+  // xanh nguyên cột đang chọn thay vì chỉ mỗi ô tiêu đề, dễ hình dung đang
+  // di chuyển cả cột chứ không phải 1 ô lẻ.
+  function dragColClass(key: string): string {
+    if (dragColKey === key) return 'bg-brand-50'
+    if (dragOverKey === key && dragColKey && dragColKey !== key) return 'bg-gray-100'
+    return ''
+  }
   function moveColumn(fromKey: string, toKey: string) {
     if (fromKey === toKey) return
     const keys = orderedCols.map(c => c.key)
@@ -867,7 +875,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   onDrop={e => { e.preventDefault(); if (dragColKey) moveColumn(dragColKey, col.key); setDragColKey(null); setDragOverKey(null) }}
                   onDragEnd={() => { setDragColKey(null); setDragOverKey(null) }}
                   title="Kéo để đổi vị trí cột"
-                  className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'} ${dragColKey === col.key ? 'opacity-40' : ''} ${dragOverKey === col.key ? 'bg-brand-100 ring-2 ring-inset ring-brand-500' : ''}`}>
+                  className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'} ${dragColClass(col.key)}`}>
                   {col.label}
                   <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(col.key, e)} />
                 </th>
@@ -896,7 +904,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                       <td key={col.key}
                         {...cellProps(i, selIdx)}
                         title={r[j] || undefined}
-                        className={cellClassName(i, selIdx, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
+                        className={cellClassName(i, selIdx, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''} ${dragColClass(col.key)}`)}>
                         {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                           <div className="space-y-0.5">
                             {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -926,7 +934,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   }
                   // 4 cột THÊM của app (không có trong file gốc).
                   if (col.key === 'ma_khach') return (
-                    <td key={col.key} className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
+                    <td key={col.key} className={`border border-gray-100 px-2 py-1.5 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
                         <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
                         {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
@@ -949,12 +957,12 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     </td>
                   )
                   if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
-                    <td key={col.key} className="relative border border-gray-100 p-0 align-top overflow-hidden">
+                    <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <RawPriceCell value={match?.[col.key] ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
                     </td>
                   )
                   return (
-                    <td key={col.key} className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
+                    <td key={col.key} className={`border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden ${dragColClass(col.key)}`}>
                       {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                     </td>
                   )
@@ -963,7 +971,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               )
             }) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
               <tr key={i}>
-                {visibleCols.map(col => <td key={col.key} className="border border-gray-100 h-8">&nbsp;</td>)}
+                {visibleCols.map(col => <td key={col.key} className={`border border-gray-100 h-8 ${dragColClass(col.key)}`}>&nbsp;</td>)}
               </tr>
             ))}
           </tbody>
