@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Pencil, Menu, MessageSquareText, MessageSquareOff, Columns3 } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Pencil, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
@@ -629,6 +629,58 @@ export const RAW_EXTRA_COLS = [
   { key: 'loi_nhuan', label: 'Lợi nhuận', align: 'right' as const, width: 100 },
 ]
 
+// So khớp tên cột KHÔNG phân biệt hoa/thường/khoảng trắng/dấu câu (vd
+// "Ticket Nbr." khớp "ticketnbr") — để chọn cột "mặc định hiện" theo TÊN
+// vẫn đúng dù file khác nhau viết hoa/thường hay chấm phẩy khác nhau chút.
+function normalizeHeader(s: string | undefined): string {
+  return (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+// Cột hiện SẴN khi user CHƯA từng tự chỉnh (chưa có cài đặt lưu trong DB) —
+// theo yêu cầu 2026-08-23: mỗi NCC chỉ hiện 1 tập cột "cần nhìn ngay", còn
+// lại ẩn bớt (vẫn bật lại được qua nút cột hiển thị). NCC không có trong
+// danh sách này (vd SUN PQC) → hiện đủ như cũ, không lọc gì.
+const DEFAULT_VISIBLE_HEADERS: Record<string, string[]> = {
+  'FCVN': ['issuedate', 'ticketnbr', 'paxname', 'route', 'tkt'],
+  'SAO ĐỎ': ['ngayxv', 'codesove', 'tenkhach', 'hanhtrinh', 'ngaydi', 'ngayve', 'thanhtien', 'tkt'],
+  'VIETJET': ['pnr', 'paxname', 'paymentdate', 'segments', 'amountconvertvnd', 'tkt'],
+}
+// Mã khách/Giá bán mặc định hiện ở CẢ 4 NCC — Giá mua/Lợi nhuận mặc định ẩn.
+const DEFAULT_VISIBLE_EXTRA_COLS = ['ma_khach', 'gia_ban']
+
+// File gốc FCVN có 1 cột KHÔNG có tên (header rỗng, hiện tạm "Cột 20") mà
+// thực chất là "Net Amt VND" — không so khớp theo tên được (rỗng) nên phải
+// chỉ đích danh theo VỊ TRÍ. index 0-based = "Cột 20" (nhãn hiện 1-based
+// = index+1). Cột "Net Amt" GỐC (có tên thật) đổi nhãn hiển thị thành
+// "Net Amt Local" để phân biệt, và mặc định ẨN (không phải đơn vị VND).
+const FCVN_NET_AMT_VND_INDEX = 19
+
+// Nhãn hiển thị cho 1 cột — override tên gốc khi cần (hiện chỉ FCVN, xem
+// FCVN_NET_AMT_VND_INDEX ở trên), còn lại giữ nguyên tên trong file gốc.
+function displayHeader(ncc: string, h: string, i: number): string {
+  if (ncc === 'FCVN') {
+    if (i === FCVN_NET_AMT_VND_INDEX) return 'Net Amt VND'
+    if (normalizeHeader(h) === 'netamt') return 'Net Amt Local'
+  }
+  return h
+}
+
+// Danh sách cột ẨN mặc định (dùng làm defaultValue cho useUserPreference —
+// chỉ áp dụng khi user CHƯA từng lưu lựa chọn nào, xem RawTableCard).
+function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
+  const visible = DEFAULT_VISIBLE_HEADERS[ncc]
+  if (!visible) return [] // NCC không cấu hình riêng → hiện đủ như cũ
+  const hidden: string[] = []
+  headers.forEach((h, i) => {
+    if (ncc === 'FCVN' && i === FCVN_NET_AMT_VND_INDEX) return // luôn hiện
+    if (!visible.includes(normalizeHeader(h))) hidden.push(String(i))
+  })
+  for (const c of RAW_EXTRA_COLS) {
+    if (!DEFAULT_VISIBLE_EXTRA_COLS.includes(c.key)) hidden.push(c.key)
+  }
+  return hidden
+}
+
 export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
@@ -638,7 +690,6 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // "không có tin nhắn" trong lúc còn đang hỏi server).
   candidateRows: Set<number> | null
 }) {
-  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => rows[r]?.[c] ?? '')
   const idColIdx = findIdColumnIndex(headers)
   const paxColIdx = findPaxColumnIndex(headers)
 
@@ -648,11 +699,16 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // cột động = String(index), 4 cột thêm = key riêng — nhất quán, cùng
   // chấp nhận giới hạn "đổi file khác cột thứ N có thể mang ý nghĩa khác"
   // y hệt độ rộng cột đang chấp nhận từ trước.
-  const { value: hiddenCols, set: setHiddenCols } = useUserPreference<string[]>(`column_visibility.raw_table_${ncc}`, [])
+  const { value: hiddenCols, set: setHiddenCols } = useUserPreference<string[]>(`column_visibility.raw_table_${ncc}`, computeDefaultHiddenCols(ncc, headers))
   const hiddenColSet = new Set(hiddenCols)
   function toggleCol(key: string) {
     setHiddenCols(hiddenColSet.has(key) ? hiddenCols.filter(k => k !== key) : [...hiddenCols, key])
   }
+
+  // Thứ tự cột do người dùng tự kéo — cũng lưu theo tài khoản. Rỗng = dùng
+  // thứ tự gốc của file. Lưu theo NCC (không theo từng lô) vì các lô cùng 1
+  // NCC thường cùng cấu trúc cột, giống cách rawWidths đang làm.
+  const { value: savedColOrder, set: setColOrder } = useUserPreference<string[]>(`column_order.raw_table_${ncc}`, [])
   const [colMenuOpen, setColMenuOpen] = useState(false)
   const colMenuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -673,8 +729,79 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   headers.forEach((_, i) => { rawColDefaults[String(i)] = 110 })
   for (const c of RAW_EXTRA_COLS) rawColDefaults[c.key] = c.width
   const { widths: rawWidths, startResize: startRawResize } = useResizableColumns(`raw-table-${ncc}`, rawColDefaults)
-  const rawTotalWidth = headers.reduce((sum, _, i) => hiddenColSet.has(String(i)) ? sum : sum + (rawWidths[String(i)] ?? 110), 0)
-    + (rows.length > 0 ? RAW_EXTRA_COLS.reduce((sum, c) => hiddenColSet.has(c.key) ? sum : sum + (rawWidths[c.key] ?? c.width), 0) : 0)
+
+  // ── Mô hình cột có THỨ TỰ ────────────────────────────────────────────
+  // Gộp cột dữ liệu (đọc từ file) và 4 cột thêm của app về 1 danh sách duy
+  // nhất để kéo đổi chỗ lẫn nhau được. `dataIndex` giữ vị trí GỐC trong
+  // rows[] — thứ tự hiển thị đổi nhưng đọc dữ liệu vẫn đúng ô.
+  type ColDesc = { key: string; label: string; width: number; align?: 'right'; dataIndex: number | null }
+  const defaultCols: ColDesc[] = [
+    ...headers.map((h, i) => ({
+      key: String(i),
+      label: displayHeader(ncc, h, i) || `Cột ${i + 1}`,
+      width: rawWidths[String(i)] ?? 110,
+      dataIndex: i,
+    })),
+    ...RAW_EXTRA_COLS.map(c => ({
+      key: c.key,
+      label: c.label,
+      width: rawWidths[c.key] ?? c.width,
+      align: c.align,
+      dataIndex: null,
+    })),
+  ]
+
+  // Áp thứ tự đã lưu, nhưng phải HOÀ GIẢI với cấu trúc file hiện tại: lô
+  // mới có thể nhiều/ít cột hơn lô lúc lưu → bỏ key không còn tồn tại, và
+  // thêm key mới (chưa từng thấy) vào cuối thay vì mất hút.
+  const orderedCols: ColDesc[] = (() => {
+    const byKey = new Map(defaultCols.map(c => [c.key, c]))
+    const out: ColDesc[] = []
+    const seen = new Set<string>()
+    for (const k of savedColOrder) {
+      const c = byKey.get(k)
+      if (c && !seen.has(k)) { out.push(c); seen.add(k) }
+    }
+    for (const c of defaultCols) if (!seen.has(c.key)) out.push(c)
+    return out
+  })()
+
+  // Lô chưa có dòng nào → không hiện 4 cột thêm (giữ nguyên hành vi cũ).
+  const activeCols = rows.length > 0 ? orderedCols : orderedCols.filter(c => c.dataIndex != null)
+  const visibleCols = activeCols.filter(c => !hiddenColSet.has(c.key))
+  const rawTotalWidth = visibleCols.reduce((sum, c) => sum + c.width, 0)
+
+  // Chỉ số dùng cho việc kéo-chọn-vùng/Ctrl+C/mũi tên (useCellSelection):
+  // đánh số LIÊN TỤC theo thứ tự nhìn thấy nhưng CHỈ tính cột dữ liệu — 4
+  // cột thêm không tham gia vùng chọn (như trước giờ). Nhờ vậy dù kéo 1 cột
+  // thêm vào giữa bảng, phím mũi tên vẫn đi liền mạch qua các cột dữ liệu,
+  // không bị kẹt ở giữa.
+  const selColDataIndexes: number[] = visibleCols.filter(c => c.dataIndex != null).map(c => c.dataIndex as number)
+  const selIndexOf = new Map<string, number>()
+  visibleCols.filter(c => c.dataIndex != null).forEach((c, n) => selIndexOf.set(c.key, n))
+
+  const { cellProps, cellClassName, wrapProps, menu } = useCellSelection(
+    (r, c) => rows[r]?.[selColDataIndexes[c]] ?? ''
+  )
+
+  // Kéo đổi chỗ cột (HTML5 drag-and-drop gốc, không cần thư viện). Kéo từ
+  // thanh đổi độ rộng KHÔNG kích hoạt kéo cột vì startResize gọi
+  // preventDefault() trên mousedown — trình duyệt không khởi động drag nữa.
+  const [dragColKey, setDragColKey] = useState<string | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+  function moveColumn(fromKey: string, toKey: string) {
+    if (fromKey === toKey) return
+    const keys = orderedCols.map(c => c.key)
+    const fromIdx = keys.indexOf(fromKey)
+    const toIdx = keys.indexOf(toKey)
+    if (fromIdx < 0 || toIdx < 0) return
+    keys.splice(fromIdx, 1)
+    // Sau khi rút phần tử ra, chèn tại đúng toIdx cũ cho ra kết quả tự
+    // nhiên ở CẢ 2 chiều: kéo sang phải thì nằm SAU cột đích, kéo sang
+    // trái thì nằm TRƯỚC cột đích (giống Excel/Google Sheets).
+    keys.splice(toIdx, 0, fromKey)
+    setColOrder(keys)
+  }
 
   // Bảng CHOÁN HẾT chiều cao khung cha (h-full + min-h-0) thay vì max-h cố
   // định — khung cha (do RawBatchesView quyết định) đã bị chặn chiều cao
@@ -695,25 +822,27 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
             </button>
           )}
           <div className="relative" ref={colMenuRef}>
-            <button onClick={() => setColMenuOpen(o => !o)} title="Ẩn/hiện cột"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
-              <Columns3 size={13} />
-              Cột hiển thị
+            <button onClick={() => setColMenuOpen(o => !o)} title="Cột hiển thị"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors">
+              <Settings size={13} />
             </button>
             {colMenuOpen && (
               <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                {headers.map((h, i) => (
-                  <label key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" checked={!hiddenColSet.has(String(i))} onChange={() => toggleCol(String(i))} />
-                    <span className="truncate">{h || `Cột ${i + 1}`}</span>
+                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100 mb-1">Cột hiển thị</div>
+                {/* Liệt kê theo ĐÚNG thứ tự cột đang hiển thị (kể cả sau khi
+                    kéo đổi chỗ) để dễ dò, không theo thứ tự gốc của file. */}
+                {activeCols.map(col => (
+                  <label key={col.key} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={!hiddenColSet.has(col.key)} onChange={() => toggleCol(col.key)} />
+                    <span className="truncate">{col.label}</span>
                   </label>
                 ))}
-                {rows.length > 0 && RAW_EXTRA_COLS.map(c => (
-                  <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" checked={!hiddenColSet.has(c.key)} onChange={() => toggleCol(c.key)} />
-                    <span className="truncate">{c.label}</span>
-                  </label>
-                ))}
+                {savedColOrder.length > 0 && (
+                  <button type="button" onClick={() => setColOrder([])}
+                    className="w-full text-left px-3 py-1.5 mt-1 border-t border-gray-100 text-xs font-semibold text-brand-600 hover:bg-brand-50">
+                    Khôi phục thứ tự cột gốc
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -729,18 +858,18 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 text-gray-500">
-              {headers.map((h, i) => hiddenColSet.has(String(i)) ? null : (
-                <th key={i} style={{ width: rawWidths[String(i)] ?? 110 }}
-                  className="relative px-2 py-1.5 text-left font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none">
-                  {h || `Cột ${i + 1}`}
-                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(String(i), e)} />
-                </th>
-              ))}
-              {rows.length > 0 && RAW_EXTRA_COLS.map(c => hiddenColSet.has(c.key) ? null : (
-                <th key={c.key} style={{ width: rawWidths[c.key] ?? c.width }}
-                  className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none ${c.align === 'right' ? 'text-right' : 'text-left'}`}>
-                  {c.label}
-                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(c.key, e)} />
+              {visibleCols.map(col => (
+                <th key={col.key} style={{ width: col.width }}
+                  draggable
+                  onDragStart={e => { setDragColKey(col.key); e.dataTransfer.effectAllowed = 'move' }}
+                  onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragColKey && dragColKey !== col.key) setDragOverKey(col.key) }}
+                  onDragLeave={() => setDragOverKey(k => k === col.key ? null : k)}
+                  onDrop={e => { e.preventDefault(); if (dragColKey) moveColumn(dragColKey, col.key); setDragColKey(null); setDragOverKey(null) }}
+                  onDragEnd={() => { setDragColKey(null); setDragOverKey(null) }}
+                  title="Kéo để đổi vị trí cột"
+                  className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'} ${dragColKey === col.key ? 'opacity-40' : ''} ${dragOverKey === col.key ? 'bg-brand-100 ring-2 ring-inset ring-brand-500' : ''}`}>
+                  {col.label}
+                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(col.key, e)} />
                 </th>
               ))}
             </tr>
@@ -750,84 +879,91 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               const match = matches.get(i)
               return (
               <tr key={i} className="border-t border-gray-100">
-                {headers.map((h, j) => {
-                  if (hiddenColSet.has(String(j))) return null
-                  const numericValue = j !== idColIdx && j !== paxColIdx ? parseRawNumericCell(r[j]) : null
-                  return (
-                  <td key={j}
-                    {...cellProps(i, j)}
-                    title={r[j] || undefined}
-                    className={cellClassName(i, j, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
-                    {h?.trim().toUpperCase() === 'SEGMENTS' ? (
-                      <div className="space-y-0.5">
-                        {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
+                {visibleCols.map(col => {
+                  // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
+                  // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
+                  if (col.dataIndex != null) {
+                    const j = col.dataIndex
+                    const h = headers[j]
+                    const selIdx = selIndexOf.get(col.key) ?? 0
+                    // "Receipt Nbr." là MÃ, không phải số lượng/tiền — dù toàn
+                    // chữ số vẫn không được tách hàng nghìn (899000 → 899.000
+                    // nhìn nhầm thành số thập phân), khác các cột tiền thật sự
+                    // (Fare/Tax/Charge...) cố tình cần tách hàng nghìn.
+                    const isCodeColumn = j === idColIdx || j === paxColIdx || h?.trim().toUpperCase().includes('RECEIPT')
+                    const numericValue = !isCodeColumn ? parseRawNumericCell(r[j]) : null
+                    return (
+                      <td key={col.key}
+                        {...cellProps(i, selIdx)}
+                        title={r[j] || undefined}
+                        className={cellClassName(i, selIdx, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''}`)}>
+                        {h?.trim().toUpperCase() === 'SEGMENTS' ? (
+                          <div className="space-y-0.5">
+                            {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
+                          </div>
+                        ) : j === paxColIdx ? (
+                          // Vé đoàn FCVN gộp nhiều pax vào 1 ô, nối bằng "+" (vd
+                          // "5 PAX ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH..."
+                          // — tách xuống dòng cho dễ đọc bằng splitPaxLinesForDisplay.
+                          <button type="button" onClick={() => onOpenMatch(i)}
+                            className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
+                            <div className="space-y-0.5">
+                              {splitPaxLinesForDisplay(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
+                            </div>
+                          </button>
+                        ) : j === idColIdx ? (
+                          <button type="button" onClick={() => onOpenMatch(i)}
+                            className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
+                            {r[j] || '—'}
+                          </button>
+                        ) : numericValue != null ? (
+                          <span className="whitespace-nowrap">{numericValue.toLocaleString('vi-VN')}</span>
+                        ) : (
+                          <span className="whitespace-nowrap">{r[j] || '—'}</span>
+                        )}
+                      </td>
+                    )
+                  }
+                  // 4 cột THÊM của app (không có trong file gốc).
+                  if (col.key === 'ma_khach') return (
+                    <td key={col.key} className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
+                        <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
+                        {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
+                            thái bên trái chỉ nói ĐÃ gán mã khách hay chưa, không
+                            cho biết có nguồn để gán hay không. Bọc <span> vì
+                            thuộc tính title đặt thẳng lên <svg> không phải trình
+                            duyệt nào cũng hiện tooltip. */}
+                        {candidateRows && (
+                          <span className="shrink-0 flex items-center"
+                            title={candidateRows.has(i)
+                              ? 'Có tin nhắn Telegram khớp mã vé — bấm để xem'
+                              : 'Không có tin nhắn Telegram nào khớp mã vé'}>
+                            {candidateRows.has(i)
+                              ? <MessageSquareText size={12} className="text-emerald-500" />
+                              : <MessageSquareOff size={12} className="text-gray-300" />}
+                          </span>
+                        )}
+                        {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
                       </div>
-                    ) : j === paxColIdx ? (
-                      // Vé đoàn FCVN gộp nhiều pax vào 1 ô, nối bằng "+" (vd
-                      // "5 PAX ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH..."
-                      // — tách xuống dòng cho dễ đọc bằng splitPaxLinesForDisplay.
-                      <button type="button" onClick={() => onOpenMatch(i)}
-                        className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
-                        <div className="space-y-0.5">
-                          {splitPaxLinesForDisplay(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
-                        </div>
-                      </button>
-                    ) : j === idColIdx ? (
-                      <button type="button" onClick={() => onOpenMatch(i)}
-                        className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
-                        {r[j] || '—'}
-                      </button>
-                    ) : numericValue != null ? (
-                      <span className="whitespace-nowrap">{numericValue.toLocaleString('vi-VN')}</span>
-                    ) : (
-                      <span className="whitespace-nowrap">{r[j] || '—'}</span>
-                    )}
-                  </td>
+                    </td>
+                  )
+                  if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
+                    <td key={col.key} className="relative border border-gray-100 p-0 align-top overflow-hidden">
+                      <RawPriceCell value={match?.[col.key] ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
+                    </td>
+                  )
+                  return (
+                    <td key={col.key} className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
+                      {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
+                    </td>
                   )
                 })}
-                {!hiddenColSet.has('ma_khach') && (
-                <td className="border border-gray-100 px-2 py-1.5 align-top overflow-hidden">
-                  <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
-                    <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
-                    {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
-                        thái bên trái chỉ nói ĐÃ gán mã khách hay chưa, không
-                        cho biết có nguồn để gán hay không. Bọc <span> vì
-                        thuộc tính title đặt thẳng lên <svg> không phải trình
-                        duyệt nào cũng hiện tooltip. */}
-                    {candidateRows && (
-                      <span className="shrink-0 flex items-center"
-                        title={candidateRows.has(i)
-                          ? 'Có tin nhắn Telegram khớp mã vé — bấm để xem'
-                          : 'Không có tin nhắn Telegram nào khớp mã vé'}>
-                        {candidateRows.has(i)
-                          ? <MessageSquareText size={12} className="text-emerald-500" />
-                          : <MessageSquareOff size={12} className="text-gray-300" />}
-                      </span>
-                    )}
-                    {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
-                  </div>
-                </td>
-                )}
-                {!hiddenColSet.has('gia_mua') && (
-                <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
-                  <RawPriceCell value={match?.gia_mua ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_mua', v)} />
-                </td>
-                )}
-                {!hiddenColSet.has('gia_ban') && (
-                <td className="relative border border-gray-100 p-0 align-top overflow-hidden">
-                  <RawPriceCell value={match?.gia_ban ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, 'gia_ban', v)} />
-                </td>
-                )}
-                {!hiddenColSet.has('loi_nhuan') && (
-                <td className="border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden">
-                  {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
-                </td>
-                )}
               </tr>
               )
             }) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
               <tr key={i}>
-                {headers.map((_, j) => hiddenColSet.has(String(j)) ? null : <td key={j} className="border border-gray-100 h-8">&nbsp;</td>)}
+                {visibleCols.map(col => <td key={col.key} className="border border-gray-100 h-8">&nbsp;</td>)}
               </tr>
             ))}
           </tbody>
