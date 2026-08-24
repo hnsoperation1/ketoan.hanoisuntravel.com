@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings, Sparkles } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
@@ -810,8 +810,9 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // dòng KHÔNG khớp, chỉ còn đúng nhóm dòng cùng tin nhắn đang xem.
   relatedTicketNos?: Set<string> | null
   onlyShowRelated?: boolean
-  // Chỉ v3 truyền — dòng nào có pax tương ứng trong tin nhắn đang chọn thì
-  // hiện nút "Chọn" ngay trên dòng đó (thay cho bảng phụ riêng ở v1).
+  // v1 VÀ v3 đều truyền (v2 không, xem trang tương ứng) — dòng nào có pax
+  // tương ứng trong tin nhắn đang chọn thì hiện chip gợi ý gán ngay trên
+  // dòng đó (Sparkles + mã khách + giá bán, xem RawTableCard bên dưới).
   matchActionByRow?: Map<number, RawCandidatePax> | null
   onChooseMatch?: (rowIndex: number, pax: RawCandidatePax) => void
   expanded: boolean; onToggleExpand: () => void
@@ -1104,16 +1105,20 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                           </span>
                         )}
                         {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
-                        {/* Chỉ v3 truyền matchActionByRow — gán tay đúng pax
-                            của tin nhắn đang xem vào dòng này, thay cho bảng
-                            phụ "Hành khách trong tin nhắn" riêng ở v1. Ẩn nếu
-                            dòng đã gán ĐÚNG pax này rồi (tránh bấm lại vô ích). */}
+                        {/* Chip gợi ý — khi dòng này khớp đúng 1 pax trong tin
+                            nhắn đang xem (matchActionByRow, xem RawBatchesView:
+                            v1 truyền theo tin nhắn đang mở ở panel trái, v3
+                            truyền sau khi đã lọc), bấm 1 cái là gán LUÔN cả mã
+                            khách lẫn giá mua/giá bán đọc được từ tin nhắn. Ẩn
+                            nếu dòng đã gán ĐÚNG pax này rồi (tránh gợi ý thừa). */}
                         {matchedPax && !alreadyChosen && (
                           <button type="button" disabled={!matchedPax.ma_khach}
                             onClick={e => { e.stopPropagation(); onChooseMatch?.(i, matchedPax) }}
-                            title={matchedPax.ma_khach ? `Gán mã khách ${matchedPax.ma_khach}` : 'Tin nhắn chưa có mã khách'}
-                            className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                            Chọn{matchedPax.ma_khach ? ` ${matchedPax.ma_khach}` : ''}
+                            title={matchedPax.ma_khach ? `Gán mã khách ${matchedPax.ma_khach} theo tin nhắn` : 'Tin nhắn chưa có mã khách'}
+                            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <Sparkles size={10} className="shrink-0" />
+                            {matchedPax.ma_khach ?? '—'}
+                            {matchedPax.gia_ban != null && <span className="opacity-75">· {formatGiaVe(matchedPax.gia_ban)}</span>}
                           </button>
                         )}
                       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 import { OverlayScrollArea } from '@/components/OverlayScrollArea'
+import { buildMatchTerms, HighlightedText } from '@/lib/ve-may-bay/highlight-match'
 
 export type RawCandidatePax = {
   id: string
@@ -129,6 +130,11 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
     )
   }
 
+  // Mã vé/PNR + tên khách của ĐÚNG dòng đang chọn — tô vàng ngay trong
+  // nguyên văn từng tin nhắn bên dưới (tô ở MỌI tin nhắn, không riêng tin
+  // đang chọn: nhờ vậy nhìn lướt là biết tin nào có dòng của mình).
+  const matchTerms = buildMatchTerms(target.ticketLabel, target.contextLabel)
+
   return (
     // h-full (thay vì max-h theo viewport) — panel này đứng cạnh cả khối
     // bảng hành khách + bảng lô công nợ bên phải (2 khối xếp chồng), luôn
@@ -176,7 +182,9 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">{m.pax.length} khách</span>
                     </div>
                     {m.raw_message && (
-                      <p className="text-xs text-gray-700 whitespace-pre-wrap">{m.raw_message}</p>
+                      <p className="text-xs text-gray-700 whitespace-pre-wrap">
+                        <HighlightedText text={m.raw_message} terms={matchTerms} />
+                      </p>
                     )}
                     <div className="text-[10px] text-gray-400 text-right">{formatDateTime(m.created_at)}</div>
                   </button>
