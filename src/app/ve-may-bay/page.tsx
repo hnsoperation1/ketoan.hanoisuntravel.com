@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Users, Table2, FileSpreadsheet, FileStack, Plane, Receipt, UserSearch, BookUser, Landmark, ScrollText, Send, UserCog } from 'lucide-react'
+import { ChevronRight, Users, Table2, FileSpreadsheet, FileStack, Plane, Receipt, UserSearch, BookUser, Landmark, ScrollText, Send, UserCog, ListFilter } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 
@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/ve-may-bay/tong-hop-cong-no-ncc', label: 'Tổng hợp công nợ NCC', icon: Table2 },
   { href: '/ve-may-bay/cong-no-ncc', label: 'Đầu vào công nợ NCC', icon: FileSpreadsheet },
   { href: '/ve-may-bay/cong-no-ncc-v2', label: 'Đầu vào công nợ NCC v2', icon: FileStack },
+  { href: '/ve-may-bay/cong-no-ncc-v3', label: 'Đầu vào công nợ NCC v3', icon: ListFilter },
   { href: '/ve-may-bay/thong-tin-xuat-ve', label: 'Thông tin xuất vé', icon: Plane },
   { href: '/ve-may-bay/sao-ke-tk', label: 'Sao kê TC', icon: Receipt },
   { href: '/ve-may-bay/khach-hang-vmb', label: 'Khách hàng VMB', icon: UserSearch },
