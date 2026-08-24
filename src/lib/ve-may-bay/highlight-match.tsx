@@ -58,7 +58,17 @@ export function buildMatchTerms(opts: {
   }
   if (ticketLabel && !ticketLabel.startsWith('Không có')) push(ticketLabel)
   if (paxLabel) for (const part of paxLabel.split('+')) push(part)
-  if (maKhach) push(maKhach)
+  // Mã khách hay ghép "tên khách/công ty" + "hậu tố loại" (vd "HONDA CN" =
+  // Honda, cá nhân) — 2 phần này thường KHÔNG đứng sát nhau trong tin nhắn
+  // tự nhiên (vd "TUYẾN HONDA - CÁ NHÂN" chen thêm chữ ở giữa). Đẩy CẢ chuỗi
+  // gốc (khớp đúng khi ai đó gõ nguyên mã, vd "DLY_A") LẪN từng từ tách
+  // riêng (khớp phần TÊN dù không đi liền hậu tố, vd chỉ "HONDA") — không bỏ
+  // sót dù mã khách không "chuẩn"/không có trong danh mục, miễn có chữ trong
+  // tin nhắn giống với mã đang lưu.
+  if (maKhach) {
+    push(maKhach)
+    for (const word of maKhach.split(/[\s_-]+/)) push(word)
+  }
   // Giá bán trong tin nhắn có thể viết NGUYÊN SỐ ("1548000") hoặc rút gọn
   // kiểu "1.548k"/"1548k" (nghìn đồng) — thử cả 2 dạng, dạng nào có trong
   // tin nhắn sẽ tự khớp, không cần biết trước NCC nào viết kiểu gì.
