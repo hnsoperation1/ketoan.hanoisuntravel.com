@@ -629,7 +629,10 @@ function EditableTktCell({ value, onSave, suggestions }: { value: string | null;
   }
 
   return (
-    <div className="relative" ref={ref}>
+    // h-full — bọc <input> trong div này (cần cho neo dropdown gợi ý) làm
+    // đứt chuỗi height:100% từ <input> tới div "absolute inset-0" ở <td>
+    // (xem bình luận nơi gọi), phải khai lại h-full ở đây để nối lại chuỗi.
+    <div className="relative h-full" ref={ref}>
       <input value={v}
         onChange={e => { setV(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
@@ -1044,8 +1047,15 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     </td>
                   )
                   if (col.key === 'tkt') return (
+                    // absolute inset-0 (không phải h-full) — cùng lý do đã ghi
+                    // ở RawPriceCell: chiều cao <td> do CẢ HÀNG quyết định,
+                    // height:100% tạo vòng lặp phụ thuộc nên trình duyệt bỏ
+                    // qua, ô co về chiều cao tự nhiên của input (thấp/lệch so
+                    // với hàng thật) nếu không lấy input ra khỏi luồng.
                     <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
-                      <EditableTktCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
+                      <div className="absolute inset-0">
+                        <EditableTktCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
+                      </div>
                     </td>
                   )
                   return (
