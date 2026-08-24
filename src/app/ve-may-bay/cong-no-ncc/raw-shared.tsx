@@ -614,12 +614,10 @@ function TktPickerCell({ value, onSave, suggestions }: { value: string | null; o
   )
 }
 
-// Ô giá mua/giá bán cho bảng raw — mặc định hiện số + nhãn nhỏ "từ tin
-// nhắn" khi gia_source==='message' (tự điền lúc khớp mã khách/chọn pax từ
-// slide-over, xem match-ma-khach-raw.ts), bấm cây viết mới lộ ra ô nhập —
-// tránh nhìn giống ô luôn-sửa-được như EditableNumberCell (dữ liệu ở đây
-// coi là số chính thức ngay khi tự điền, không phải ô nháp).
-export function RawPriceCell({ value, source, onSave }: { value: number | null; source: 'message' | 'manual' | null; onSave: (v: number | null) => void }) {
+// Ô giá mua/giá bán cho bảng raw — mặc định hiện số, bấm cây viết mới lộ ra
+// ô nhập — tránh nhìn giống ô luôn-sửa-được như EditableNumberCell (dữ liệu
+// ở đây coi là số chính thức ngay khi tự điền, không phải ô nháp).
+export function RawPriceCell({ value, onSave }: { value: number | null; onSave: (v: number | null) => void }) {
   const [editing, setEditing] = useState(false)
   if (editing) {
     // absolute inset-0 (thay vì h-full) — chiều cao <td> do CẢ HÀNG quyết
@@ -641,7 +639,6 @@ export function RawPriceCell({ value, source, onSave }: { value: number | null; 
     // choán trọn ô nên viền xanh focus khớp đúng mép ô (kiểu Excel thật).
     <div className="flex items-center justify-end gap-1 px-2 py-1.5">
       <span className="text-right">{formatGiaVe(value)}</span>
-      {source === 'message' && <span className="text-[10px] text-gray-400 whitespace-nowrap">từ tin nhắn</span>}
       <button type="button" onClick={() => setEditing(true)} title="Sửa" className="p-0.5 text-gray-300 hover:text-brand-600 shrink-0">
         <Pencil size={11} />
       </button>
@@ -1004,7 +1001,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   )
                   if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
                     <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
-                      <RawPriceCell value={match?.[col.key] ?? null} source={match?.gia_source ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
+                      <RawPriceCell value={match?.[col.key] ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
                     </td>
                   )
                   if (col.key === 'tkt') return (

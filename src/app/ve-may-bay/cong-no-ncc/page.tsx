@@ -81,10 +81,10 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
                     )}
                   </td>
                   <td className="border border-gray-100 px-2 py-1.5">
-                    <RawPriceCell value={giaMua} source="message" onSave={v => setPrice(p.id, 'gia_mua', v)} />
+                    <RawPriceCell value={giaMua} onSave={v => setPrice(p.id, 'gia_mua', v)} />
                   </td>
                   <td className="border border-gray-100 px-2 py-1.5">
-                    <RawPriceCell value={giaBan} source="message" onSave={v => setPrice(p.id, 'gia_ban', v)} />
+                    <RawPriceCell value={giaBan} onSave={v => setPrice(p.id, 'gia_ban', v)} />
                   </td>
                   <td className="border border-gray-100 px-2 py-1.5 whitespace-nowrap">
                     <button type="button" onClick={() => onChoose(p, giaMua, giaBan)} disabled={!p.ma_khach}
