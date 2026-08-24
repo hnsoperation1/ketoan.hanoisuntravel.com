@@ -6,7 +6,7 @@ import { RefreshCw, Loader2, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
-import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo } from '../cong-no-ncc/RawMatchPanel'
+import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from '../cong-no-ncc/RawMatchPanel'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import {
   type SheetData, type RawBatch,
@@ -334,6 +334,31 @@ export default function CongNoVeV3Page() {
     }
   }
 
+  // Pax nào của tin nhắn đang xem còn khớp được với 1 dòng trong lô đang mở
+  // panel nhưng CHƯA gán đúng người đó — nổi chip gợi ý ngay trên góc bong
+  // bóng tin nhắn chứa pax đó (xem RawMatchPanel). Tính ở đây (không phải
+  // trong RawBatchesView) vì panel đứng NGANG HÀNG với RawBatchesView chứ
+  // không phải con của nó — chỉ page.tsx có sẵn cả rawBatches lẫn
+  // viewingRawMatch.batchId để đối chiếu.
+  const pendingSuggestions = (() => {
+    if (!selectedRawMessage || !viewingRawMatch) return []
+    const batch = rawBatches.find(b => b.id === viewingRawMatch.batchId)
+    if (!batch) return []
+    const idColIdx = findIdColumnIndex(batch.headers)
+    if (idColIdx == null) return []
+    const matchByRow = new Map(batch.ve_debt_records_raw_match.map(m => [m.row_index, m]))
+    const out: { pax: RawCandidatePax; rowIndex: number }[] = []
+    batch.rows.forEach((row, i) => {
+      const ticket = row[idColIdx]?.trim()
+      const pax = ticket ? selectedRawMessage.message.pax.find(p => p.ticket_no === ticket) : undefined
+      if (!pax) return
+      const existing = matchByRow.get(i)
+      if (existing?.matched_booking_id === pax.id) return
+      out.push({ pax, rowIndex: i })
+    })
+    return out
+  })()
+
   return (
     // absolute inset-0 — <main> trong AppShell.tsx đã có "relative" nên khối
     // này phủ ĐÚNG BẰNG vùng nội dung (không hơn, không kém) → main không
@@ -545,6 +570,8 @@ export default function CongNoVeV3Page() {
               preloaded={viewingRawMatch?.preloadedCandidates}
               onClose={() => setViewingRawMatch(null)}
               onSelectMessage={setSelectedRawMessage}
+              pendingSuggestions={pendingSuggestions}
+              onChooseMatch={(rowIndex, pax) => pax.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
             />
           </div>
         </div>
@@ -563,8 +590,6 @@ export default function CongNoVeV3Page() {
             onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual}
             relatedTicketNos={selectedRawMessage ? new Set(selectedRawMessage.message.pax.map(p => p.ticket_no).filter((x): x is string => !!x)) : null}
             onlyShowRelated
-            selectedMessagePax={selectedRawMessage?.message.pax ?? null}
-            onChooseMatch={(batchId, rowIndex, pax) => pax.ma_khach && saveRawMaKhachManual(batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
             candidatesCache={candidatesCache} />
         </div>
       </div>

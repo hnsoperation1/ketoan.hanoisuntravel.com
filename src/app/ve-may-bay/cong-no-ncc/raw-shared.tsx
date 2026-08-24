@@ -12,13 +12,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings, Sparkles } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
-import type { RawCandidateMessage, RawKhachInfo, RawCandidatePax } from './RawMatchPanel'
+import type { RawCandidateMessage, RawKhachInfo } from './RawMatchPanel'
 
 export function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -408,7 +408,7 @@ export type OpenRawMatch = (target: {
   preloadedCandidates?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo }
 }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, selectedMessagePax, onChooseMatch, candidatesCache }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, candidatesCache }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
   // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
   // nội dung — vô hại) — KHÔNG truyền (mặc định false) ở v2 vì onOpenMatch ở
   // đó tự mở slide-over, đổi hàng liên tục sẽ tự bật slide-over gây phiền.
@@ -420,10 +420,6 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
   // Chỉ v3 truyền true — thay vì TÔ MÀU các dòng liên quan (v1/v2), ẨN HẲN
   // các dòng KHÔNG liên quan, chỉ còn đúng nhóm dòng cùng tin nhắn đang xem.
   onlyShowRelated?: boolean
-  // Danh sách pax của tin nhắn đang chọn (chỉ v3 truyền) — dùng để hiện nút
-  // "Chọn" ngay trên từng dòng đã lọc thay vì bảng phụ riêng như v1.
-  selectedMessagePax?: RawCandidatePax[] | null
-  onChooseMatch?: (batchId: string, rowIndex: number, pax: RawCandidatePax) => void
   // Kết quả useCandidatesBulkCache(rawBatches) tính ở page.tsx (bao TOÀN BỘ
   // lô, tải sẵn ngay khi trang có danh sách lô — không đợi mở tab/bấm dòng
   // nào), dùng để đính preloadedCandidates vào onOpenMatch bên dưới.
@@ -637,23 +633,6 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
     })
   } : undefined
 
-  // Với mỗi dòng đang hiện (sau khi lọc/tô theo relatedTicketNos), tìm đúng
-  // pax tương ứng trong tin nhắn đang chọn (khớp theo mã vé) để hiện nút
-  // "Chọn" ngay trên dòng đó — chỉ v3 truyền selectedMessagePax nên chỉ v3
-  // có nút này (v1/v2 để undefined, RawTableCard bỏ qua hoàn toàn).
-  const matchActionByRow = active && selectedMessagePax && selectedMessagePax.length > 0 ? (() => {
-    const idColIdx = findIdColumnIndex(active.headers)
-    if (idColIdx == null) return null
-    const byTicket = new Map(selectedMessagePax.filter(p => p.ticket_no).map(p => [p.ticket_no as string, p]))
-    const map = new Map<number, RawCandidatePax>()
-    active.rows.forEach((row, i) => {
-      const ticket = row[idColIdx]?.trim()
-      const pax = ticket ? byTicket.get(ticket) : undefined
-      if (pax) map.set(i, pax)
-    })
-    return map
-  })() : null
-
   const table = active ? (
     <RawTableCard key={active.id} ncc={ncc} headers={active.headers} rows={active.rows}
       info={`${batchLabel(active)} · ${active.rows.length} dòng · ${new Date(active.created_at).toLocaleString('vi-VN')}`}
@@ -667,9 +646,7 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       onOpenMatch={openMatchForRow!}
       onSelectionChange={syncOnSelect ? openMatchForRow : undefined}
       relatedTicketNos={relatedTicketNos}
-      onlyShowRelated={onlyShowRelated}
-      matchActionByRow={matchActionByRow}
-      onChooseMatch={onChooseMatch ? (rowIndex, pax) => onChooseMatch(active.id, rowIndex, pax) : undefined} />
+      onlyShowRelated={onlyShowRelated} />
   ) : (
     <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} onSaveTkt={() => {}} tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
@@ -794,7 +771,7 @@ function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
   return hidden
 }
 
-export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, relatedTicketNos, onlyShowRelated, matchActionByRow, onChooseMatch, expanded, onToggleExpand, candidateRows }: {
+export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, relatedTicketNos, onlyShowRelated, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
@@ -810,11 +787,6 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // dòng KHÔNG khớp, chỉ còn đúng nhóm dòng cùng tin nhắn đang xem.
   relatedTicketNos?: Set<string> | null
   onlyShowRelated?: boolean
-  // v1 VÀ v3 đều truyền (v2 không, xem trang tương ứng) — dòng nào có pax
-  // tương ứng trong tin nhắn đang chọn thì hiện chip gợi ý gán ngay trên
-  // dòng đó (Sparkles + mã khách + giá bán, xem RawTableCard bên dưới).
-  matchActionByRow?: Map<number, RawCandidatePax> | null
-  onChooseMatch?: (rowIndex: number, pax: RawCandidatePax) => void
   expanded: boolean; onToggleExpand: () => void
   // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
   // "không có tin nhắn" trong lúc còn đang hỏi server).
@@ -1035,8 +1007,6 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               // đang xem, khác v1/v2 chỉ tô màu (relatedTicketNos vẫn dùng
               // chung logic isRelated ở trên).
               if (onlyShowRelated && relatedTicketNos && i !== selectedRow && !isRelated) return null
-              const matchedPax = matchActionByRow?.get(i)
-              const alreadyChosen = matchedPax && match?.matched_booking_id === matchedPax.id
               return (
               <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : isRelated ? 'bg-violet-50' : ''}`}>
                 {visibleCols.map(col => {
@@ -1105,22 +1075,6 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                           </span>
                         )}
                         {match?.ma_khach || <span className="text-gray-300">Chưa có</span>}
-                        {/* Chip gợi ý — khi dòng này khớp đúng 1 pax trong tin
-                            nhắn đang xem (matchActionByRow, xem RawBatchesView:
-                            v1 truyền theo tin nhắn đang mở ở panel trái, v3
-                            truyền sau khi đã lọc), bấm 1 cái là gán LUÔN cả mã
-                            khách lẫn giá mua/giá bán đọc được từ tin nhắn. Ẩn
-                            nếu dòng đã gán ĐÚNG pax này rồi (tránh gợi ý thừa). */}
-                        {matchedPax && !alreadyChosen && (
-                          <button type="button" disabled={!matchedPax.ma_khach}
-                            onClick={e => { e.stopPropagation(); onChooseMatch?.(i, matchedPax) }}
-                            title={matchedPax.ma_khach ? `Gán mã khách ${matchedPax.ma_khach} theo tin nhắn` : 'Tin nhắn chưa có mã khách'}
-                            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                            <Sparkles size={10} className="shrink-0" />
-                            {matchedPax.ma_khach ?? '—'}
-                            {matchedPax.gia_ban != null && <span className="opacity-75">· {formatGiaVe(matchedPax.gia_ban)}</span>}
-                          </button>
-                        )}
                       </div>
                     </td>
                   )

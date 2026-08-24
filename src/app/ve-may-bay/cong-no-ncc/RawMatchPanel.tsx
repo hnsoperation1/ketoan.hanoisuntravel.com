@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { Loader2, X, Sparkles } from 'lucide-react'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 import { buildMatchTerms, HighlightedText } from '@/lib/ve-may-bay/highlight-match'
@@ -29,6 +29,14 @@ export type RawCandidateMessage = {
 
 export type RawKhachInfo = Record<string, { ten_khach: string | null; active: boolean }>
 
+// Trùng hệt raw-shared.tsx nhưng không import chéo — raw-shared.tsx VỐN ĐÃ
+// import type từ file này (RawCandidateMessage/RawKhachInfo), nhập ngược
+// lại 1 giá trị THẬT (không phải type) sẽ tạo vòng import 2 chiều thật sự.
+function formatGiaVe(n: number | null | undefined): string {
+  if (n == null) return '—'
+  return Math.round(n).toLocaleString('vi-VN')
+}
+
 function formatDateTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString('vi-VN')
@@ -52,7 +60,7 @@ function formatDateTime(iso: string): string {
 // còn qua bảng bên phải. `onSelectMessage` báo lên page.tsx mỗi khi tin
 // nhắn được chọn đổi (kể cả lúc tự chọn tin đầu tiên sau khi tải xong, hoặc
 // bị xoá về null khi đóng panel) để page.tsx biết vẽ bảng đó với dữ liệu nào.
-export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSelectMessage }: {
+export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSelectMessage, pendingSuggestions, onChooseMatch }: {
   target: MatchSlideOverTarget | null
   candidatesUrl: string | null
   // Kết quả đã tải sẵn từ candidates-bulk (chạy nền lúc mở/đổi tab, xem
@@ -62,6 +70,13 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
   preloaded?: { messages: RawCandidateMessage[]; khachInfo: RawKhachInfo } | null
   onClose: () => void
   onSelectMessage: (info: { message: RawCandidateMessage; khachInfo: RawKhachInfo } | null) => void
+  // Pax nào trong danh sách tin nhắn dưới đây CÓ khớp 1 dòng trong bảng
+  // công nợ nhưng CHƯA gán đúng người đó — nổi hẳn 1 chip gợi ý ngay trên
+  // GÓC bong bóng tin nhắn chứa đúng pax đó (tính sẵn ở page.tsx, vì panel
+  // này không có quyền truy cập rows/matches của bảng). Bấm chip gán LUÔN
+  // cả mã khách lẫn giá mua/giá bán đọc được từ tin nhắn cho đúng dòng đó.
+  pendingSuggestions?: { pax: RawCandidatePax; rowIndex: number }[]
+  onChooseMatch?: (rowIndex: number, pax: RawCandidatePax) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -171,9 +186,17 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
             <div className="space-y-1.5">
               {messages.map(m => {
                 const selected = m.parse_log_id === selectedMsgId
+                // Pax của ĐÚNG tin nhắn này (không phải toàn bộ danh sách) —
+                // 1 pax chỉ có thể thuộc 1 tin nhắn nên so theo id là đủ.
+                const suggestions = pendingSuggestions?.filter(s => m.pax.some(p => p.id === s.pax.id)) ?? []
                 return (
-                  <button key={m.parse_log_id} type="button" onClick={() => selectMessage(m)}
-                    className={`w-full text-left rounded-xl border px-2.5 py-2 transition-colors ${selected ? 'bg-brand-50 border-brand-300 shadow-sm' : 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'}`}>
+                  // Bọc ngoài bằng div (không phải button) — chip gợi ý bên
+                  // dưới CŨNG là 1 button riêng, lồng button trong button là
+                  // HTML không hợp lệ. div này "relative" làm điểm neo cho
+                  // chip "absolute" nổi hẳn lên GÓC bong bóng tin nhắn.
+                  <div key={m.parse_log_id} className="relative">
+                    <button type="button" onClick={() => selectMessage(m)}
+                      className={`w-full text-left rounded-xl border px-2.5 py-2 transition-colors ${selected ? 'bg-brand-50 border-brand-300 shadow-sm' : 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'}`}>
                     {m.group_title && (
                       <div className="text-[11px] text-gray-400 truncate">Nhóm: {m.group_title}</div>
                     )}
@@ -187,7 +210,26 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
                       </p>
                     )}
                     <div className="text-[10px] text-gray-400 text-right">{formatDateTime(m.created_at)}</div>
-                  </button>
+                    </button>
+                    {/* Chip gợi ý — nổi HẲN lên góc bong bóng tin nhắn (không
+                        chôn trong bảng nữa, xem yêu cầu) — 1 chip cho mỗi pax
+                        của tin nhắn này còn khớp được với 1 dòng trong bảng
+                        nhưng chưa gán đúng, bấm là gán LUÔN mã khách + giá. */}
+                    {suggestions.length > 0 && (
+                      <div className="absolute -top-1.5 right-2 z-10 flex flex-wrap gap-1 justify-end max-w-[90%]">
+                        {suggestions.map(s => (
+                          <button key={s.pax.id} type="button" disabled={!s.pax.ma_khach}
+                            onClick={e => { e.stopPropagation(); onChooseMatch?.(s.rowIndex, s.pax) }}
+                            title={s.pax.ma_khach ? `Gán mã khách ${s.pax.ma_khach} + giá cho dòng đang chọn` : 'Tin nhắn chưa có mã khách'}
+                            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 ring-1 ring-amber-300 shadow-sm hover:bg-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <Sparkles size={10} className="shrink-0" />
+                            {s.pax.ma_khach ?? '—'}
+                            {s.pax.gia_ban != null && <span className="opacity-75">· {formatGiaVe(s.pax.gia_ban)}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>
