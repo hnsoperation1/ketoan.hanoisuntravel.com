@@ -810,8 +810,10 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
     return out
   })()
 
-  // Lô chưa có dòng nào → không hiện 4 cột thêm (giữ nguyên hành vi cũ).
-  const activeCols = rows.length > 0 ? orderedCols : orderedCols.filter(c => c.dataIndex != null)
+  // Luôn hiện đủ cột (kể cả 4 cột thêm của app) dù lô đã có dòng hay chưa —
+  // theo yêu cầu 2026-08-24: nhìn được cấu trúc cột đầy đủ ngay cả lúc tab
+  // còn trống, không đợi có dữ liệu mới thấy Mã khách/Giá bán/TKT...
+  const activeCols = orderedCols
   const visibleCols = activeCols.filter(c => !hiddenColSet.has(c.key))
   const rawTotalWidth = visibleCols.reduce((sum, c) => sum + c.width, 0)
 
