@@ -598,60 +598,19 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
 
 export type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'gia_mua' | 'gia_ban' | 'gia_source' | 'tkt_tag'>
 
-// Ô TKT — free text có gợi ý (autocomplete), giống EditableCell ở trang
-// Tổng hợp công nợ NCC (không import thẳng từ đó vì file kia là page.tsx
-// riêng, không phải module dùng chung) — gõ tự do vẫn lưu được kể cả khi
-// TKT chưa có trong danh mục ve_tkt.
-function EditableTktCell({ value, onSave, suggestions }: { value: string | null; onSave: (v: string | null) => void; suggestions: string[] }) {
-  const [v, setV] = useState(value ?? '')
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => setV(value ?? ''), [value])
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-        setV(cur => { const trimmed = cur.trim(); if (trimmed !== (value ?? '')) onSave(trimmed || null); return cur })
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [value, onSave])
-
-  const q = v.trim().toLowerCase()
-  const filtered = (q ? suggestions.filter(s => s.toLowerCase().includes(q)) : suggestions).slice(0, 50)
-
-  function choose(s: string) {
-    setV(s)
-    setOpen(false)
-    if (s !== (value ?? '')) onSave(s)
-  }
-
+// Ô TKT — picker THUẦN (select gốc trình duyệt), KHÔNG cho gõ tự do: chỉ
+// chọn được đúng mã có trong danh mục ve_tkt (qua tktSuggestions, xem
+// RawBatchesView). Nếu giá trị đang lưu không còn nằm trong danh mục hiện
+// tại (đổi tên/xoá TKT sau khi đã gán) vẫn chèn thêm vào đầu danh sách để
+// không "biến mất" khỏi ô, tránh hiểu nhầm là bị xoá dữ liệu.
+function TktPickerCell({ value, onSave, suggestions }: { value: string | null; onSave: (v: string | null) => void; suggestions: string[] }) {
+  const options = value && !suggestions.includes(value) ? [value, ...suggestions] : suggestions
   return (
-    // h-full — bọc <input> trong div này (cần cho neo dropdown gợi ý) làm
-    // đứt chuỗi height:100% từ <input> tới div "absolute inset-0" ở <td>
-    // (xem bình luận nơi gọi), phải khai lại h-full ở đây để nối lại chuỗi.
-    <div className="relative h-full" ref={ref}>
-      <input value={v}
-        onChange={e => { setV(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { setOpen(false); const trimmed = v.trim(); if (trimmed !== (value ?? '')) onSave(trimmed || null) }
-          if (e.key === 'Escape') setOpen(false)
-        }}
-        className={CELL_INPUT} />
-      {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto w-40">
-          {filtered.map(s => (
-            <button key={s} type="button" onMouseDown={e => e.preventDefault()} onClick={() => choose(s)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition-colors truncate">
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <select value={value ?? ''} onChange={e => onSave(e.target.value || null)}
+      className={`${CELL_INPUT} cursor-pointer`}>
+      <option value="">Chưa có</option>
+      {options.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
   )
 }
 
@@ -1054,7 +1013,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     // với hàng thật) nếu không lấy input ra khỏi luồng.
                     <td key={col.key} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <div className="absolute inset-0">
-                        <EditableTktCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
+                        <TktPickerCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
                       </div>
                     </td>
                   )
