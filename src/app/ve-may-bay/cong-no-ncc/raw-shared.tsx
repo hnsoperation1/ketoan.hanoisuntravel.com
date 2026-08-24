@@ -864,18 +864,56 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   const selIndexOf = new Map<string, number>()
   visibleCols.filter(c => c.dataIndex != null).forEach((c, n) => selIndexOf.set(c.key, n))
 
-  const { cellProps, cellClassName, wrapProps, menu, selectedRow, selectRow } = useCellSelection(
-    (r, c) => rows[r]?.[selColDataIndexes[c]] ?? ''
+  // ── Nhóm "cùng tin nhắn" lên đầu bảng ────────────────────────────────
+  // rowOrder[hàng HIỂN THỊ] = chỉ số GỐC trong rows[] — khi có dòng đang
+  // chọn thuộc 1 tin nhắn nhiều pax, các dòng khác CÙNG tin nhắn đó (đã tô
+  // tím, xem relatedTicketNos) được gom lên ngay sau dòng đang chọn thay vì
+  // nằm rải rác, dễ đối chiếu cả nhóm 1 lượt. Thứ tự bên trong mỗi nhóm vẫn
+  // giữ nguyên thứ tự gốc trong file. Là STATE (không phải tính lại mỗi lần
+  // render từ 1 ref) vì đọc ref.current TRONG lúc render bị cấm (react-hooks/
+  // refs) — chỉ đổi qua effect bên dưới, sau khi render xong.
+  const [rowOrder, setRowOrder] = useState<number[]>(() => rows.map((_, i) => i))
+
+  const { cellProps, cellClassName, wrapProps, menu, selectedRow, selectRow, realignRow } = useCellSelection(
+    (r, c) => rows[rowOrder[r]]?.[selColDataIndexes[c]] ?? ''
   )
+
+  // Hàng GỐC đang thật sự được chọn — suy ra từ `selectedRow` (chỉ số HIỂN
+  // THỊ, r của hook) qua ĐÚNG rowOrder đang dùng để render lần này, luôn nhất
+  // quán trong 1 lần render (khác cách dùng ref trước đó dễ lệch pha).
+  const selectedOrigRow = selectedRow != null ? (rowOrder[selectedRow] ?? null) : null
+
+  // Sau khi selectedOrigRow đổi (chọn dòng khác/đổi tin nhắn đang xem) —
+  // tính lại nhóm cần gom lên đầu; nếu khác rowOrder hiện tại mới update
+  // state (tránh set liên tục vô ích khi vẫn đang ở trong CÙNG 1 nhóm — xem
+  // isHighlighted, chỉ phụ thuộc quan hệ "cùng tin nhắn" nên di chuyển giữa
+  // các dòng trong cùng nhóm không đổi rowOrder, không gây giật hình khi rà
+  // phím mũi tên trong 1 nhóm). Đổi rowOrder xong thì chỉnh lại luôn r của
+  // hook (realignRow) cho khớp vị trí MỚI của đúng dòng đang chọn.
+  useEffect(() => {
+    if (selectedOrigRow == null) return
+    const isHighlighted = (i: number) => i === selectedOrigRow
+      || (idColIdx != null && !!relatedTicketNos?.has(rows[i]?.[idColIdx]?.trim() ?? ''))
+    const top: number[] = []
+    const rest: number[] = []
+    rows.forEach((_, i) => { (isHighlighted(i) ? top : rest).push(i) })
+    const nextOrder = [...top, ...rest]
+    const changed = nextOrder.length !== rowOrder.length || nextOrder.some((v, idx) => v !== rowOrder[idx])
+    if (!changed) return
+    setRowOrder(nextOrder)
+    const newVisualPos = nextOrder.indexOf(selectedOrigRow)
+    if (newVisualPos >= 0) realignRow(newVisualPos)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOrigRow, relatedTicketNos])
 
   // Đổi hàng đang chọn (click ô bất kỳ HOẶC mũi tên lên/xuống, xem
   // useCellSelection) → báo lên cho nơi gọi (chỉ v1 truyền onSelectionChange,
   // xem RawBatchesView) để đồng bộ khung "Tin nhắn Telegram khớp mã vé" theo
   // đúng hàng đang xem, không chỉ lúc bấm thẳng vào ô mã vé/pax như trước.
   useEffect(() => {
-    if (onSelectionChange && selectedRow != null && rows[selectedRow]) onSelectionChange(selectedRow)
+    if (onSelectionChange && selectedOrigRow != null && rows[selectedOrigRow]) onSelectionChange(selectedOrigRow)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRow])
+  }, [selectedOrigRow])
 
   // Kéo đổi chỗ cột (HTML5 drag-and-drop gốc, không cần thư viện). Kéo từ
   // thanh đổi độ rộng KHÔNG kích hoạt kéo cột vì startResize gọi
@@ -976,15 +1014,16 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
             </tr>
           </thead>
           <tbody>
-            {rows.length > 0 ? rows.map((r, i) => {
-              const match = matches.get(i)
+            {rows.length > 0 ? rowOrder.map((origIdx, visualR) => {
+              const r = rows[origIdx]
+              const match = matches.get(origIdx)
               // Dòng khác dòng đang chọn nhưng CÙNG tin nhắn Telegram (vé
               // đoàn — 1 tin nhắn gộp nhiều pax, mỗi pax tách 1 dòng riêng ở
               // đây) — tô màu khác để phân biệt với dòng đang chọn thật sự.
-              const isRelated = i !== selectedRow && idColIdx != null
+              const isRelated = origIdx !== selectedOrigRow && idColIdx != null
                 && !!relatedTicketNos?.has(r[idColIdx]?.trim() ?? '')
               return (
-              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : isRelated ? 'bg-violet-50' : ''}`}>
+              <tr key={origIdx} className={`border-t border-gray-100 ${origIdx === selectedOrigRow ? 'bg-amber-50' : isRelated ? 'bg-violet-50' : ''}`}>
                 {visibleCols.map(col => {
                   // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
                   // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
@@ -1000,9 +1039,9 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     const numericValue = !isCodeColumn ? parseRawNumericCell(r[j]) : null
                     return (
                       <td key={col.key}
-                        {...cellProps(i, selIdx)}
+                        {...cellProps(visualR, selIdx)}
                         title={r[j] || undefined}
-                        className={cellClassName(i, selIdx, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''} ${dragColClass(col.key)}`)}>
+                        className={cellClassName(visualR, selIdx, `border border-gray-100 px-2 py-1.5 text-gray-900 align-top cursor-cell overflow-hidden text-ellipsis ${numericValue != null ? 'text-right tabular-nums' : ''} ${dragColClass(col.key)}`)}>
                         {h?.trim().toUpperCase() === 'SEGMENTS' ? (
                           <div className="space-y-0.5">
                             {splitSegmentsForDisplay(r[j]).map((seg, k) => <div key={k} className="whitespace-nowrap">{seg}</div>)}
@@ -1011,14 +1050,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                           // Vé đoàn FCVN gộp nhiều pax vào 1 ô, nối bằng "+" (vd
                           // "5 PAX ADT.05 + DAO, THI THAM + GIANG, QUYNH ANH..."
                           // — tách xuống dòng cho dễ đọc bằng splitPaxLinesForDisplay.
-                          <button type="button" onClick={() => onOpenMatch(i)}
+                          <button type="button" onClick={() => onOpenMatch(origIdx)}
                             className="text-left underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                             <div className="space-y-0.5">
                               {splitPaxLinesForDisplay(r[j]).map((name, k) => <div key={k} className="whitespace-nowrap">{name}</div>)}
                             </div>
                           </button>
                         ) : j === idColIdx ? (
-                          <button type="button" onClick={() => onOpenMatch(i)}
+                          <button type="button" onClick={() => onOpenMatch(origIdx)}
                             className="whitespace-nowrap underline decoration-dotted decoration-gray-300 hover:decoration-brand-500 hover:text-brand-600 transition-colors">
                             {r[j] || '—'}
                           </button>
@@ -1032,9 +1071,9 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   }
                   // 4 cột THÊM của app (không có trong file gốc).
                   if (col.key === 'ma_khach') return (
-                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`border border-gray-100 px-2 py-1.5 align-top overflow-hidden ${dragColClass(col.key)}`}>
-                      <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(i)}>
-                        <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(i)} />
+                    <td key={col.key} onMouseDown={() => selectRow(visualR)} className={`border border-gray-100 px-2 py-1.5 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                      <div className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer" onClick={() => onOpenMatch(origIdx)}>
+                        <MatchStatusBadge status={match?.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(origIdx)} />
                         {/* Có/không có tin nhắn Telegram khớp mã vé — chấm trạng
                             thái bên trái chỉ nói ĐÃ gán mã khách hay chưa, không
                             cho biết có nguồn để gán hay không. Bọc <span> vì
@@ -1042,10 +1081,10 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                             duyệt nào cũng hiện tooltip. */}
                         {candidateRows && (
                           <span className="shrink-0 flex items-center"
-                            title={candidateRows.has(i)
+                            title={candidateRows.has(origIdx)
                               ? 'Có tin nhắn Telegram khớp mã vé — bấm để xem'
                               : 'Không có tin nhắn Telegram nào khớp mã vé'}>
-                            {candidateRows.has(i)
+                            {candidateRows.has(origIdx)
                               ? <MessageSquareText size={12} className="text-emerald-500" />
                               : <MessageSquareOff size={12} className="text-gray-300" />}
                           </span>
@@ -1055,8 +1094,8 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     </td>
                   )
                   if (col.key === 'gia_mua' || col.key === 'gia_ban') return (
-                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
-                      <RawPriceCell value={match?.[col.key] ?? null} onSave={v => onSaveGia(i, col.key as 'gia_mua' | 'gia_ban', v)} />
+                    <td key={col.key} onMouseDown={() => selectRow(visualR)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                      <RawPriceCell value={match?.[col.key] ?? null} onSave={v => onSaveGia(origIdx, col.key as 'gia_mua' | 'gia_ban', v)} />
                     </td>
                   )
                   if (col.key === 'tkt') return (
@@ -1065,14 +1104,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                     // height:100% tạo vòng lặp phụ thuộc nên trình duyệt bỏ
                     // qua, ô co về chiều cao tự nhiên của input (thấp/lệch so
                     // với hàng thật) nếu không lấy input ra khỏi luồng.
-                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(visualR)} className={`relative border border-gray-100 p-0 align-top overflow-hidden ${dragColClass(col.key)}`}>
                       <div className="absolute inset-0">
-                        <TktPickerCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(i, v)} />
+                        <TktPickerCell value={match?.tkt_tag ?? null} suggestions={tktSuggestions} onSave={v => onSaveTkt(origIdx, v)} />
                       </div>
                     </td>
                   )
                   return (
-                    <td key={col.key} onMouseDown={() => selectRow(i)} className={`border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden ${dragColClass(col.key)}`}>
+                    <td key={col.key} onMouseDown={() => selectRow(visualR)} className={`border border-gray-100 px-2 py-1.5 align-top text-right overflow-hidden ${dragColClass(col.key)}`}>
                       {match?.gia_mua != null && match?.gia_ban != null ? formatGiaVe(match.gia_ban - match.gia_mua) : '—'}
                     </td>
                   )
