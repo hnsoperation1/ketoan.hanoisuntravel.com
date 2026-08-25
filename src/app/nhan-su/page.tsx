@@ -331,7 +331,7 @@ function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) 
   )
 }
 
-const SELECT = 'px-3 py-1.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 border-none focus:outline-none focus:ring-2 focus:ring-brand-400'
+const SELECT = 'px-3 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400'
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
 

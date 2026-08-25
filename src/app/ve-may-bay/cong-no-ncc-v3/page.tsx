@@ -571,7 +571,11 @@ export default function CongNoVeV3Page() {
               onClose={() => setViewingRawMatch(null)}
               onSelectMessage={setSelectedRawMessage}
               pendingSuggestions={pendingSuggestions}
-              onChooseMatch={(rowIndex, pax) => pax.ma_khach && viewingRawMatch && saveRawMaKhachManual(viewingRawMatch.batchId, rowIndex, pax.ma_khach, pax.id, pax.gia_mua, pax.gia_ban)}
+              onChooseMatch={(rowIndex, pax, edited) => {
+                if (!viewingRawMatch) return
+                if (edited.maKhach) saveRawMaKhachManual(viewingRawMatch.batchId, rowIndex, edited.maKhach, pax.id, pax.gia_mua, edited.giaBan)
+                saveRawTktManual(viewingRawMatch.batchId, rowIndex, edited.tktTag)
+              }}
               matchedMaKhach={viewingRawMatch?.maKhach}
               matchedGiaBan={viewingRawMatch?.giaBan}
             />

@@ -212,7 +212,7 @@ export default function SaoKeTkPage() {
             const [y, m] = e.target.value.split('-').map(Number)
             setSelected({ year: y, month: m })
           }}
-          className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 border-none focus:outline-none focus:ring-2 focus:ring-brand-400">
+          className="px-3 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400">
           {MONTH_OPTIONS.map(o => (
             <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>
               Tháng {o.month}/{o.year}{o.year === currentYear && o.month === currentMonth ? ' (hiện tại)' : ''}

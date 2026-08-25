@@ -5,6 +5,7 @@ import { Loader2, X, Sparkles } from 'lucide-react'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
 import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 import { buildMatchTerms, HighlightedText } from '@/lib/ve-may-bay/highlight-match'
+import { MatchSuggestionModal } from './MatchSuggestionModal'
 
 export type RawCandidatePax = {
   id: string
@@ -73,10 +74,10 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
   // Pax nào trong danh sách tin nhắn dưới đây CÓ khớp 1 dòng trong bảng
   // công nợ nhưng CHƯA gán đúng người đó — nổi hẳn 1 chip gợi ý ngay trên
   // GÓC bong bóng tin nhắn chứa đúng pax đó (tính sẵn ở page.tsx, vì panel
-  // này không có quyền truy cập rows/matches của bảng). Bấm chip gán LUÔN
-  // cả mã khách lẫn giá mua/giá bán đọc được từ tin nhắn cho đúng dòng đó.
+  // này không có quyền truy cập rows/matches của bảng). Bấm vào tin nhắn
+  // (hoặc bấm chip) mở modal giữa màn hình cho xem/sửa/xác nhận từng người.
   pendingSuggestions?: { pax: RawCandidatePax; rowIndex: number }[]
-  onChooseMatch?: (rowIndex: number, pax: RawCandidatePax) => void
+  onChooseMatch?: (rowIndex: number, pax: RawCandidatePax, edited: { maKhach: string; giaBan: number | null; tktTag: string | null }) => void
   // Mã khách/giá bán ĐÃ LƯU trên dòng đang xem (không phải đọc từ tin nhắn)
   // — tô luôn 2 thứ này trong nguyên văn tin nhắn để đối chiếu ngược, xem
   // buildMatchTerms.
@@ -88,6 +89,9 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
   const [messages, setMessages] = useState<RawCandidateMessage[]>([])
   const [khachInfo, setKhachInfo] = useState<RawKhachInfo>({})
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
+  // Tin nhắn nào đang MỞ modal gợi ý — id tin nhắn (không phải boolean) vì
+  // cần biết chính xác nên lọc pendingSuggestions theo pax của tin nhắn nào.
+  const [openSuggestionMsgId, setOpenSuggestionMsgId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -101,6 +105,12 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
         onSelectMessage(null)
         return
       }
+      // Tin nhắn ĐẦU TIÊN tự chọn sẵn (dưới đây) cũng cần tự mở modal nếu có
+      // khách khớp được chưa gán — không chỉ lúc bấm tay 1 tin nhắn khác,
+      // vì phần lớn trường hợp panel mở lên là dùng ngay tin đầu tiên này.
+      const autoOpenIfPending = (m: RawCandidateMessage | undefined) => {
+        if (m && pendingSuggestions?.some(s => m.pax.some(p => p.id === s.pax.id))) setOpenSuggestionMsgId(m.parse_log_id)
+      }
       if (preloaded !== undefined) {
         const msgs = preloaded?.messages ?? []
         const info = preloaded?.khachInfo ?? {}
@@ -110,6 +120,7 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
         setLoading(false)
         setLoadError(false)
         onSelectMessage(msgs[0] ? { message: msgs[0], khachInfo: info } : null)
+        autoOpenIfPending(msgs[0])
         return
       }
       setLoading(true)
@@ -125,6 +136,7 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
         setKhachInfo(info)
         setSelectedMsgId(msgs[0]?.parse_log_id ?? null)
         onSelectMessage(msgs[0] ? { message: msgs[0], khachInfo: info } : null)
+        autoOpenIfPending(msgs[0])
       } catch {
         if (!cancelled) setLoadError(true)
       } finally {
@@ -140,6 +152,11 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
   function selectMessage(m: RawCandidateMessage) {
     setSelectedMsgId(m.parse_log_id)
     onSelectMessage({ message: m, khachInfo })
+    // Tin nhắn này có khách khớp được nhưng chưa gán → tự mở modal luôn,
+    // không bắt bấm thêm chip mới thấy (đúng yêu cầu "bấm vào tin nhắn thì
+    // hiện thông báo").
+    const hasSuggestions = pendingSuggestions?.some(s => m.pax.some(p => p.id === s.pax.id))
+    if (hasSuggestions) setOpenSuggestionMsgId(m.parse_log_id)
   }
 
   if (!target) {
@@ -225,14 +242,17 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
                     {/* Chip gợi ý — nổi HẲN lên góc bong bóng tin nhắn (không
                         chôn trong bảng nữa, xem yêu cầu) — 1 chip cho mỗi pax
                         của tin nhắn này còn khớp được với 1 dòng trong bảng
-                        nhưng chưa gán đúng, bấm là gán LUÔN mã khách + giá. */}
+                        nhưng chưa gán đúng. Bấm chip (hoặc bấm cả tin nhắn,
+                        xem selectMessage) mở modal giữa màn hình để xem/sửa/
+                        xác nhận, KHÔNG áp dụng thẳng nữa — tránh gán nhầm
+                        hàng loạt khi 1 tin nhắn có nhiều khách. */}
                     {suggestions.length > 0 && (
                       <div className="absolute -top-1.5 right-2 z-10 flex flex-wrap gap-1 justify-end max-w-[90%]">
                         {suggestions.map(s => (
-                          <button key={s.pax.id} type="button" disabled={!s.pax.ma_khach}
-                            onClick={e => { e.stopPropagation(); onChooseMatch?.(s.rowIndex, s.pax) }}
-                            title={s.pax.ma_khach ? `Gán mã khách ${s.pax.ma_khach} + giá cho dòng đang chọn` : 'Tin nhắn chưa có mã khách'}
-                            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 ring-1 ring-amber-300 shadow-sm hover:bg-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                          <button key={s.pax.id} type="button"
+                            onClick={e => { e.stopPropagation(); selectMessage(m); setOpenSuggestionMsgId(m.parse_log_id) }}
+                            title="Xem/xác nhận thông tin khớp được"
+                            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 ring-1 ring-amber-300 shadow-sm hover:bg-amber-200 transition-colors">
                             <Sparkles size={10} className="shrink-0" />
                             {s.pax.ma_khach ?? '—'}
                             {s.pax.gia_ban != null && <span className="opacity-75">· {formatGiaVe(s.pax.gia_ban)}</span>}
@@ -247,6 +267,16 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
           )}
         </div>
       </OverlayScrollArea>
+      {openSuggestionMsgId && (
+        <MatchSuggestionModal
+          suggestions={pendingSuggestions?.filter(s => {
+            const m = messages.find(msg => msg.parse_log_id === openSuggestionMsgId)
+            return m ? m.pax.some(p => p.id === s.pax.id) : false
+          }) ?? []}
+          onApply={(rowIndex, pax, edited) => onChooseMatch?.(rowIndex, pax, edited)}
+          onClose={() => setOpenSuggestionMsgId(null)}
+        />
+      )}
     </div>
   )
 }
