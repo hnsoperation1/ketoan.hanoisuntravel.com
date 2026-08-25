@@ -301,7 +301,7 @@ export default function CongNoKhachHangPage() {
   const cnKhTotalWidth = CN_KH_COLS.reduce((sum, c) => sum + (cnKhWidths[c.key] ?? c.width), 0)
 
   return (
-    <div className="px-5 pb-5 space-y-2">
+    <div className="px-5 pt-3 pb-5 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {

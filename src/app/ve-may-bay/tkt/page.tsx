@@ -127,7 +127,7 @@ export default function TktPage() {
   }
 
   return (
-    <div className="px-5 pb-5 space-y-2">
+    <div className="px-5 pt-3 pb-5 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-400">Mỗi TKT gán 1 nhóm Telegram ở trang &quot;Nhóm Telegram&quot;.</p>
         <div className="flex items-center gap-2">

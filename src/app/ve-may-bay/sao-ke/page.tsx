@@ -174,7 +174,7 @@ export default function SaoKePage() {
   }, [filtered])
 
   return (
-    <div className="px-5 pb-5 space-y-2">
+    <div className="px-5 pt-3 pb-5 space-y-2">
       <div className="flex items-center justify-end flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button
