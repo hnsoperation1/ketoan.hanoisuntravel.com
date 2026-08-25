@@ -33,7 +33,7 @@ export default function FilterPicker({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
+        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
           isActive
             ? 'bg-brand-50 border-brand-200 text-brand-700'
             : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'

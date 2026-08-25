@@ -160,7 +160,7 @@ function MonthPicker({ value, options, onChange }: { value: string; options: { v
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
+        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
           selected ? 'bg-brand-50 border-brand-200 text-brand-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
         }`}>
         {selected?.label ?? 'Chọn tháng'}
@@ -220,7 +220,7 @@ function KhachHangFilterButton({ value, onChange, options }: { value: string; on
   return (
     <>
       <button type="button" onClick={() => { setQ(''); setOpen(true) }}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
+        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
           value ? 'bg-brand-50 border-brand-200 text-brand-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
         }`}>
         {value || 'Tất cả khách hàng'}

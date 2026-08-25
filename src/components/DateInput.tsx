@@ -131,7 +131,7 @@ export default function DateInput({ value, onChange, className = '', placeholder
           onBlur={handleTextBlur}
           onFocus={openCalendar}
           placeholder={placeholder}
-          className="flex-1 text-sm px-3 py-1.5 outline-none bg-transparent placeholder-gray-400 min-w-0"
+          className="flex-1 text-sm px-3 py-2 outline-none bg-transparent placeholder-gray-400 min-w-0"
         />
         <button type="button" tabIndex={-1}
           onClick={() => open ? setOpen(false) : (openCalendar(), inputRef.current?.focus())}

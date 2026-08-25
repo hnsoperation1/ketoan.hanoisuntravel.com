@@ -302,7 +302,7 @@ async function parseXlsFile(file: File): Promise<SheetData[]> {
   }))
 }
 
-const SELECT ='border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
+const SELECT ='border border-gray-200 rounded-lg px-2.5 py-2.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
 
 // Viền xanh lá đậm, góc vuông khi focus — giống ô đang nhập trong Excel
 // thật (không phải nhẫn xanh dương bo tròn kiểu form web thông thường).

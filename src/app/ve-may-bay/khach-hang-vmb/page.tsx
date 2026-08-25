@@ -120,7 +120,7 @@ export default function KhachHangVmbPage() {
       <div className="flex items-center gap-2 flex-wrap">
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+            className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
               filter === f.key ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}>
             {f.label}
