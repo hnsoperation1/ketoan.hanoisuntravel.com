@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, Search } from 'lucide-react'
+import { RefreshCw, Search, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -130,7 +130,13 @@ export default function KhachHangVmbPage() {
         <div className="relative ml-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã khách..."
-            className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
+            className="pl-8 pr-8 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 w-64" />
+          {search && (
+            <button onClick={() => setSearch('')} title="Bỏ tìm kiếm"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 

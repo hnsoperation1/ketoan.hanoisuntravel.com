@@ -599,6 +599,36 @@ function monthLabel(key: string): string {
   return key === MONTH_UNKNOWN ? 'Không rõ tháng' : `Tháng ${key}`
 }
 
+// Thanh tab tháng dính đáy — cùng kiểu thanh "sheet" ở 3 màn Đầu vào công
+// nợ NCC (xem RawBatchesView trong raw-shared.tsx). Tách riêng vì phải vẽ ở
+// HAI nơi: dưới bảng lúc bình thường, VÀ trong khung phóng to (khung đó phủ
+// kín màn hình qua portal nên che mất thanh tab của trang).
+function MonthTabBar({ tabs, value, onChange, totalCount }: {
+  tabs: { key: string; count: number }[]
+  value: string
+  onChange: (v: string) => void
+  totalCount: number
+}) {
+  const cls = (active: boolean) => `px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
+    active ? 'bg-white border-brand-500 text-brand-700 font-semibold' : 'border-transparent text-gray-500 hover:bg-gray-200/70'
+  }`
+  return (
+    <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
+      <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
+        <button type="button" onClick={() => onChange('')} title="Xem tất cả các tháng" className={cls(!value)}>
+          Tất cả <span className="opacity-60">{totalCount}</span>
+        </button>
+        {tabs.map(t => (
+          <button key={t.key} type="button" onClick={() => onChange(t.key)}
+            title={`${monthLabel(t.key)} · ${t.count} dòng`} className={cls(value === t.key)}>
+            {monthLabel(t.key)} <span className="opacity-60">{t.count}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 type ViewMode = 'bang' | 'list' | 'card'
 
 type FieldSaver = (id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) => void
@@ -644,8 +674,10 @@ const BANG_COLS: ColDef[] = [
 ]
 const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
 
-function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: {
+function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions, bottomBar }: {
   rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
+  // Thanh tab tháng — CHỈ vẽ khi phóng to (xem cuối hàm).
+  bottomBar?: React.ReactNode
 }) {
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -827,6 +859,9 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
         </tbody>
       </table>
       </div>
+      {/* Lúc phóng to, khung này phủ kín màn hình qua portal nên thanh tab
+          tháng của trang bị che — vẽ lại nó ở đây để vẫn đổi tháng được. */}
+      {expanded && bottomBar}
     </div>
   )
 
@@ -1456,8 +1491,15 @@ export default function TongHopCongNoNccPage() {
       <div className="shrink-0 py-2 flex flex-wrap items-center gap-2">
         <div className="relative w-1/2 min-w-[220px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          {/* pr-8 chừa chỗ cho nút xoá, nếu không chữ dài sẽ chui xuống dưới nút. */}
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          {search && (
+            <button onClick={() => setSearch('')} title="Bỏ tìm kiếm"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+              <X size={14} />
+            </button>
+          )}
         </div>
         <select value={rowNccFilter} onChange={e => { setRowNccFilter(e.target.value); setTktFilter(''); setKhFilter('') }} className={SELECT}>
           <option value="">Tất cả NCC</option>
@@ -1504,7 +1546,8 @@ export default function TongHopCongNoNccPage() {
               : 'Không có dòng nào khớp bộ lọc/tháng đang chọn.'}
           </div>
         ) : viewMode === 'bang' ? (
-          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh}
+            bottomBar={<MonthTabBar tabs={monthTabs} value={monthFilter} onChange={setMonthFilter} totalCount={filteredExceptMonth.length} />} />
         ) : viewMode === 'list' ? (
           <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
         ) : (
@@ -1512,32 +1555,7 @@ export default function TongHopCongNoNccPage() {
         )}
       </div>
 
-      {/* Thanh tab tháng dính đáy màn hình — cùng kiểu thanh "sheet" ở 3 màn
-          Đầu vào công nợ NCC (xem RawBatchesView trong raw-shared.tsx). */}
-      <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
-        <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
-          <button type="button" onClick={() => setMonthFilter('')}
-            title="Xem tất cả các tháng"
-            className={`px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
-              !monthFilter
-                ? 'bg-white border-brand-500 text-brand-700 font-semibold'
-                : 'border-transparent text-gray-500 hover:bg-gray-200/70'
-            }`}>
-            Tất cả <span className="opacity-60">{filteredExceptMonth.length}</span>
-          </button>
-          {monthTabs.map(t => (
-            <button key={t.key} type="button" onClick={() => setMonthFilter(t.key)}
-              title={`${monthLabel(t.key)} · ${t.count} dòng`}
-              className={`px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
-                monthFilter === t.key
-                  ? 'bg-white border-brand-500 text-brand-700 font-semibold'
-                  : 'border-transparent text-gray-500 hover:bg-gray-200/70'
-              }`}>
-              {monthLabel(t.key)} <span className="opacity-60">{t.count}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <MonthTabBar tabs={monthTabs} value={monthFilter} onChange={setMonthFilter} totalCount={filteredExceptMonth.length} />
     </div>
     {viewingMatchRow && (
       <MatchSlideOver
