@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X } from 'lucide-react'
+import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2, Minimize2, Check, X, Menu } from 'lucide-react'
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useTopbar } from '@/contexts/topbar'
@@ -609,15 +609,55 @@ function MonthTabBar({ tabs, value, onChange, totalCount }: {
   onChange: (v: string) => void
   totalCount: number
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [menuOpen])
+
   const cls = (active: boolean) => `px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
     active ? 'bg-white border-brand-500 text-brand-700 font-semibold' : 'border-transparent text-gray-500 hover:bg-gray-200/70'
   }`
+
   return (
     <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
-      <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
-        <button type="button" onClick={() => onChange('')} title="Xem tất cả các tháng" className={cls(!value)}>
-          Tất cả <span className="opacity-60">{totalCount}</span>
+      {/* Nút ☰ — giống nút cùng vị trí ở thanh "sheet" của 3 màn Đầu vào
+          công nợ NCC: nhiều tháng thì thanh ngang phải cuộn mới dò hết, bấm
+          đây xổ danh sách DỌC chọn thẳng. Cũng là chỗ quay lại "Tất cả" (đã
+          bỏ khỏi thanh ngang) — nút sáng lên khi đang ở chế độ xem tất cả. */}
+      <div className="relative shrink-0" ref={menuRef}>
+        <button type="button" onClick={() => setMenuOpen(o => !o)} title="Chọn tháng"
+          className={`h-full px-2 flex items-center border-r border-gray-200 transition-colors ${
+            !value ? 'bg-white text-brand-600' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200/70'
+          }`}>
+          <Menu size={14} />
         </button>
+        {menuOpen && (
+          <div className="absolute bottom-full left-0 mb-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] max-h-64 overflow-y-auto">
+            <button type="button" onClick={() => { onChange(''); setMenuOpen(false) }}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                !value ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'
+              }`}>
+              Tất cả <span className="opacity-60">{totalCount}</span>
+            </button>
+            {tabs.map(t => (
+              <button key={t.key} type="button" onClick={() => { onChange(t.key); setMenuOpen(false) }}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                  value === t.key ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'
+                }`}>
+                {monthLabel(t.key)} <span className="opacity-60">{t.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} type="button" onClick={() => onChange(t.key)}
             title={`${monthLabel(t.key)} · ${t.count} dòng`} className={cls(value === t.key)}>
