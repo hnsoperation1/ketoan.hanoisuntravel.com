@@ -110,7 +110,7 @@ export default function KhachHangVmbPage() {
   const vmbTotalWidth = VMB_COLS.reduce((sum, c) => sum + (vmbWidths[c.key] ?? c.width), 0)
 
   return (
-    <div className="px-5 pt-3 pb-5 space-y-2">
+    <div className="px-5 pt-2 pb-5 space-y-2">
       <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={loadData} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <RefreshCw size={16} />

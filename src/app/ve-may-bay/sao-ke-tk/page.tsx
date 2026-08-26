@@ -205,7 +205,7 @@ export default function SaoKeTkPage() {
   const sktTotalWidth = SAO_KE_TK_COLS.reduce((sum, c) => sum + (sktWidths[c.key] ?? c.width), 0)
 
   return (
-    <div className="px-5 pt-3 pb-5 space-y-2">
+    <div className="px-5 pt-2 pb-5 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <select value={`${selected.year}-${selected.month}`}
           onChange={e => {
