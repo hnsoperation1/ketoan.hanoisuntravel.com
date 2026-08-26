@@ -1355,25 +1355,6 @@ export default function TongHopCongNoNccPage() {
         lấp trọn phần còn lại, cuộn ngang/dọc gọn trong bảng như Excel. */}
     <div className="absolute inset-0 flex flex-col px-5">
       {dialog}
-      {/* Nhập file + làm mới — cao bằng topbar (h-12 md:h-10, xem
-          components/Topbar.tsx) và nằm sát topbar (không padding-top) để 2
-          thanh liền mạch nhau. */}
-      <div className="min-h-12 md:min-h-10 flex items-center justify-end gap-2 border-b border-gray-200">
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
-        <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
-          Tải file công nợ NCC
-        </button>
-        {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
-        <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
-          {rematching && <Loader2 size={13} className="animate-spin" />} Tìm mã khách
-        </button>
-        <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw size={16} />
-        </button>
-      </div>
-
       {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
           (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
       {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
@@ -1554,7 +1535,26 @@ export default function TongHopCongNoNccPage() {
           {khs.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 ml-auto">
+        {/* Nhập file + khớp mã khách + làm mới — trước đây nằm ở 1 thanh
+            RIÊNG dính ngay dưới topbar, gộp xuống đây cho đỡ tốn 1 hàng
+            chiều cao (bảng dữ liệu được thêm chỗ). */}
+        <div className="flex items-center gap-2 ml-auto">
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFilePick(f) }} className="hidden" />
+          <button type="button" onClick={() => fileRef.current?.click()} title="Nhập công nợ từ file"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 border border-gray-200 transition-colors">
+            Tải file công nợ NCC
+          </button>
+          {fileName && <span className="text-xs text-gray-500 max-w-[140px] truncate" title={fileName}>{fileName}</span>}
+          <button onClick={runRematch} disabled={rematching} title="Khớp lại mã khách theo tin nhắn Telegram"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+            {rematching && <Loader2 size={13} className="animate-spin" />} Tìm mã khách
+          </button>
+          <button onClick={loadData} title="Làm mới" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
           {([
             { key: 'bang', icon: Table2, title: 'Bảng (giống Excel)' },
             { key: 'list', icon: List, title: 'Danh sách' },
