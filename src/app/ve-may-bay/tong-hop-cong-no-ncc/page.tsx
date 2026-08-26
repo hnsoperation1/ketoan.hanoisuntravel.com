@@ -493,6 +493,39 @@ function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (
   )
 }
 
+// Khoá tháng ("MM/YYYY") lấy từ NGÀY XUẤT VÉ — mốc nghiệp vụ của công nợ
+// NCC (cùng mốc trang Công nợ KH đang gom theo tháng). Ngày lưu dạng chữ,
+// mỗi nguồn nhập một kiểu nên nhận cả dd/mm/yyyy (file NCC) lẫn yyyy-mm-dd.
+// Không đọc được (rỗng/sai định dạng) thì gom vào 1 nhóm riêng, KHÔNG bỏ
+// dòng đi — mất dòng khỏi bảng nguy hiểm hơn nhiều so với để 1 tab "không rõ".
+const MONTH_UNKNOWN = '?'
+
+function monthKeyOf(raw: string | null): string {
+  const s = (raw ?? '').trim()
+  if (!s) return MONTH_UNKNOWN
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (dmy) return `${dmy[2].padStart(2, '0')}/${dmy[3]}`
+  const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (ymd) return `${ymd[2].padStart(2, '0')}/${ymd[1]}`
+  return MONTH_UNKNOWN
+}
+
+// Mới nhất đứng TRƯỚC (trái sang phải) — kế toán làm việc với tháng gần đây
+// là chính; nhóm "không rõ" luôn đẩy xuống cuối.
+function sortMonthKeys(keys: string[]): string[] {
+  return keys.sort((a, b) => {
+    if (a === MONTH_UNKNOWN) return 1
+    if (b === MONTH_UNKNOWN) return -1
+    const [ma, ya] = a.split('/')
+    const [mb, yb] = b.split('/')
+    return (yb + mb).localeCompare(ya + ma)
+  })
+}
+
+function monthLabel(key: string): string {
+  return key === MONTH_UNKNOWN ? 'Không rõ tháng' : `Tháng ${key}`
+}
+
 type ViewMode = 'bang' | 'list' | 'card'
 
 type FieldSaver = (id: string, field: 'tkt_tag' | 'sale_chinh' | 'ghi_chu', value: string) => void
@@ -561,7 +594,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
   // vô tình có transform/filter khiến fixed không bám đúng viewport thật;
   // portal thoát hẳn khỏi cây DOM của trang, chắc chắn phủ kín màn hình.
   const content = (
-    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-300 list-table-container'}>
+    <div className={expanded ? 'fixed inset-0 z-[100] bg-white flex flex-col list-table-container' : 'bg-white border border-gray-300 list-table-container flex flex-col h-full min-h-0'}>
       <style jsx>{`
         .cong-no-scroll::-webkit-scrollbar { height: 18px; width: 18px; }
         .cong-no-scroll::-webkit-scrollbar-track { background: #f3f4f6; }
@@ -577,7 +610,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
           {expanded ? 'Thu nhỏ' : 'Phóng to'}
         </button>
       </div>
-      <div className={`cong-no-scroll ${expanded ? 'flex-1 overflow-auto' : 'overflow-auto'}`}>
+      <div className={`cong-no-scroll flex-1 min-h-0 overflow-auto`}>
       <table className="text-xs border-collapse list-table fixed-cols-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
         <thead className="sticky top-0 z-10">
           <tr>
@@ -858,6 +891,9 @@ export default function TongHopCongNoNccPage() {
   const [rowNccFilter, setRowNccFilter] = useState('')
   const [tktFilter, setTktFilter] = useState('')
   const [khFilter, setKhFilter] = useState('')
+  // '' = tab "Tất cả" (giữ đúng hành vi cũ của trang khi mới vào, không tự
+  // nhảy vào 1 tháng nào làm kế toán tưởng mất dữ liệu).
+  const [monthFilter, setMonthFilter] = useState('')
 
   const [rematching, setRematching] = useState(false)
   const [viewingMatchRow, setViewingMatchRow] = useState<DebtRow | null>(null)
@@ -1103,12 +1139,28 @@ export default function TongHopCongNoNccPage() {
   const khs = Array.from(new Set(byTkt.map(r => r.ma_khach).filter(Boolean))) as string[]
   const byKh = byTkt.filter(r => !khFilter || r.ma_khach === khFilter)
 
-  const filtered = byKh.filter(r => {
+  // Mọi bộ lọc TRỪ tháng — dùng để đếm số dòng cho từng tab tháng (bấm lọc
+  // NCC/TKT/khách thì số trên tab đổi theo, biết ngay tháng nào còn dòng).
+  const filteredExceptMonth = byKh.filter(r => {
     if (!search.trim()) return true
     const q = search.trim().toLowerCase()
     const hay = [r.ticket_no, r.pax_name, r.routing, r.ncc, r.tkt_tag, r.ma_khach].filter(Boolean).join(' ').toLowerCase()
     return hay.includes(q)
   })
+
+  // Danh sách tab tháng lấy từ TOÀN BỘ dòng (không phải từ dòng đã lọc) để
+  // thanh tab đứng yên, không nhảy/biến mất mỗi lần đổi bộ lọc khác.
+  const monthTabs = (() => {
+    const counts = new Map<string, number>()
+    for (const r of filteredExceptMonth) {
+      const k = monthKeyOf(r.issued_date)
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    const keys = Array.from(new Set(rows.map(r => monthKeyOf(r.issued_date))))
+    return sortMonthKeys(keys).map(key => ({ key, count: counts.get(key) ?? 0 }))
+  })()
+
+  const filtered = filteredExceptMonth.filter(r => !monthFilter || monthKeyOf(r.issued_date) === monthFilter)
 
   // Gợi ý autocomplete cho ô "Tìm TKT"/"Tìm mã khách"/"Tìm sale chính" —
   // hợp cả danh mục CHUẨN (dirTkt/dirMaKhach/dirSaleChinh, xem loadDirectories)
@@ -1127,7 +1179,12 @@ export default function TongHopCongNoNccPage() {
 
   return (
     <>
-    <div className="px-5 pb-5 space-y-2">
+    {/* absolute inset-0 — giống 3 màn "Đầu vào công nợ NCC": khối này phủ
+        đúng bằng vùng nội dung (<main> ở AppShell.tsx đã có "relative") nên
+        main KHÔNG sinh thanh cuộn dọc riêng, mọi việc cuộn dồn vào trong
+        bảng. Nhờ vậy thanh tab tháng ở đáy luôn dính đáy màn hình và bảng
+        lấp trọn phần còn lại, cuộn ngang/dọc gọn trong bảng như Excel. */}
+    <div className="absolute inset-0 flex flex-col px-5">
       {/* Nhập file + làm mới — cao bằng topbar (h-12 md:h-10, xem
           components/Topbar.tsx) và nằm sát topbar (không padding-top) để 2
           thanh liền mạch nhau. */}
@@ -1301,7 +1358,7 @@ export default function TongHopCongNoNccPage() {
       )}
 
       {/* Filters + view mode */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="shrink-0 py-2 flex flex-wrap items-center gap-2">
         <div className="relative w-1/2 min-w-[220px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
@@ -1334,22 +1391,58 @@ export default function TongHopCongNoNccPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-300">Đang tải...</div>
-      ) : loadError ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
-          <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
-          <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+      {/* flex-1 min-h-0 — nhường hết chỗ còn lại cho bảng, min-h-0 để bảng
+          được phép co lại và tự cuộn bên trong thay vì đẩy dài cả trang
+          (thiếu nó thì thanh tab đáy bị đẩy khỏi màn hình). */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-300">Đang tải...</div>
+        ) : loadError ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
+            <p className="text-gray-400 mb-2">Không tải được dữ liệu, có thể do lỗi mạng.</p>
+            <button onClick={loadData} className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors">Thử lại</button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">
+            {rows.length === 0
+              ? 'Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.'
+              : 'Không có dòng nào khớp bộ lọc/tháng đang chọn.'}
+          </div>
+        ) : viewMode === 'bang' ? (
+          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+        ) : viewMode === 'list' ? (
+          <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+        ) : (
+          <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
+        )}
+      </div>
+
+      {/* Thanh tab tháng dính đáy màn hình — cùng kiểu thanh "sheet" ở 3 màn
+          Đầu vào công nợ NCC (xem RawBatchesView trong raw-shared.tsx). */}
+      <div className="shrink-0 flex items-stretch bg-gray-100 border border-t-0 border-gray-200">
+        <div className="flex items-stretch gap-0.5 px-2 overflow-x-auto">
+          <button type="button" onClick={() => setMonthFilter('')}
+            title="Xem tất cả các tháng"
+            className={`px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
+              !monthFilter
+                ? 'bg-white border-brand-500 text-brand-700 font-semibold'
+                : 'border-transparent text-gray-500 hover:bg-gray-200/70'
+            }`}>
+            Tất cả <span className="opacity-60">{filteredExceptMonth.length}</span>
+          </button>
+          {monthTabs.map(t => (
+            <button key={t.key} type="button" onClick={() => setMonthFilter(t.key)}
+              title={`${monthLabel(t.key)} · ${t.count} dòng`}
+              className={`px-3 py-1.5 text-xs whitespace-nowrap border-t-2 transition-colors ${
+                monthFilter === t.key
+                  ? 'bg-white border-brand-500 text-brand-700 font-semibold'
+                  : 'border-transparent text-gray-500 hover:bg-gray-200/70'
+              }`}>
+              {monthLabel(t.key)} <span className="opacity-60">{t.count}</span>
+            </button>
+          ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center text-gray-400">Chưa có dòng công nợ nào — upload file ở trên để bắt đầu.</div>
-      ) : viewMode === 'bang' ? (
-        <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
-      ) : viewMode === 'list' ? (
-        <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
-      ) : (
-        <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
-      )}
+      </div>
     </div>
     {viewingMatchRow && (
       <MatchSlideOver
