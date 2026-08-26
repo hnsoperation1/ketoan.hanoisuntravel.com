@@ -7,6 +7,7 @@ import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { mapRawBatchToSummary } from '@/lib/ve-may-bay/raw-to-summary'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from '../cong-no-ncc/RawMatchPanel'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import {
@@ -25,6 +26,7 @@ import {
 // (matchActionByRow/onChooseMatch) thay vì 1 bảng riêng bên trên.
 export default function CongNoVeV3Page() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { confirm, alert, dialog } = useConfirmDialog()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Upload wizard
@@ -157,10 +159,26 @@ export default function CongNoVeV3Page() {
   async function importBatchToSummary(batch: RawBatch) {
     const rows = mapRawBatchToSummary(batch.ncc, batch.headers, batch.rows, batch.ve_debt_records_raw_match)
     if (rows.length === 0) {
-      window.alert('Lô này chưa có dòng dữ liệu nào để nhập.')
+      await alert({ title: 'Lô này chưa có dòng dữ liệu nào để nhập.', tone: 'danger' })
       return
     }
-    if (!window.confirm(`Nhập ${rows.length} dòng của lô này vào bảng Tổng hợp công nợ NCC?\n\nLưu ý: bấm nhiều lần sẽ tạo thêm dòng mới mỗi lần (chưa có cơ chế chống trùng).`)) return
+    const daGanMaKhach = rows.filter(r => r.ma_khach).length
+    const ok = await confirm({
+      title: `Nhập ${rows.length} dòng vào bảng Tổng hợp công nợ NCC?`,
+      confirmLabel: 'Nhập dữ liệu',
+      message: (
+        <>
+          <p>
+            Lô <span className="font-semibold text-gray-700">{batch.source_file ?? 'không rõ tên file'}</span>
+            {' '}— đã gán mã khách <span className="font-semibold text-gray-700">{daGanMaKhach}/{rows.length}</span> dòng.
+          </p>
+          <p className="mt-1.5 text-amber-600">
+            Bấm nhiều lần sẽ tạo thêm dòng mới mỗi lần (chưa có cơ chế chống trùng).
+          </p>
+        </>
+      ),
+    })
+    if (!ok) return
     try {
       const res = await fetch('/api/ve-may-bay/cong-no', {
         method: 'POST',
@@ -169,12 +187,16 @@ export default function CongNoVeV3Page() {
       })
       const json = await res.json().catch(() => null)
       if (!res.ok) {
-        window.alert(`Nhập thất bại: ${json?.error ?? 'lỗi không rõ'}`)
+        await alert({ title: 'Nhập thất bại', message: json?.error ?? 'Lỗi không rõ.', tone: 'danger' })
         return
       }
-      window.alert(`Đã nhập ${json?.inserted ?? rows.length} dòng vào bảng Tổng hợp công nợ NCC.`)
+      await alert({
+        title: `Đã nhập ${json?.inserted ?? rows.length} dòng`,
+        message: 'Dữ liệu đã sang bảng Tổng hợp công nợ NCC.',
+        tone: 'success',
+      })
     } catch {
-      window.alert('Nhập thất bại, thử lại.')
+      await alert({ title: 'Nhập thất bại', message: 'Kiểm tra kết nối rồi thử lại.', tone: 'danger' })
     }
   }
 
@@ -227,7 +249,13 @@ export default function CongNoVeV3Page() {
   }, [loadRawData])
 
   async function deleteRawBatch(id: string) {
-    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
+    const ok = await confirm({
+      title: 'Xoá lô upload này?',
+      message: 'Không thể khôi phục lại sau khi xoá.',
+      confirmLabel: 'Xoá lô',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
       loadRawData()
@@ -396,6 +424,7 @@ export default function CongNoVeV3Page() {
     // giống Excel/Google Sheets (h-full/100% không dùng được ở đây vì chiều
     // cao của main do flex quyết định, không phải giá trị tường minh).
     <div className="absolute inset-0 flex flex-col px-5">
+      {dialog}
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
           (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
           padding-top) để 2 thanh liền mạch nhau. */}
