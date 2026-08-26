@@ -333,9 +333,13 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
 
   if (!suggestions) {
     return (
-      <input value={v} placeholder={placeholder} onChange={e => setV(e.target.value)}
-        onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
-        className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
+      // absolute inset-0 — cùng lý do đã ghi ở EditableNumberCell: cho ô
+      // nhập lấp khít mép ô, viền xanh focus ôm sát như Excel.
+      <div className="absolute inset-0">
+        <input value={v} placeholder={placeholder} onChange={e => setV(e.target.value)}
+          onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
+          className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
+      </div>
     )
   }
 
@@ -349,7 +353,11 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
   }
 
   return (
-    <div className="relative" ref={ref}>
+    // Lớp ngoài absolute inset-0 để lấp khít ô (xem EditableNumberCell);
+    // lớp trong giữ "relative" làm mốc neo cho danh sách gợi ý xổ xuống,
+    // kèm h-full để nối lại chuỗi chiều cao cho <input> bên trong.
+    <div className="absolute inset-0">
+    <div className="relative h-full" ref={ref}>
       <input value={v} placeholder={placeholder}
         onChange={e => { setV(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
@@ -368,6 +376,7 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
           ))}
         </div>
       )}
+    </div>
     </div>
   )
 }
@@ -464,15 +473,23 @@ function EditableNumberCell({ value, onSave }: { value: number | null; onSave: (
   const [focused, setFocused] = useState(false)
   useEffect(() => setV(value != null ? String(value) : ''), [value])
   return (
-    <input value={focused ? v : (value != null ? value.toLocaleString('vi-VN') : '')}
-      onFocus={() => setFocused(true)}
-      onChange={e => setV(e.target.value)}
-      onBlur={() => {
-        setFocused(false)
-        const parsed = v.trim() === '' ? null : parseVndNumber(v)
-        if (parsed !== value) onSave(parsed)
-      }}
-      className={`${CELL_INPUT} text-right`} />
+    // absolute inset-0 (chứ không để input đứng trong luồng với h-full):
+    // chiều cao <td> do CẢ HÀNG quyết định nên height:100% tạo vòng lặp phụ
+    // thuộc, trình duyệt bỏ qua và input co về chiều cao tự nhiên — viền
+    // xanh lúc focus thành cái hộp nhỏ nằm lọt giữa ô thay vì ôm sát mép ô
+    // như Excel. absolute lấy input ra khỏi luồng nên hết vòng lặp, lấp
+    // đúng khít 4 cạnh. Cần <td> tương ứng có "relative".
+    <div className="absolute inset-0">
+      <input value={focused ? v : (value != null ? value.toLocaleString('vi-VN') : '')}
+        onFocus={() => setFocused(true)}
+        onChange={e => setV(e.target.value)}
+        onBlur={() => {
+          setFocused(false)
+          const parsed = v.trim() === '' ? null : parseVndNumber(v)
+          if (parsed !== value) onSave(parsed)
+        }}
+        className={`${CELL_INPUT} text-right`} />
+    </div>
   )
 }
 
@@ -588,20 +605,20 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={TD}>{r.departure_date ?? '—'}</td>
                   <td className={TD}>{r.return_date ?? '—'}</td>
                   <td className={TD}>{r.routing ?? '—'}</td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.tong_mua)}</td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
-                  <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                  <td className={`${TD} p-0`}>
-                    <div className="flex items-center gap-1 px-1">
+                  <td className={`${TD} p-0 relative`}>
+                    <div className="absolute inset-0 flex items-center gap-1 px-1">
                       <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
                       <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
                     </div>
                   </td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                   <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -614,7 +631,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                  <td className={`${TD} p-0`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
                   <td className={`${TD} text-center`}>
                     <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
@@ -640,20 +657,20 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={TD}>{r.departure_date ?? '—'}</td>
                     <td className={TD}>{r.return_date ?? '—'}</td>
                     <td className={TD}>{r.routing ?? '—'}</td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.gia_mua} onSave={v => onSaveNumberField(r.id, 'gia_mua', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.cktm} onSave={v => onSaveNumberField(r.id, 'cktm', v)} /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.tong_mua)}</td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
-                    <td className={`${TD} p-0`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.gia_ban} onSave={v => onSaveNumberField(r.id, 'gia_ban', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableNumberCell value={r.com_khach} onSave={v => onSaveNumberField(r.id, 'com_khach', v)} /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.loi_nhuan)}</td>
-                    <td className={`${TD} p-0`}>
-                      <div className="flex items-center gap-1 px-1">
+                    <td className={`${TD} p-0 relative`}>
+                      <div className="absolute inset-0 flex items-center gap-1 px-1">
                         <MatchStatusBadge status={r.match_status ?? 'unmatched'} dense onClick={() => onOpenMatch(r)} />
                         <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
                       </div>
                     </td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                     <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -666,7 +683,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                    <td className={`${TD} p-0`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
                     <td className={`${TD} text-center`}>
                       <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />
