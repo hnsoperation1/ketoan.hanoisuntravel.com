@@ -105,6 +105,34 @@ function cell(row: string[], idx: number | null): string | null {
   return row[idx]?.trim() || null
 }
 
+// FCVN nhồi NHIỀU ngày vào chung 1 ô "Issue date", ngăn bằng dấu gạch:
+//     "ngày xuất vé - ngày bay 1 - ngày bay 2 - ... - ngày bay n"
+// Ví dụ thật: "18/08/2026 - 19/08/2026 - 21/08/2026" (xuất 18, bay đi 19,
+// bay về 21) hoặc "18/08/2026 - -" (mới xuất, chưa có chặng bay nào).
+// Tách ra 3 trường riêng của bảng Tổng hợp: ngày xuất / ngày đi / ngày về.
+//
+// Ngày trong file viết dd/mm/yyyy (dấu gạch CHÉO) nên cắt theo dấu gạch
+// NGANG không đụng vào bản thân ngày.
+//
+// Chỉ có ĐÚNG 1 ngày bay (vé 1 chiều) → để trống ngày về, KHÔNG lấy luôn
+// ngày đi làm ngày về: 2 thứ đó khác nghĩa hẳn nhau, mà file gốc vẫn ghi rõ
+// vé khứ hồi bay về đúng ngày đi thành 2 ngày giống nhau ("19/08 - 19/08"),
+// nên điền đại sẽ xoá mất sự phân biệt đó.
+function splitFcvnDates(raw: string | null): {
+  issued: string | null
+  departure: string | null
+  ret: string | null
+} {
+  if (!raw) return { issued: null, departure: null, ret: null }
+  const parts = raw.split('-').map(s => s.trim()).filter(s => s !== '')
+  const [issued, ...flights] = parts
+  return {
+    issued: issued || null,
+    departure: flights[0] ?? null,
+    ret: flights.length >= 2 ? flights[flights.length - 1] : null,
+  }
+}
+
 export type RawMatchLite = {
   row_index: number
   ma_khach: string | null
@@ -138,16 +166,20 @@ export function mapRawBatchToSummary(
   }
 
   const matchByRow = new Map(matches.map(m => [m.row_index, m]))
+  const isFcvn = ncc.trim().toUpperCase() === 'FCVN'
 
   return rows.map((row, i) => {
     const m = matchByRow.get(i)
+    // FCVN: 1 ô "Issue date" chứa cả ngày xuất lẫn các ngày bay — tách ra
+    // (xem splitFcvnDates). NCC khác đã có sẵn cột ngày đi/về riêng.
+    const fcvnDates = isFcvn ? splitFcvnDates(cell(row, idx.issued_date)) : null
     return {
       ticket_no: cell(row, idx.ticket_no),
       pax_name: cell(row, idx.pax_name),
-      issued_date: cell(row, idx.issued_date),
+      issued_date: fcvnDates ? fcvnDates.issued : cell(row, idx.issued_date),
       payment_date: cell(row, idx.payment_date),
-      departure_date: cell(row, idx.departure_date),
-      return_date: cell(row, idx.return_date),
+      departure_date: fcvnDates ? fcvnDates.departure : cell(row, idx.departure_date),
+      return_date: fcvnDates ? fcvnDates.ret : cell(row, idx.return_date),
       routing: cell(row, idx.routing),
       gia_mua: parseTien(cell(row, idx.gia_mua) ?? undefined),
       gia_ban: m?.gia_ban ?? null,
