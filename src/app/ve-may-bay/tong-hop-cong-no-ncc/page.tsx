@@ -314,7 +314,15 @@ const CELL_INPUT = 'w-full h-full bg-transparent text-xs px-1 py-0.5 rounded-non
 // trình duyệt (xấu, không style được, có mã trùng/không đọc được như báo
 // lỗi) — vẫn là input tự do, gõ giá trị mới chưa có trong danh sách vẫn
 // lưu bình thường, dropdown chỉ để chọn nhanh từ gợi ý cho đỡ gõ trùng/lệch.
-function EditableCell({ value, onSave, placeholder, align, suggestions }: { value: string | null; onSave: (v: string) => void; placeholder?: string; align?: 'right'; suggestions?: string[] }) {
+function EditableCell({ value, onSave, placeholder, align, suggestions, fillCell }: {
+  value: string | null; onSave: (v: string) => void; placeholder?: string; align?: 'right'; suggestions?: string[]
+  // CHỈ bật khi ô nằm trong 1 <td> đã có "relative" (bảng kiểu Excel ở
+  // BangExcelView) — lúc đó mới lấp khít 4 cạnh ô được. KHÔNG bật ở
+  // ListView/CardView: ở đó không có <td> relative bao ngoài nên
+  // "absolute inset-0" sẽ bám lên khung phủ TOÀN MÀN HÌNH của trang, ô nhập
+  // phình ra che hết màn (đúng lỗi đã gặp).
+  fillCell?: boolean
+}) {
   const [v, setV] = useState(value ?? '')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -333,15 +341,14 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
   }, [suggestions, value, onSave])
 
   if (!suggestions) {
-    return (
-      // absolute inset-0 — cùng lý do đã ghi ở EditableNumberCell: cho ô
-      // nhập lấp khít mép ô, viền xanh focus ôm sát như Excel.
-      <div className="absolute inset-0">
-        <input value={v} placeholder={placeholder} onChange={e => setV(e.target.value)}
-          onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
-          className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
-      </div>
+    const input = (
+      <input value={v} placeholder={placeholder} onChange={e => setV(e.target.value)}
+        onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
+        className={`${CELL_INPUT} ${align === 'right' ? 'text-right' : ''}`} />
     )
+    // Bọc absolute chỉ khi ở trong ô bảng (xem fillCell) — cho ô nhập lấp
+    // khít mép ô, viền xanh focus ôm sát như Excel.
+    return fillCell ? <div className="absolute inset-0">{input}</div> : input
   }
 
   const q = v.trim().toLowerCase()
@@ -353,12 +360,10 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
     if (s !== (value ?? '')) onSave(s)
   }
 
-  return (
-    // Lớp ngoài absolute inset-0 để lấp khít ô (xem EditableNumberCell);
-    // lớp trong giữ "relative" làm mốc neo cho danh sách gợi ý xổ xuống,
-    // kèm h-full để nối lại chuỗi chiều cao cho <input> bên trong.
-    <div className="absolute inset-0">
-    <div className="relative h-full" ref={ref}>
+  // "relative" làm mốc neo cho danh sách gợi ý xổ xuống; chỉ thêm h-full khi
+  // ở trong ô bảng (fillCell) để nối lại chuỗi chiều cao cho <input>.
+  const body = (
+    <div className={`relative ${fillCell ? 'h-full' : ''}`} ref={ref}>
       <input value={v} placeholder={placeholder}
         onChange={e => { setV(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
@@ -378,8 +383,8 @@ function EditableCell({ value, onSave, placeholder, align, suggestions }: { valu
         </div>
       )}
     </div>
-    </div>
   )
+  return fillCell ? <div className="absolute inset-0">{body}</div> : body
 }
 
 // Ô "Tìm mã khách" riêng — khác EditableCell ở chỗ mở MODAL to giữa màn
@@ -667,8 +672,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                       <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
                     </div>
                   </td>
-                  <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                  <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions}  fillCell /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions}  fillCell /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                   <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -681,7 +686,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                  <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
+                  <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)}  fillCell /></td>
                   <td className={TD_ACTION}>
                     <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
@@ -719,8 +724,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                         <MaKhachCell value={r.ma_khach} onSave={v => onSaveMaKhach(r.id, v, null)} options={khSuggestions} />
                       </div>
                     </td>
-                    <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} /></td>
-                    <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions}  fillCell /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions}  fillCell /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                     <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -733,7 +738,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                    <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
+                    <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)}  fillCell /></td>
                     <td className={TD_ACTION}>
                       <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />
