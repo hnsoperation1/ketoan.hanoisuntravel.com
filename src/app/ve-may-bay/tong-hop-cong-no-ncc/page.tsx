@@ -568,7 +568,7 @@ const BANG_COLS: ColDef[] = [
   { key: 'hh_sale_chinh', label: 'HH Sale chính 25%', align: 'right', width: 110 },
   { key: 'ln_cty', label: 'LN Cty còn lại', align: 'right', width: 110 },
   { key: 'ghi_chu', label: 'Ghi chú', width: 160 },
-  { key: 'action', label: '', width: 36 },
+  { key: 'action', label: '', width: 52 },
 ]
 const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
 
@@ -585,10 +585,26 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
   // Thiếu nó, trình duyệt âm thầm quay về auto layout — lúc đó `width` đặt
   // trên từng <th> chỉ là "gợi ý", độ rộng thật do NỘI DUNG ô quyết định,
   // nên kéo giãn cột đổi state/inline style nhưng màn hình không nhúc nhích.
-  const totalWidth = BANG_COLS.reduce((sum, c) => sum + (widths[c.key] ?? c.width), 0)
+  // Độ rộng cột đã kéo giãn được LƯU trong localStorage và ghi đè giá trị
+  // mặc định (xem useResizableColumns) — nên chỉ nới `width` ở BANG_COLS là
+  // chưa đủ: máy nào từng kéo giãn bảng này vẫn giữ 36px cũ, nút xoá lại bị
+  // chật như trước. Ép sàn tối thiểu cho riêng cột nút xoá, KHÔNG đụng tới
+  // các cột khác để không xoá mất tuỳ chỉnh của người dùng.
+  const ACTION_MIN_W = 52
+  const colW = (c: ColDef) => {
+    const w = widths[c.key] ?? c.width
+    return c.key === 'action' ? Math.max(w, ACTION_MIN_W) : w
+  }
+  const totalWidth = BANG_COLS.reduce((sum, c) => sum + colW(c), 0)
 
   const TH = 'relative px-2 py-1.5 border border-gray-300 bg-gray-100 font-semibold text-gray-700 whitespace-nowrap text-left overflow-hidden'
   const TD = 'px-2 py-1 border border-gray-300 text-gray-800 whitespace-nowrap font-normal overflow-hidden text-ellipsis'
+  // Ô nút xoá (cột cuối) phải có lớp RIÊNG, không dùng lại TD rồi ghi đè:
+  // trong Tailwind, `px-2` của TD được sinh ra SAU `p-0` trong tệp CSS nên
+  // `p-0` thêm vào sau trong chuỗi class vẫn thua — ô vẫn chật như cũ. Bỏ
+  // luôn `overflow-hidden text-ellipsis` vì nút bị tràn 1-2px làm bảng vẽ
+  // thêm dấu "..." bên cạnh biểu tượng thùng rác.
+  const TD_ACTION = 'pl-1 pr-3 py-1 border border-gray-300 text-center whitespace-nowrap'
 
   // "Phóng to": render qua Portal thẳng vào document.body — tránh mọi rủi
   // ro về containing block bị lệch nếu 1 ancestor nào đó (AppShell/Sidebar)
@@ -616,7 +632,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
         <thead className="sticky top-0 z-10">
           <tr>
             {BANG_COLS.map(c => (
-              <th key={c.key} style={{ width: widths[c.key] ?? c.width }}
+              <th key={c.key} style={{ width: colW(c) }}
                 className={`${TH} select-none ${c.align === 'right' ? 'text-right' : ''}`}>
                 {c.label}
                 <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startResize(c.key, e)} />
@@ -666,7 +682,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                   <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                  <td className={`${TD} p-0 text-center`}>
+                  <td className={TD_ACTION}>
                     <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
                     </button>
@@ -718,7 +734,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                     <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                    <td className={`${TD} p-0 text-center`}>
+                    <td className={TD_ACTION}>
                       <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />
                       </button>
