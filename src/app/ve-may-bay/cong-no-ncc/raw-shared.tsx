@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings } from 'lucide-react'
+import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings, ArrowRightToLine, Loader2 } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
@@ -412,7 +412,7 @@ export type OpenRawMatch = (target: {
   giaBan: number | null
 }) => void
 
-export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, candidatesCache }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
+export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, onSaveGia, onSaveTkt, syncOnSelect, relatedTicketNos, onlyShowRelated, candidatesCache, onImportToSummary }: { batches: RawBatch[]; onDelete: (id: string) => void; onRename: (id: string, displayName: string | null) => void; ncc: string; onOpenMatch: OpenRawMatch; onSaveGia: (batchId: string, rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void; onSaveTkt: (batchId: string, rowIndex: number, value: string | null) => void
   // true ở v1 (panel khớp mã vé LUÔN hiện bên trái, đổi hàng chỉ cập nhật
   // nội dung — vô hại) — KHÔNG truyền (mặc định false) ở v2 vì onOpenMatch ở
   // đó tự mở slide-over, đổi hàng liên tục sẽ tự bật slide-over gây phiền.
@@ -427,7 +427,11 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
   // Kết quả useCandidatesBulkCache(rawBatches) tính ở page.tsx (bao TOÀN BỘ
   // lô, tải sẵn ngay khi trang có danh sách lô — không đợi mở tab/bấm dòng
   // nào), dùng để đính preloadedCandidates vào onOpenMatch bên dưới.
-  candidatesCache?: CandidatesBulkCache | null }) {
+  candidatesCache?: CandidatesBulkCache | null
+  // Chỉ v3 truyền — hiện nút "Nhập vào bảng Tổng hợp" ở đầu bảng, chuẩn hoá
+  // lô ĐANG XEM rồi đẩy sang ve_debt_records (xem raw-to-summary.ts). Nhận
+  // nguyên lô để nơi gọi tự quyết định lọc/ánh xạ, RawBatchesView chỉ lo nút.
+  onImportToSummary?: (batch: RawBatch) => void | Promise<void> }) {
   // API trả về mới nhất TRƯỚC (created_at desc) — đảo lại để tab xếp theo
   // thứ tự thời gian như Excel (sheet mới thêm vào bên phải), lần tải mới
   // nhất nằm ngoài cùng bên phải và được chọn mặc định.
@@ -440,6 +444,7 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
   // "Phóng to" quản lý Ở ĐÂY (không phải trong RawTableCard) vì phải bọc
   // fixed inset-0 quanh CẢ bảng lẫn thanh tab sheet bên dưới — để thanh tab
   // vẫn hiện, chọn được lô khác, ngay cả khi đang phóng to.
+  const [importing, setImporting] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -652,7 +657,12 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
       onOpenMatch={openMatchForRow!}
       onSelectionChange={syncOnSelect ? openMatchForRow : undefined}
       relatedTicketNos={relatedTicketNos}
-      onlyShowRelated={onlyShowRelated} />
+      onlyShowRelated={onlyShowRelated}
+      importing={importing}
+      onImport={onImportToSummary ? async () => {
+        setImporting(true)
+        try { await onImportToSummary(active) } finally { setImporting(false) }
+      } : undefined} />
   ) : (
     <RawTableCard ncc={ncc} headers={NCC_HEADER_HINTS[ncc] ?? []} rows={[]} info="Chưa có dữ liệu" matches={new Map()} onOpenMatch={() => {}} onSaveGia={() => {}} onSaveTkt={() => {}} tktSuggestions={tktSuggestions}
       expanded={expanded} onToggleExpand={() => setExpanded(e => !e)} candidateRows={null} />
@@ -777,7 +787,7 @@ function computeDefaultHiddenCols(ncc: string, headers: string[]): string[] {
   return hidden
 }
 
-export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, relatedTicketNos, onlyShowRelated, expanded, onToggleExpand, candidateRows }: {
+export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOpenMatch, onSaveGia, onSaveTkt, tktSuggestions, onSelectionChange, relatedTicketNos, onlyShowRelated, onImport, importing, expanded, onToggleExpand, candidateRows }: {
   ncc: string; headers: string[]; rows: string[][]; info: string; onDelete?: () => void
   matches: Map<number, RawTableMatch>; onOpenMatch: (rowIndex: number) => void
   onSaveGia: (rowIndex: number, field: 'gia_mua' | 'gia_ban', value: number | null) => void
@@ -793,6 +803,9 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // dòng KHÔNG khớp, chỉ còn đúng nhóm dòng cùng tin nhắn đang xem.
   relatedTicketNos?: Set<string> | null
   onlyShowRelated?: boolean
+  // Chỉ v3 truyền — nút "Nhập vào bảng Tổng hợp" ở thanh tiêu đề bảng.
+  onImport?: () => void
+  importing?: boolean
   expanded: boolean; onToggleExpand: () => void
   // null = chưa tải xong/không áp dụng → không hiện icon (tránh báo nhầm
   // "không có tin nhắn" trong lúc còn đang hỏi server).
@@ -943,6 +956,13 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-400">{info}</span>
         <div className="flex items-center gap-1">
+          {onImport && (
+            <button onClick={onImport} disabled={importing} title="Chuẩn hoá lô này và đẩy sang bảng Tổng hợp công nợ NCC"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {importing ? <Loader2 size={13} className="animate-spin" /> : <ArrowRightToLine size={13} />}
+              Nhập vào bảng Tổng hợp
+            </button>
+          )}
           {onDelete && (
             <button onClick={onDelete} title="Xoá lô này" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
               <Trash2 size={13} />

@@ -31,6 +31,10 @@ type ImportRow = {
   cktm?: number | null
   gia_ban?: number | null
   com_khach?: number | null
+  // Chỉ có khi nhập từ màn "Đầu vào công nợ NCC" (kế toán đã đối chiếu &
+  // gán tay sẵn) — wizard nhập file thường KHÔNG gửi 2 trường này.
+  ma_khach?: string | null
+  tkt_tag?: string | null
 }
 
 // POST — { ncc, source_file, rows: ImportRow[] } — nhập hàng loạt 1 lô từ
@@ -48,21 +52,30 @@ export async function POST(req: NextRequest) {
   const ncc = body.ncc ? String(body.ncc).trim() : null
   const sourceFile = body.source_file ? String(body.source_file).trim() : null
 
-  const payload = rows.map(r => ({
-    ncc,
-    ticket_no: r.ticket_no?.trim() || null,
-    pax_name: r.pax_name?.trim() || null,
-    issued_date: r.issued_date?.trim() || null,
-    payment_date: r.payment_date?.trim() || null,
-    departure_date: r.departure_date?.trim() || null,
-    return_date: r.return_date?.trim() || null,
-    routing: r.routing?.trim() || null,
-    gia_mua: typeof r.gia_mua === 'number' ? r.gia_mua : null,
-    cktm: typeof r.cktm === 'number' ? r.cktm : null,
-    gia_ban: typeof r.gia_ban === 'number' ? r.gia_ban : null,
-    com_khach: typeof r.com_khach === 'number' ? r.com_khach : null,
-    source_file: sourceFile,
-  }))
+  const payload = rows.map(r => {
+    const maKhach = r.ma_khach?.trim() || null
+    return {
+      ncc,
+      ticket_no: r.ticket_no?.trim() || null,
+      pax_name: r.pax_name?.trim() || null,
+      issued_date: r.issued_date?.trim() || null,
+      payment_date: r.payment_date?.trim() || null,
+      departure_date: r.departure_date?.trim() || null,
+      return_date: r.return_date?.trim() || null,
+      routing: r.routing?.trim() || null,
+      gia_mua: typeof r.gia_mua === 'number' ? r.gia_mua : null,
+      cktm: typeof r.cktm === 'number' ? r.cktm : null,
+      gia_ban: typeof r.gia_ban === 'number' ? r.gia_ban : null,
+      com_khach: typeof r.com_khach === 'number' ? r.com_khach : null,
+      ma_khach: maKhach,
+      tkt_tag: r.tkt_tag?.trim() || null,
+      // Đã gán tay sẵn thì đánh dấu 'manual' để lượt tự khớp chạy ngay sau
+      // insert (runMatchMaKhach chỉ quét match_status='unmatched') KHÔNG ghi
+      // đè công sức đối chiếu của kế toán.
+      ...(maKhach ? { match_status: 'manual' as const } : {}),
+      source_file: sourceFile,
+    }
+  })
 
   const admin = createAdminClient()
   const { data, error } = await admin.from('ve_debt_records').insert(payload).select('id')

@@ -6,6 +6,7 @@ import { RefreshCw, Loader2, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
+import { mapRawBatchToSummary } from '@/lib/ve-may-bay/raw-to-summary'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from '../cong-no-ncc/RawMatchPanel'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import {
@@ -149,6 +150,34 @@ export default function CongNoVeV3Page() {
 
   // Sửa tay TKT (gõ trực tiếp trong ô, không qua slide-over) — cùng cơ chế
   // optimistic update + PATCH partial như saveRawGiaManual ở trên.
+  // Chuẩn hoá lô đang xem về bộ trường bảng Tổng hợp rồi đẩy sang
+  // ve_debt_records. TẠM THỜI coi dữ liệu trong lô đã đúng (nhập tất cả các
+  // dòng, kể cả chưa gán mã khách) và LUÔN tạo dòng mới — bước duyệt/kiểm
+  // tra dữ liệu trước khi nhập sẽ thiết kế riêng sau.
+  async function importBatchToSummary(batch: RawBatch) {
+    const rows = mapRawBatchToSummary(batch.ncc, batch.headers, batch.rows, batch.ve_debt_records_raw_match)
+    if (rows.length === 0) {
+      window.alert('Lô này chưa có dòng dữ liệu nào để nhập.')
+      return
+    }
+    if (!window.confirm(`Nhập ${rows.length} dòng của lô này vào bảng Tổng hợp công nợ NCC?\n\nLưu ý: bấm nhiều lần sẽ tạo thêm dòng mới mỗi lần (chưa có cơ chế chống trùng).`)) return
+    try {
+      const res = await fetch('/api/ve-may-bay/cong-no', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ncc: batch.ncc, source_file: batch.source_file, rows }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        window.alert(`Nhập thất bại: ${json?.error ?? 'lỗi không rõ'}`)
+        return
+      }
+      window.alert(`Đã nhập ${json?.inserted ?? rows.length} dòng vào bảng Tổng hợp công nợ NCC.`)
+    } catch {
+      window.alert('Nhập thất bại, thử lại.')
+    }
+  }
+
   async function saveRawTktManual(batchId: string, rowIndex: number, value: string | null) {
     setRawBatches(prev => prev.map(b => {
       if (b.id !== batchId) return b
@@ -596,7 +625,8 @@ export default function CongNoVeV3Page() {
             onOpenMatch={setViewingRawMatch} onSaveGia={saveRawGiaManual} onSaveTkt={saveRawTktManual}
             relatedTicketNos={selectedRawMessage ? new Set(selectedRawMessage.message.pax.map(p => p.ticket_no).filter((x): x is string => !!x)) : null}
             onlyShowRelated
-            candidatesCache={candidatesCache} />
+            candidatesCache={candidatesCache}
+            onImportToSummary={importBatchToSummary} />
         </div>
       </div>
     </div>
