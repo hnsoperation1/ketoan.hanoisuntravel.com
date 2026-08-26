@@ -10,6 +10,7 @@ import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 export type DebtRow = {
   id: string
@@ -665,8 +666,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                   <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                  <td className={`${TD} text-center`}>
-                    <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                  <td className={`${TD} p-0 text-center`}>
+                    <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
                     </button>
                   </td>
@@ -717,8 +718,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                     <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                    <td className={`${TD} text-center`}>
-                      <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                    <td className={`${TD} p-0 text-center`}>
+                      <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />
                       </button>
                     </td>
@@ -822,7 +823,7 @@ function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
                 <div className="text-xs font-semibold text-brand-600">{r.ncc ?? '—'}</div>
                 <div className="text-sm font-bold text-gray-900">{r.pax_name ?? '—'}</div>
               </div>
-              <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+              <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -861,6 +862,7 @@ function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
 
 export default function TongHopCongNoNccPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { confirm, dialog } = useConfirmDialog()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [rows, setRows] = useState<DebtRow[]>([])
@@ -1127,7 +1129,11 @@ export default function TongHopCongNoNccPage() {
     })
   }
 
+  // Hỏi lại trước khi xoá — trước đây bấm là xoá thẳng, bấm nhầm 1 cái là
+  // mất dòng công nợ (không khôi phục được).
   async function deleteRow(id: string) {
+    const ok = await confirm({ title: 'Bạn có chắc chắn muốn xoá không?', confirmLabel: 'Xoá', tone: 'danger' })
+    if (!ok) return
     setRows(prev => prev.filter(r => r.id !== id))
     await fetch(`/api/ve-may-bay/cong-no/${id}`, { method: 'DELETE' })
   }
@@ -1185,6 +1191,7 @@ export default function TongHopCongNoNccPage() {
         bảng. Nhờ vậy thanh tab tháng ở đáy luôn dính đáy màn hình và bảng
         lấp trọn phần còn lại, cuộn ngang/dọc gọn trong bảng như Excel. */}
     <div className="absolute inset-0 flex flex-col px-5">
+      {dialog}
       {/* Nhập file + làm mới — cao bằng topbar (h-12 md:h-10, xem
           components/Topbar.tsx) và nằm sát topbar (không padding-top) để 2
           thanh liền mạch nhau. */}

@@ -249,12 +249,7 @@ export default function CongNoVeV3Page() {
   }, [loadRawData])
 
   async function deleteRawBatch(id: string) {
-    const ok = await confirm({
-      title: 'Xoá lô upload này?',
-      message: 'Không thể khôi phục lại sau khi xoá.',
-      confirmLabel: 'Xoá lô',
-      tone: 'danger',
-    })
+    const ok = await confirm({ title: 'Bạn có chắc chắn muốn xoá không?', confirmLabel: 'Xoá', tone: 'danger' })
     if (!ok) return
     try {
       await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })

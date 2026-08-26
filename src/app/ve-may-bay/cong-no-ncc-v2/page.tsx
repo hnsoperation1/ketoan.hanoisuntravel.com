@@ -8,6 +8,7 @@ import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { type RawCandidateMessage, type RawKhachInfo } from '../cong-no-ncc/RawMatchPanel'
 import {
   type SheetData, type RawBatch,
@@ -30,6 +31,7 @@ import {
 // là cả 2 màn cùng đổi.
 export default function CongNoVeV2Page() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { confirm, dialog } = useConfirmDialog()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Upload wizard
@@ -209,7 +211,8 @@ export default function CongNoVeV2Page() {
   }, [loadRawData])
 
   async function deleteRawBatch(id: string) {
-    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
+    const ok = await confirm({ title: 'Bạn có chắc chắn muốn xoá không?', confirmLabel: 'Xoá', tone: 'danger' })
+    if (!ok) return
     try {
       await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
       loadRawData()
@@ -346,6 +349,7 @@ export default function CongNoVeV2Page() {
     // này phủ ĐÚNG BẰNG vùng nội dung → main không sinh thanh cuộn dọc, mọi
     // việc cuộn dồn vào trong bảng, thanh "sheet" luôn dính đáy màn hình.
     <div className="absolute inset-0 flex flex-col px-5">
+      {dialog}
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
           (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar. */}
       <div className="shrink-0 min-h-12 md:min-h-10 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200">

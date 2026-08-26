@@ -8,6 +8,7 @@ import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import {
   type SheetData, type RawBatch,
   parseCsvGrid, parseXlsFile, parseXlsxSheetsAny,
@@ -105,6 +106,7 @@ function SelectedMessagePaxTable({ message, khachInfo, onChoose, maxHeight }: {
 
 export default function CongNoVePage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { confirm, dialog } = useConfirmDialog()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Upload wizard
@@ -293,7 +295,8 @@ export default function CongNoVePage() {
   }, [loadRawData])
 
   async function deleteRawBatch(id: string) {
-    if (!window.confirm('Xoá lô upload này? Không thể khôi phục.')) return
+    const ok = await confirm({ title: 'Bạn có chắc chắn muốn xoá không?', confirmLabel: 'Xoá', tone: 'danger' })
+    if (!ok) return
     try {
       await fetch(`/api/ve-may-bay/cong-no-raw/${id}`, { method: 'DELETE' })
       loadRawData()
@@ -462,6 +465,7 @@ export default function CongNoVePage() {
     // giống Excel/Google Sheets (h-full/100% không dùng được ở đây vì chiều
     // cao của main do flex quyết định, không phải giá trị tường minh).
     <div className="absolute inset-0 flex flex-col px-5">
+      {dialog}
       {/* Tab NCC + nhập file + làm mới, cùng 1 dòng — cao bằng topbar
           (h-12 md:h-10, xem components/Topbar.tsx) và nằm sát topbar (không
           padding-top) để 2 thanh liền mạch nhau. */}

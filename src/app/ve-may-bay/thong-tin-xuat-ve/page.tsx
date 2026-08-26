@@ -6,6 +6,7 @@ import { Search, RefreshCw, ChevronRight, ChevronDown, Check, X, Trash2, Loader2
 import DateInput from '@/components/DateInput'
 import { RoutingText } from '@/components/RoutingText'
 import FilterPicker from '@/components/FilterPicker'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -359,6 +360,7 @@ type Booking = {
 export default function VeMayBayPage() {
   const { user } = useAuth()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { confirm, alert, dialog } = useConfirmDialog()
   const [rows, setRows] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -461,7 +463,8 @@ export default function VeMayBayPage() {
   // không có thùng rác khôi phục nên bắt confirm trước khi xoá thật.
   async function bulkDelete() {
     if (selectedIds.size === 0) return
-    if (!window.confirm(`Xoá ${selectedIds.size} vé đã chọn? Không thể khôi phục.`)) return
+    const ok = await confirm({ title: 'Bạn có chắc chắn muốn xoá không?', confirmLabel: 'Xoá', tone: 'danger' })
+    if (!ok) return
     setDeleting(true)
     try {
       const res = await fetch('/api/ve-may-bay/bookings', {
@@ -473,7 +476,7 @@ export default function VeMayBayPage() {
       setRows(prev => prev.filter(r => !selectedIds.has(r.id)))
       setSelectedIds(new Set())
     } catch {
-      window.alert('Xoá thất bại, thử lại sau.')
+      await alert({ title: 'Xoá thất bại', message: 'Kiểm tra kết nối rồi thử lại.', tone: 'danger' })
     } finally {
       setDeleting(false)
     }
@@ -566,6 +569,7 @@ export default function VeMayBayPage() {
 
   return (
     <div className="px-5 pt-2 pb-5 space-y-2">
+      {dialog}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-64 shrink-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
