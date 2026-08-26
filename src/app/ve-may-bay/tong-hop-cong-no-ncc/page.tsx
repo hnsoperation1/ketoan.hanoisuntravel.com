@@ -1510,7 +1510,7 @@ export default function TongHopCongNoNccPage() {
 
       {/* Filters + view mode */}
       <div className="shrink-0 py-2 flex flex-wrap items-center gap-2">
-        <div className="relative w-1/2 min-w-[220px]">
+        <div className="relative w-1/3 min-w-[220px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           {/* pr-8 chừa chỗ cho nút xoá, nếu không chữ dài sẽ chui xuống dưới nút. */}
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã vé, pax, NCC..."
