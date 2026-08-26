@@ -71,8 +71,15 @@ export async function POST(req: NextRequest) {
       tkt_tag: r.tkt_tag?.trim() || null,
       // Đã gán tay sẵn thì đánh dấu 'manual' để lượt tự khớp chạy ngay sau
       // insert (runMatchMaKhach chỉ quét match_status='unmatched') KHÔNG ghi
-      // đè công sức đối chiếu của kế toán.
-      ...(maKhach ? { match_status: 'manual' as const } : {}),
+      // đè công sức đối chiếu của kế toán; chưa gán thì để 'unmatched' cho
+      // lượt đó tự tìm.
+      //
+      // Phải ghi RÕ giá trị cho MỌI dòng, không được lược bỏ khoá này ở dòng
+      // chưa có mã khách: insert nhiều dòng 1 lượt thì PostgREST gộp chung
+      // danh sách cột của cả mẻ rồi điền NULL vào dòng thiếu khoá — NULL vi
+      // phạm ràng buộc NOT NULL của cột (chứ KHÔNG rơi về giá trị mặc định
+      // 'unmatched' như khi bỏ hẳn cột khỏi cả mẻ).
+      match_status: maKhach ? 'manual' : 'unmatched',
       source_file: sourceFile,
     }
   })
