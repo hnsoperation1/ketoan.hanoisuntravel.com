@@ -387,6 +387,73 @@ function EditableCell({ value, onSave, placeholder, align, suggestions, fillCell
   return fillCell ? <div className="absolute inset-0">{body}</div> : body
 }
 
+// Ô "Ghi chú" riêng — ô trong bảng chỉ rộng 160px, gõ ghi chú dài thì chữ
+// chạy tuột sang trái, không xem lại được toàn bộ. Bấm vào ô mở MODAL có
+// vùng nhập nhiều dòng để xem/sửa thoải mái. Trong bảng vẫn hiện 1 dòng
+// tóm tắt (cắt bớt) như cũ để không phá bố cục bảng.
+function GhiChuCell({ value, onSave }: { value: string | null; onSave: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+
+  function openModal() {
+    setDraft(value ?? '')
+    setOpen(true)
+  }
+
+  function save() {
+    setOpen(false)
+    if (draft !== (value ?? '')) onSave(draft)
+  }
+
+  return (
+    <>
+      {/* absolute inset-0 — chỉ dùng trong <td> có "relative" ở BangExcelView,
+          cho ô lấp khít mép (cùng lý do đã ghi ở EditableNumberCell). */}
+      <div className="absolute inset-0">
+        <button type="button" onClick={openModal} title={value || 'Bấm để thêm ghi chú'}
+          className={`${CELL_INPUT} text-left truncate ${value ? '' : 'text-gray-300'}`}>
+          {value || 'Ghi chú...'}
+        </button>
+      </div>
+      {open && createPortal(
+        // Esc = đóng KHÔNG lưu; bấm nền ngoài = lưu rồi đóng (giống hành vi
+        // rời ô nhập trong bảng). Ctrl/Cmd+Enter lưu nhanh khi đang gõ.
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={save}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-800">Ghi chú</h3>
+              <button onClick={() => setOpen(false)} title="Đóng, không lưu"
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4">
+              <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') { e.preventDefault(); setOpen(false) }
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save() }
+                }}
+                rows={8} placeholder="Nhập ghi chú cho dòng công nợ này..."
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <div className="flex items-center justify-end gap-2 px-4 py-3 bg-gray-50 border-t border-gray-100">
+              <button type="button" onClick={() => setOpen(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors">
+                Huỷ
+              </button>
+              <button type="button" onClick={save}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white transition-colors">
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
 // Ô "Tìm mã khách" riêng — khác EditableCell ở chỗ mở MODAL to giữa màn
 // hình (không phải dropdown nhỏ neo dưới ô) và hiện kèm tên đầy đủ, vì
 // danh mục khách hàng VMB giờ đã có tên (xem migration_vmb_khach_hang.sql),
@@ -686,7 +753,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                  <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)}  fillCell /></td>
+                  <td className={`${TD} p-0 relative`}><GhiChuCell value={r.ghi_chu} onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
                   <td className={TD_ACTION}>
                     <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
@@ -738,7 +805,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_kt2)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
-                    <td className={`${TD} p-0 relative`}><EditableCell value={r.ghi_chu} placeholder="Ghi chú..." onSave={v => onSaveField(r.id, 'ghi_chu', v)}  fillCell /></td>
+                    <td className={`${TD} p-0 relative`}><GhiChuCell value={r.ghi_chu} onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
                     <td className={TD_ACTION}>
                       <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />

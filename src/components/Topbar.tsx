@@ -29,9 +29,13 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // min-h thay cho h cố định + py-[5px]: chiều cao cố định thì padding dọc
+  // chỉ BÓP nội dung lại chứ không tạo thêm khoảng thở (box-sizing:
+  // border-box). Đổi sang min-h để thanh vẫn cao tối thiểu như cũ nhưng nở
+  // ra đúng 5px trên/dưới khi nội dung cần.
   return (
     <header
-      className="h-12 md:h-10 flex-shrink-0 bg-white flex items-center px-4 gap-3"
+      className="min-h-12 md:min-h-10 py-[5px] flex-shrink-0 bg-white flex items-center px-4 gap-3"
       style={{ borderBottom: '1px solid #9dd5ec' }}
     >
       <button
