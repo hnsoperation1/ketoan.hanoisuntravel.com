@@ -66,7 +66,7 @@ function SuggestionCard({ pax, rowIndex, onApply }: {
         {pax.ticket_no && <span className="font-normal text-gray-400"> · {pax.ticket_no}</span>}
       </div>
       <EditableField label="Mã khách" value={maKhach} onChange={setMaKhach} disabled={applied} />
-      <EditableField label="Giá bán" value={giaBan} onChange={setGiaBan} disabled={applied} align="right" />
+      <EditableField label="Giá bán" value={giaBan} onChange={setGiaBan} disabled={applied} />
       <EditableField label="TKT" value={tktTag} onChange={setTktTag} disabled={applied} />
       <button type="button" onClick={apply} disabled={applied || !maKhach.trim()}
         className={`w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -84,8 +84,8 @@ function SuggestionCard({ pax, rowIndex, onApply }: {
 // sửa, giống hệt cách RawPriceCell từng làm: tránh nhìn giống ô luôn-sửa-
 // được trong khi đa số trường hợp giá trị bot đọc ra đã đúng sẵn, không cần
 // đụng vào.
-function EditableField({ label, value, onChange, disabled, align }: {
-  label: string; value: string; onChange: (v: string) => void; disabled?: boolean; align?: 'right'
+function EditableField({ label, value, onChange, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; disabled?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   return (
@@ -95,9 +95,9 @@ function EditableField({ label, value, onChange, disabled, align }: {
         <input autoFocus value={value} onChange={e => onChange(e.target.value)}
           onBlur={() => setEditing(false)}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditing(false) }}
-          className={`flex-1 min-w-0 border border-brand-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400 ${align === 'right' ? 'text-right' : ''}`} />
+          className="flex-1 min-w-0 border border-brand-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400" />
       ) : (
-        <div className={`flex-1 min-w-0 flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+        <div className="flex-1 min-w-0 flex items-center gap-1">
           <span className={`truncate font-semibold ${value ? 'text-gray-800' : 'text-gray-300'}`}>{value || 'Chưa có'}</span>
           {!disabled && (
             <button type="button" onClick={() => setEditing(true)} title="Sửa" className="p-0.5 text-gray-300 hover:text-brand-600 shrink-0">
