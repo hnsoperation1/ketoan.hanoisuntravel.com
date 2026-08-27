@@ -6,6 +6,7 @@ import { RefreshCw, Search, Trash2, Loader2, Table2, List, LayoutGrid, Maximize2
 import { tinhCongNo } from '@/lib/tinh-cong-no-ve'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useTopbar } from '@/contexts/topbar'
+import { useAuth } from '@/contexts/auth'
 import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
@@ -715,7 +716,7 @@ const BANG_COLS: ColDef[] = [
 const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
 
 function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions, bottomBar }: {
-  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
+  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
   // Thanh tab tháng — CHỈ vẽ khi phóng to (xem cuối hàm).
   bottomBar?: React.ReactNode
 }) {
@@ -739,7 +740,9 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
     const w = widths[c.key] ?? c.width
     return c.key === 'action' ? Math.max(w, ACTION_MIN_W) : w
   }
-  const totalWidth = BANG_COLS.reduce((sum, c) => sum + colW(c), 0)
+  // Không có quyền xoá → bỏ LUÔN cột nút xoá, không để cột trống chiếm chỗ.
+  const cols = onDelete ? BANG_COLS : BANG_COLS.filter(c => c.key !== 'action')
+  const totalWidth = cols.reduce((sum, c) => sum + colW(c), 0)
 
   const TH = 'relative px-2 py-1.5 border border-gray-300 bg-gray-100 font-semibold text-gray-700 whitespace-nowrap text-left overflow-hidden'
   const TD = 'px-2 py-1 border border-gray-300 text-gray-800 whitespace-nowrap font-normal overflow-hidden text-ellipsis'
@@ -775,7 +778,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
       <table className="text-xs border-collapse list-table fixed-cols-table" style={{ fontFamily: 'Calibri, Arial, sans-serif', tableLayout: 'fixed', width: totalWidth }}>
         <thead className="sticky top-0 z-10">
           <tr>
-            {BANG_COLS.map(c => (
+            {cols.map(c => (
               <th key={c.key} style={{ width: colW(c) }}
                 className={`${TH} select-none ${c.align === 'right' ? 'text-right' : ''}`}>
                 {c.label}
@@ -826,11 +829,13 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                   <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                   <td className={`${TD} p-0 relative`}><GhiChuCell value={r.ghi_chu} onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                  <td className={TD_ACTION}>
-                    <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={12} />
-                    </button>
-                  </td>
+                  {onDelete && (
+                    <td className={TD_ACTION}>
+                      <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={12} />
+                      </button>
+                    </td>
+                    )}
                 </tr>
               )
             }
@@ -878,11 +883,13 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     <td className={`${TD} text-right`}>{formatGiaVe(d.hoa_hong_sale_chinh)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_cty_con_lai)}</td>
                     <td className={`${TD} p-0 relative`}><GhiChuCell value={r.ghi_chu} onSave={v => onSaveField(r.id, 'ghi_chu', v)} /></td>
-                    <td className={TD_ACTION}>
-                      <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
+                    {onDelete && (
+                      <td className={TD_ACTION}>
+                        <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={12} />
+                        </button>
+                      </td>
+                      )}
                   </>
                 ) : (
                   <>
@@ -909,7 +916,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
   return content
 }
 
-function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
+function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
       {rows.map(r => {
@@ -964,9 +971,11 @@ function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
             <div className="w-28 shrink-0">
               <EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} />
             </div>
-            <button onClick={() => onDelete(r.id)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
-              <Trash2 size={14} />
-            </button>
+            {onDelete && (
+              <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         )
       })}
@@ -974,7 +983,7 @@ function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
   )
 }
 
-function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[] }) {
+function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {rows.map(r => {
@@ -986,9 +995,11 @@ function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
                 <div className="text-xs font-semibold text-brand-600">{r.ncc ?? '—'}</div>
                 <div className="text-sm font-bold text-gray-900">{r.pax_name ?? '—'}</div>
               </div>
-              <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                <Trash2 size={13} />
-              </button>
+              {onDelete && (
+                <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              )}
             </div>
             <div className="text-xs text-gray-500 space-y-0.5 mb-3">
               <div>Mã vé: <span className="text-gray-800">{r.ticket_no ?? '—'}</span></div>
@@ -1026,6 +1037,10 @@ function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
 export default function TongHopCongNoNccPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const { confirm, dialog } = useConfirmDialog()
+  // Xoá dòng công nợ = mất dữ liệu tài chính, không khôi phục được — tạm
+  // thời CHỈ super admin (2026-08-26). API DELETE cũng đã chặn tương ứng.
+  const { user } = useAuth()
+  const canDelete = !!user?.is_super_admin
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [rows, setRows] = useState<DebtRow[]>([])
@@ -1586,12 +1601,12 @@ export default function TongHopCongNoNccPage() {
               : 'Không có dòng nào khớp bộ lọc/tháng đang chọn.'}
           </div>
         ) : viewMode === 'bang' ? (
-          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh}
+          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh}
             bottomBar={<MonthTabBar tabs={monthTabs} value={monthFilter} onChange={setMonthFilter} totalCount={filteredExceptMonth.length} />} />
         ) : viewMode === 'list' ? (
-          <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
         ) : (
-          <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={deleteRow} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
+          <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
         )}
       </div>
 
