@@ -610,7 +610,7 @@ export default function CongNoVeV3Page() {
             <div className="flex items-center gap-2">
               <button onClick={submitRaw} disabled={importing}
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
-                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {rowsToImport.length} dòng vào tab &quot;{nccFilter}&quot;
+                {importing && <Loader2 size={14} className="animate-spin" />} Nhập {rowsToImport.length} dòng vào tab &quot;{detectedNcc ?? nccFilter}&quot;
                 {junkRowIndexes.size > 0 && <span className="opacity-75"> (đã bỏ {junkRowIndexes.size} dòng rác)</span>}
               </button>
               <button onClick={resetWizard} disabled={importing} type="button"
