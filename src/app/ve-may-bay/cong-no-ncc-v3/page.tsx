@@ -35,6 +35,11 @@ export default function CongNoVeV3Page() {
   const [rawGrid, setRawGrid] = useState<string[][]>([])
   const [fileName, setFileName] = useState('')
   const [headerRowIndex, setHeaderRowIndex] = useState<number | null>(null)
+  // NCC tự nhận diện được từ chữ ký cột (Vietjet/FCVN) trong applyGrid —
+  // CHỈ để cảnh báo khi lệch với tab đang chọn (nccFilter), KHÔNG tự đổi
+  // tab/ép nhập — lô vẫn luôn được lưu theo đúng tab đang mở lúc bấm nhập
+  // (xem comment ở handleImport), tránh đổi hành vi cũ ngoài ý muốn.
+  const [detectedNcc, setDetectedNcc] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   // Chỉ số (trong dataRows) của các dòng bị nghi là "rác" (tiêu đề phụ lặp
@@ -281,7 +286,7 @@ export default function CongNoVeV3Page() {
 
   function resetWizard() {
     setSheets([]); setSelectedSheet(null); setRawGrid([]); setFileName('')
-    setHeaderRowIndex(null); setImportError('')
+    setHeaderRowIndex(null); setImportError(''); setDetectedNcc(null)
     setKeptJunkRows(new Set()); setManualJunkRows(new Set())
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -296,14 +301,17 @@ export default function CongNoVeV3Page() {
     const vjRow = findVietjetHeaderRow(grid)
     if (vjRow != null) {
       setHeaderRowIndex(vjRow)
+      setDetectedNcc('VIETJET')
       return
     }
     const fcvnRow = findFcvnHeaderRow(grid)
     if (fcvnRow != null) {
       setHeaderRowIndex(fcvnRow)
+      setDetectedNcc('FCVN')
       return
     }
     setHeaderRowIndex(null)
+    setDetectedNcc(null)
   }
 
   async function handleFilePick(f: File) {
@@ -361,9 +369,13 @@ export default function CongNoVeV3Page() {
   const rowsToImport = dataRows.filter((_, i) => !junkRowIndexes.has(i))
 
   // Nhập không map cột — lưu y hệt header + dữ liệu thô của file gốc vào
-  // ve_debt_records_raw. ncc lấy thẳng từ tab đang chọn (nccFilter).
+  // ve_debt_records_raw. ncc ưu tiên lấy theo chữ ký cột tự nhận diện được
+  // (detectedNcc, xem applyGrid) — CHỈ rơi về tab đang chọn (nccFilter) khi
+  // không nhận diện được format nào (vd SAO ĐỎ/SUN PQC chưa có chữ ký riêng
+  // để tự dò). Tránh đúng lỗi lưu nhầm tab đã gặp (2026-08-29): trước đây
+  // luôn lấy nccFilter dù đã tự biết chắc file là Vietjet/FCVN.
   async function submitRaw() {
-    const ncc = nccFilter
+    const ncc = detectedNcc ?? nccFilter
     setImporting(true)
     setImportError('')
     try {
@@ -377,6 +389,9 @@ export default function CongNoVeV3Page() {
         setImportError(error || 'Nhập thất bại')
         return
       }
+      // Nhảy sang đúng tab vừa lưu để thấy ngay dữ liệu, không phải tự đoán
+      // đã lưu vào đâu (đúng nguyên nhân gây nhầm lẫn ban đầu).
+      if (ncc !== nccFilter) setNccFilter(ncc)
       resetWizard()
       loadRawData()
     } catch {
@@ -526,7 +541,10 @@ export default function CongNoVeV3Page() {
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">
-                Nhập vào tab &quot;{nccFilter}&quot; — tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
+                {detectedNcc != null && detectedNcc !== nccFilter
+                  ? <>Đã tự nhận diện đúng định dạng <b>{detectedNcc}</b> — sẽ lưu vào tab &quot;{detectedNcc}&quot; (khác tab &quot;{nccFilter}&quot; đang mở).</>
+                  : <>Nhập vào tab &quot;{nccFilter}&quot;.</>}
+                {' '}Tiêu đề: dòng {headerRowIndex + 1} · {dataRows.length} dòng dữ liệu từ &quot;{fileName}&quot;.
                 {junkRowIndexes.size > 0 && (
                   <span className="text-red-500 font-semibold"> · {junkRowIndexes.size} dòng tô đỏ bị nghi là rác (tiêu đề phụ/dòng ngăn cách), sẽ KHÔNG được nhập — bấm &quot;Giữ dòng này&quot; nếu vẫn muốn nhập.</span>
                 )}
