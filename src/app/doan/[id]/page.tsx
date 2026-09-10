@@ -247,7 +247,7 @@ function MauHopDongPicker({ templates, value, onChange }: { templates: HopDongTe
 
   return (
     <>
-      <label className="block text-xs font-semibold text-gray-500 mb-1">Mẫu hợp đồng tương ứng (chọn được nhiều)</label>
+      <label className="block text-xs font-semibold text-gray-500 mb-1">Mẫu hợp đồng tương ứng</label>
       <div className="w-full border border-gray-200 rounded-xl px-1 py-1 mb-2 max-h-32 overflow-y-auto">
         {templates.length === 0 && <p className="text-xs text-gray-400 px-2 py-1.5">Chưa có mẫu hợp đồng nào.</p>}
         {templates.map((t) => (
@@ -376,7 +376,7 @@ function EditLoaiNhanSuModal({
     <>
       <div className="fixed inset-0 bg-black/30 z-[60]" onClick={() => !saving && onClose()} />
       <div className="fixed inset-0 flex items-center justify-center z-[70] px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Sửa loại nhân sự</h3>
           <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
           <input
@@ -462,7 +462,7 @@ function ManageLoaiNhanSuModal({
                   <p className="text-sm font-semibold text-gray-900 truncate">{l.ten}</p>
                   <p className="text-xs text-gray-400">
                     Mã: {l.ma}
-                    {l.mau_hop_dong_list.length > 0 ? <> · Mẫu HĐ: {l.mau_hop_dong_list.map((t) => t.ten).join(', ')}</> : <span className="text-amber-500"> · Chưa gán mẫu HĐ</span>}
+                    {l.mau_hop_dong_list.length > 0 ? <> · Mẫu HĐ: {l.mau_hop_dong_list.map((t) => t.ten).join(', ')}</> : <span className="text-amber-500"> · Chưa chọn mẫu HĐ</span>}
                   </p>
                 </div>
                 <Pencil size={14} className="text-gray-300 shrink-0" />
