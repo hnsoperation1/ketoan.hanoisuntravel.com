@@ -73,6 +73,9 @@ export interface LoaiNhanSu {
   ten: string
   ma: string
   created_at: string
+  mau_hop_dong_id: string | null
+  /** Chỉ có khi API embed qua select — xem GET /api/loai-nhan-su. */
+  mau_hop_dong?: { id: string; ten: string } | null
 }
 
 export interface Doan {

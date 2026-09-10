@@ -179,10 +179,15 @@ function DayChipInput({
 }
 
 /** Danh mục "Loại nhân sự" — do kế toán tự tạo (vd "HDV", "MC", "Lái xe"...), có
- *  mã ngắn (`ma`) dùng để đặt tên file hợp đồng + khớp biểu mẫu Word. Mỗi nơi cần
+ *  mã ngắn (`ma`) dùng để đặt tên file hợp đồng + khớp biểu mẫu Word, và (2026-09)
+ *  có thể gán thẳng 1 `mau_hop_dong_id` — xem ManageLoaiNhanSuModal. Mỗi nơi cần
  *  danh sách này tự gọi hook riêng (đơn giản hơn truyền props xuyên nhiều modal độc lập). */
 function useLoaiNhanSuList() {
   const [list, setList] = useState<LoaiNhanSu[]>([])
+  // Tải kèm luôn danh sách mẫu hợp đồng active — mọi nơi cần
+  // CreateLoaiNhanSuModal/EditLoaiNhanSuModal (chọn mẫu HĐ) đều đã gọi
+  // useLoaiNhanSuList() sẵn, dùng lại templates ở đây khỏi phải fetch riêng.
+  const [templates, setTemplates] = useState<HopDongTemplate[]>([])
 
   useEffect(() => {
     async function loadList() {
@@ -191,14 +196,21 @@ function useLoaiNhanSuList() {
       const data = await res.json()
       setList((data.loai_nhan_su ?? []) as LoaiNhanSu[])
     }
+    async function loadTemplates() {
+      const res = await fetch('/api/hop-dong-templates')
+      if (!res.ok) return
+      const data = await res.json()
+      setTemplates(((data.templates ?? []) as HopDongTemplate[]).filter((t) => t.is_active))
+    }
     void loadList()
+    void loadTemplates()
   }, [])
 
-  async function create(ten: string, ma: string): Promise<LoaiNhanSu | null> {
+  async function create(ten: string, ma: string, mauHopDongId?: string | null): Promise<LoaiNhanSu | null> {
     const res = await fetch('/api/loai-nhan-su', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ten, ma }),
+      body: JSON.stringify({ ten, ma, mau_hop_dong_id: mauHopDongId ?? null }),
     })
     if (!res.ok) return null
     const data = await res.json()
@@ -207,19 +219,57 @@ function useLoaiNhanSuList() {
     return created
   }
 
-  return { list, create }
+  async function update(id: string, patch: { ten?: string; ma?: string; mau_hop_dong_id?: string | null }): Promise<LoaiNhanSu | null> {
+    const res = await fetch(`/api/loai-nhan-su/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const updated = data.loai_nhan_su as LoaiNhanSu
+    setList((prev) => prev.map((l) => (l.id === updated.id ? updated : l)).sort((a, b) => a.ten.localeCompare(b.ten)))
+    return updated
+  }
+
+  return { list, templates, create, update }
 }
 
-/** Modal nhỏ để nhập tên loại nhân sự mới — dùng chung ở dropdown lọc và ở form thêm/sửa nhân sự. */
+/** Dropdown chọn mẫu hợp đồng — dùng chung ở form tạo/sửa loại nhân sự. Để
+ *  trống = không gán trực tiếp, vẫn rơi về cách khớp mã cũ lúc xuất hợp đồng
+ *  (xem ưu tiên chọn template ở xuat-hop-dong/route.ts). */
+function MauHopDongSelect({ templates, value, onChange }: { templates: HopDongTemplate[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <>
+      <label className="block text-xs font-semibold text-gray-500 mb-1">Mẫu hợp đồng tương ứng</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
+      >
+        <option value="">— Không chọn (tự khớp theo mã) —</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>{t.ten}</option>
+        ))}
+      </select>
+    </>
+  )
+}
+
+/** Modal nhỏ để nhập tên + mã + mẫu hợp đồng cho 1 loại nhân sự mới — mở từ
+ *  bên trong ManageLoaiNhanSuModal. */
 function CreateLoaiNhanSuModal({
+  templates,
   onClose,
   onCreate,
 }: {
+  templates: HopDongTemplate[]
   onClose: () => void
-  onCreate: (ten: string, ma: string) => Promise<LoaiNhanSu | null>
+  onCreate: (ten: string, ma: string, mauHopDongId: string | null) => Promise<LoaiNhanSu | null>
 }) {
   const [ten, setTen] = useState('')
   const [ma, setMa] = useState('')
+  const [mauHopDongId, setMauHopDongId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -227,7 +277,7 @@ function CreateLoaiNhanSuModal({
     if (!ten.trim() || !ma.trim() || saving) return
     setSaving(true)
     setError('')
-    const created = await onCreate(ten.trim(), ma.trim())
+    const created = await onCreate(ten.trim(), ma.trim(), mauHopDongId || null)
     setSaving(false)
     if (!created) {
       setError('Có lỗi xảy ra, thử lại nhé')
@@ -238,8 +288,8 @@ function CreateLoaiNhanSuModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !saving && onClose()} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+      <div className="fixed inset-0 bg-black/30 z-[60]" onClick={() => !saving && onClose()} />
+      <div className="fixed inset-0 flex items-center justify-center z-[70] px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Tạo loại nhân sự mới</h3>
           <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
@@ -259,6 +309,7 @@ function CreateLoaiNhanSuModal({
             placeholder="VD: LX (dùng đặt tên file + khớp mẫu hợp đồng)"
             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
           />
+          <MauHopDongSelect templates={templates} value={mauHopDongId} onChange={setMauHopDongId} />
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
           <div className="flex gap-2 mt-3">
             <button
@@ -284,6 +335,165 @@ function CreateLoaiNhanSuModal({
   )
 }
 
+/** Modal sửa 1 loại nhân sự đã có (tên/mã/mẫu hợp đồng) — mở từ dòng tương
+ *  ứng trong ManageLoaiNhanSuModal. */
+function EditLoaiNhanSuModal({
+  loai,
+  templates,
+  onClose,
+  onSave,
+}: {
+  loai: LoaiNhanSu
+  templates: HopDongTemplate[]
+  onClose: () => void
+  onSave: (patch: { ten: string; ma: string; mau_hop_dong_id: string | null }) => Promise<LoaiNhanSu | null>
+}) {
+  const [ten, setTen] = useState(loai.ten)
+  const [ma, setMa] = useState(loai.ma)
+  const [mauHopDongId, setMauHopDongId] = useState(loai.mau_hop_dong_id ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave() {
+    if (!ten.trim() || !ma.trim() || saving) return
+    setSaving(true)
+    setError('')
+    const updated = await onSave({ ten: ten.trim(), ma: ma.trim(), mau_hop_dong_id: mauHopDongId || null })
+    setSaving(false)
+    if (!updated) {
+      setError('Có lỗi xảy ra, thử lại nhé')
+      return
+    }
+    onClose()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-[60]" onClick={() => !saving && onClose()} />
+      <div className="fixed inset-0 flex items-center justify-center z-[70] px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Sửa loại nhân sự</h3>
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
+          <input
+            autoFocus
+            value={ten}
+            onChange={(e) => setTen(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
+          />
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Mã ngắn</label>
+          <input
+            value={ma}
+            onChange={(e) => setMa(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
+          />
+          <MauHopDongSelect templates={templates} value={mauHopDongId} onChange={setMauHopDongId} />
+          {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !ten.trim() || !ma.trim()}
+              className="flex-1 px-3 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+            >
+              {saving ? 'Đang lưu...' : 'Lưu'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+/** Modal quản lý danh mục "Loại nhân sự" — mở từ nút riêng cạnh dropdown lọc
+ *  (dropdown lọc GIỮ NGUYÊN, không đụng tới). Liệt kê toàn bộ loại, bấm vào
+ *  từng dòng để sửa (kèm gán mẫu hợp đồng), và nút "+ Loại nhân sự" tạo mới
+ *  giờ nằm hẳn trong này thay vì ở thanh công cụ ngoài. */
+function ManageLoaiNhanSuModal({
+  list,
+  templates,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  list: LoaiNhanSu[]
+  templates: HopDongTemplate[]
+  onClose: () => void
+  onCreate: (ten: string, ma: string, mauHopDongId: string | null) => Promise<LoaiNhanSu | null>
+  onUpdate: (id: string, patch: { ten: string; ma: string; mau_hop_dong_id: string | null }) => Promise<LoaiNhanSu | null>
+}) {
+  const [editing, setEditing] = useState<LoaiNhanSu | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 max-h-[85vh] flex flex-col">
+          <div className="flex items-center justify-between mb-3 shrink-0">
+            <h3 className="text-sm font-bold text-gray-900">Danh sách loại nhân sự</h3>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1.5 mb-3">
+            {list.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setEditing(l)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-gray-200 hover:border-brand-300 hover:bg-brand-50/40 transition-colors text-left"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{l.ten}</p>
+                  <p className="text-xs text-gray-400">
+                    Mã: {l.ma}
+                    {l.mau_hop_dong?.ten ? <> · Mẫu HĐ: {l.mau_hop_dong.ten}</> : <span className="text-amber-500"> · Chưa gán mẫu HĐ</span>}
+                  </p>
+                </div>
+                <Pencil size={14} className="text-gray-300 shrink-0" />
+              </button>
+            ))}
+            {list.length === 0 && <p className="text-xs text-gray-400 text-center py-6">Chưa có loại nhân sự nào.</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+          >
+            <Plus size={13} />
+            Loại nhân sự
+          </button>
+        </div>
+      </div>
+      {editing && (
+        <EditLoaiNhanSuModal
+          loai={editing}
+          templates={templates}
+          onClose={() => setEditing(null)}
+          onSave={(patch) => onUpdate(editing.id, patch)}
+        />
+      )}
+      {creating && (
+        <CreateLoaiNhanSuModal
+          templates={templates}
+          onClose={() => setCreating(false)}
+          onCreate={onCreate}
+        />
+      )}
+    </>
+  )
+}
+
 export default function DoanDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -299,7 +509,7 @@ export default function DoanDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [filterLoaiId, setFilterLoaiId] = useState('')
-  const [creatingLoai, setCreatingLoai] = useState(false)
+  const [managingLoai, setManagingLoai] = useState(false)
   const loaiNhanSu = useLoaiNhanSuList()
   const filteredHoSo = filterLoaiId ? hoSo.filter((r) => r.nhansu.loai_nhan_su_id === filterLoaiId) : hoSo
   const { widths: hsWidths, startResize: startHsResize } = useResizableColumns('doan-ho-so', Object.fromEntries(HO_SO_COLS.map(c => [c.key, c.width])))
@@ -429,12 +639,12 @@ export default function DoanDetailPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setCreatingLoai(true)}
-                    title="Tạo loại nhân sự mới"
-                    className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                    onClick={() => setManagingLoai(true)}
+                    title="Xem/sửa danh sách loại nhân sự, gán mẫu hợp đồng"
+                    className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
                   >
-                    <Plus size={13} />
-                    Loại nhân sự
+                    <Pencil size={13} />
+                    Danh sách loại nhân sự
                   </button>
                   <div className="flex-1" />
                   <button
@@ -497,8 +707,14 @@ export default function DoanDetailPage() {
         </div>
       </div>
 
-      {creatingLoai && (
-        <CreateLoaiNhanSuModal onClose={() => setCreatingLoai(false)} onCreate={loaiNhanSu.create} />
+      {managingLoai && (
+        <ManageLoaiNhanSuModal
+          list={loaiNhanSu.list}
+          templates={loaiNhanSu.templates}
+          onClose={() => setManagingLoai(false)}
+          onCreate={loaiNhanSu.create}
+          onUpdate={loaiNhanSu.update}
+        />
       )}
 
       {viewing && doan && (
@@ -1352,9 +1568,10 @@ function AddNhanSuModal({
       </div>
       {creatingLoai && (
         <CreateLoaiNhanSuModal
+          templates={loaiNhanSu.templates}
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten, ma) => {
-            const created = await loaiNhanSu.create(ten, ma)
+          onCreate={async (ten, ma, mauHopDongId) => {
+            const created = await loaiNhanSu.create(ten, ma, mauHopDongId)
             if (created) setLoaiNhanSuId(created.id)
             return created
           }}
@@ -2403,9 +2620,10 @@ function HoSoDetailModal({
       </div>
       {creatingLoai && (
         <CreateLoaiNhanSuModal
+          templates={loaiNhanSu.templates}
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten, ma) => {
-            const created = await loaiNhanSu.create(ten, ma)
+          onCreate={async (ten, ma, mauHopDongId) => {
+            const created = await loaiNhanSu.create(ten, ma, mauHopDongId)
             if (created) setNhansu((f) => ({ ...f, loai_nhan_su_id: created.id }))
             return created
           }}

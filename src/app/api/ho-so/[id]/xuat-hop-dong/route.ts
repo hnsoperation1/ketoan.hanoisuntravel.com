@@ -34,9 +34,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     .order('created_at', { ascending: false })
 
   const templateList = (templates ?? []) as HopDongTemplate[]
-  const ma = (hoSo as HoSoWithNhanSu).nhansu.loai_nhan_su?.ma ?? ''
+  const loaiNhanSu = (hoSo as HoSoWithNhanSu).nhansu.loai_nhan_su
+  const ma = loaiNhanSu?.ma ?? ''
   const template =
     (templateId ? templateList.find((t) => t.id === templateId) : undefined) ??
+    // Ưu tiên liên kết trực tiếp loai_nhan_su.mau_hop_dong_id (chọn qua UI,
+    // không gõ tay) — chỉ rơi về cách khớp CHUỖI cũ (hop_dong_templates.loai
+    // so với ma) khi loại nhân sự này chưa được gán mẫu trực tiếp.
+    (loaiNhanSu?.mau_hop_dong_id ? templateList.find((t) => t.id === loaiNhanSu.mau_hop_dong_id) : undefined) ??
     templateList.find((t) => t.loai?.toLowerCase() === ma.toLowerCase()) ??
     templateList[0]
 
