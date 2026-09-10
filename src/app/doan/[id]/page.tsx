@@ -1575,8 +1575,8 @@ function AddNhanSuModal({
         <CreateLoaiNhanSuModal
           templates={loaiNhanSu.templates}
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten, ma, mauHopDongId) => {
-            const created = await loaiNhanSu.create(ten, ma, mauHopDongId)
+          onCreate={async (ten, ma, mauHopDongIds) => {
+            const created = await loaiNhanSu.create(ten, ma, mauHopDongIds)
             if (created) setLoaiNhanSuId(created.id)
             return created
           }}
@@ -2627,8 +2627,8 @@ function HoSoDetailModal({
         <CreateLoaiNhanSuModal
           templates={loaiNhanSu.templates}
           onClose={() => setCreatingLoai(false)}
-          onCreate={async (ten, ma, mauHopDongId) => {
-            const created = await loaiNhanSu.create(ten, ma, mauHopDongId)
+          onCreate={async (ten, ma, mauHopDongIds) => {
+            const created = await loaiNhanSu.create(ten, ma, mauHopDongIds)
             if (created) setNhansu((f) => ({ ...f, loai_nhan_su_id: created.id }))
             return created
           }}
