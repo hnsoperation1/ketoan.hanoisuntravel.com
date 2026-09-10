@@ -14,6 +14,20 @@ export function formatDateVNFull(value: string | null | undefined): string {
   return `ngày ${d} tháng ${m} năm ${y}`
 }
 
+/** ISO timestamptz (vd created_at) -> "dd/mm/yyyy HH:mm" theo giờ VN. Khác
+ *  formatDateVN (chỉ nhận date trơn yyyy-mm-dd, không có giờ) — dùng riêng
+ *  cho các cột "Ngày giờ tạo" cần cả giờ phút. */
+export function formatDateTimeVN(value: string | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  return d.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 /** Suy ra Tỉnh/Thành phố từ địa chỉ đầy đủ — luôn là phần cuối cùng sau dấu phẩy
  *  trong địa chỉ kiểu Việt Nam (vd "Thanh Lâm, An Thịnh, Lương Tài, Bắc Ninh" -> "Bắc Ninh"). */
 export function deriveTinhTp(diaChi: string | null | undefined): string {

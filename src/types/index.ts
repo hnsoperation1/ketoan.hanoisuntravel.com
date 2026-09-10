@@ -94,6 +94,11 @@ export interface Doan {
   opportunity_id: string | null
   created_at: string
   deleted_at: string | null
+  /** null với đoàn cũ (trước khi có cột này) hoặc đoàn tự sinh từ CRM (xem
+   *  opportunity_id ở trên) — người tạo lúc đó là hệ thống, không phải 1
+   *  user kế toán cụ thể. */
+  created_by: string | null
+  creator: { full_name: string } | null
 }
 
 export interface HoSo {

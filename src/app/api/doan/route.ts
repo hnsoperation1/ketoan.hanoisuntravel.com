@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const nam = req.nextUrl.searchParams.get('nam') // vd "2026"
 
-  let query = supabase.from('doan').select('*').is('deleted_at', null).order('ngay_di', { ascending: false })
+  let query = supabase.from('doan').select('*, creator:users!created_by(full_name)').is('deleted_at', null).order('created_at', { ascending: false })
   if (nam) {
     query = query.gte('ngay_di', `${nam}-01-01`).lte('ngay_di', `${nam}-12-31`)
   }
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { user, unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
 
   const body = await req.json()
@@ -41,8 +41,9 @@ export async function POST(req: NextRequest) {
       ten_chuong_trinh: ten_chuong_trinh ?? null,
       thoi_gian_chuong_trinh: thoi_gian_chuong_trinh ?? null,
       dia_diem_chuong_trinh: dia_diem_chuong_trinh ?? null,
+      created_by: user?.id ?? null,
     })
-    .select('*')
+    .select('*, creator:users!created_by(full_name)')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ doan: data }, { status: 201 })

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid, Search } from 'lucide-react'
 import type { Doan } from '@/types'
-import { formatDateVN } from '@/lib/format'
+import { formatDateVN, formatDateTimeVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -15,6 +15,8 @@ const DOAN_COLS = [
   { key: 'ngay_di', label: 'Ngày đi', width: 120 },
   { key: 'ngay_ve', label: 'Ngày về', width: 120 },
   { key: 'so_khach', label: 'Số khách dự kiến', align: 'right' as const, width: 140 },
+  { key: 'created_at', label: 'Ngày giờ tạo', width: 150 },
+  { key: 'creator', label: 'Người tạo', width: 140 },
 ]
 
 const EMPTY_FORM = {
@@ -213,6 +215,8 @@ export default function QuyetToanTourPage() {
                     <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatDateVN(d.ngay_di)}</td>
                     <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{d.ngay_ve ? formatDateVN(d.ngay_ve) : '—'}</td>
                     <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-700 font-semibold">{d.sl_khach ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{d.created_at ? formatDateTimeVN(d.created_at) : '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap truncate" title={d.creator?.full_name ?? ''}>{d.creator?.full_name ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -256,6 +260,11 @@ export default function QuyetToanTourPage() {
                   </div>
                 )}
               </div>
+              {d.created_at && (
+                <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
+                  Tạo lúc {formatDateTimeVN(d.created_at)}{d.creator?.full_name ? ` bởi ${d.creator.full_name}` : ''}
+                </div>
+              )}
             </Link>
           ))}
         </div>
