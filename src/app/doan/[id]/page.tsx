@@ -206,11 +206,11 @@ function useLoaiNhanSuList() {
     void loadTemplates()
   }, [])
 
-  async function create(ten: string, ma: string, mauHopDongId?: string | null): Promise<LoaiNhanSu | null> {
+  async function create(ten: string, ma: string, mauHopDongIds: string[] = []): Promise<LoaiNhanSu | null> {
     const res = await fetch('/api/loai-nhan-su', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ten, ma, mau_hop_dong_id: mauHopDongId ?? null }),
+      body: JSON.stringify({ ten, ma, mau_hop_dong_ids: mauHopDongIds }),
     })
     if (!res.ok) return null
     const data = await res.json()
@@ -219,7 +219,7 @@ function useLoaiNhanSuList() {
     return created
   }
 
-  async function update(id: string, patch: { ten?: string; ma?: string; mau_hop_dong_id?: string | null }): Promise<LoaiNhanSu | null> {
+  async function update(id: string, patch: { ten?: string; ma?: string; mau_hop_dong_ids?: string[] }): Promise<LoaiNhanSu | null> {
     const res = await fetch(`/api/loai-nhan-su/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -235,23 +235,28 @@ function useLoaiNhanSuList() {
   return { list, templates, create, update }
 }
 
-/** Dropdown chọn mẫu hợp đồng — dùng chung ở form tạo/sửa loại nhân sự. Để
- *  trống = không gán trực tiếp, vẫn rơi về cách khớp mã cũ lúc xuất hợp đồng
- *  (xem ưu tiên chọn template ở xuat-hop-dong/route.ts). */
-function MauHopDongSelect({ templates, value, onChange }: { templates: HopDongTemplate[]; value: string; onChange: (v: string) => void }) {
+/** Danh sách tick chọn mẫu hợp đồng — dùng chung ở form tạo/sửa loại nhân sự.
+ *  1 loại nhân sự có thể gán NHIỀU mẫu (vd theo mức lương/mùa) — kế toán tự
+ *  chọn đúng mẫu lúc xuất hợp đồng nếu gán từ 2 mẫu trở lên (xem
+ *  xuat-hop-dong/route.ts). Không tick cái nào = không gán trực tiếp, vẫn rơi
+ *  về cách khớp mã cũ lúc xuất hợp đồng. */
+function MauHopDongPicker({ templates, value, onChange }: { templates: HopDongTemplate[]; value: string[]; onChange: (ids: string[]) => void }) {
+  function toggle(id: string) {
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
+  }
+
   return (
     <>
-      <label className="block text-xs font-semibold text-gray-500 mb-1">Mẫu hợp đồng tương ứng</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
-      >
-        <option value="">— Không chọn (tự khớp theo mã) —</option>
+      <label className="block text-xs font-semibold text-gray-500 mb-1">Mẫu hợp đồng tương ứng (chọn được nhiều)</label>
+      <div className="w-full border border-gray-200 rounded-xl px-1 py-1 mb-2 max-h-32 overflow-y-auto">
+        {templates.length === 0 && <p className="text-xs text-gray-400 px-2 py-1.5">Chưa có mẫu hợp đồng nào.</p>}
         {templates.map((t) => (
-          <option key={t.id} value={t.id}>{t.ten}</option>
+          <label key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-sm">
+            <input type="checkbox" checked={value.includes(t.id)} onChange={() => toggle(t.id)} className="accent-brand-500" />
+            {t.ten}
+          </label>
         ))}
-      </select>
+      </div>
     </>
   )
 }
@@ -265,11 +270,11 @@ function CreateLoaiNhanSuModal({
 }: {
   templates: HopDongTemplate[]
   onClose: () => void
-  onCreate: (ten: string, ma: string, mauHopDongId: string | null) => Promise<LoaiNhanSu | null>
+  onCreate: (ten: string, ma: string, mauHopDongIds: string[]) => Promise<LoaiNhanSu | null>
 }) {
   const [ten, setTen] = useState('')
   const [ma, setMa] = useState('')
-  const [mauHopDongId, setMauHopDongId] = useState('')
+  const [mauHopDongIds, setMauHopDongIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -277,7 +282,7 @@ function CreateLoaiNhanSuModal({
     if (!ten.trim() || !ma.trim() || saving) return
     setSaving(true)
     setError('')
-    const created = await onCreate(ten.trim(), ma.trim(), mauHopDongId || null)
+    const created = await onCreate(ten.trim(), ma.trim(), mauHopDongIds)
     setSaving(false)
     if (!created) {
       setError('Có lỗi xảy ra, thử lại nhé')
@@ -309,7 +314,7 @@ function CreateLoaiNhanSuModal({
             placeholder="VD: LX (dùng đặt tên file + khớp mẫu hợp đồng)"
             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
           />
-          <MauHopDongSelect templates={templates} value={mauHopDongId} onChange={setMauHopDongId} />
+          <MauHopDongPicker templates={templates} value={mauHopDongIds} onChange={setMauHopDongIds} />
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
           <div className="flex gap-2 mt-3">
             <button
@@ -346,11 +351,11 @@ function EditLoaiNhanSuModal({
   loai: LoaiNhanSu
   templates: HopDongTemplate[]
   onClose: () => void
-  onSave: (patch: { ten: string; ma: string; mau_hop_dong_id: string | null }) => Promise<LoaiNhanSu | null>
+  onSave: (patch: { ten: string; ma: string; mau_hop_dong_ids: string[] }) => Promise<LoaiNhanSu | null>
 }) {
   const [ten, setTen] = useState(loai.ten)
   const [ma, setMa] = useState(loai.ma)
-  const [mauHopDongId, setMauHopDongId] = useState(loai.mau_hop_dong_id ?? '')
+  const [mauHopDongIds, setMauHopDongIds] = useState<string[]>(loai.mau_hop_dong_list.map((t) => t.id))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -358,7 +363,7 @@ function EditLoaiNhanSuModal({
     if (!ten.trim() || !ma.trim() || saving) return
     setSaving(true)
     setError('')
-    const updated = await onSave({ ten: ten.trim(), ma: ma.trim(), mau_hop_dong_id: mauHopDongId || null })
+    const updated = await onSave({ ten: ten.trim(), ma: ma.trim(), mau_hop_dong_ids: mauHopDongIds })
     setSaving(false)
     if (!updated) {
       setError('Có lỗi xảy ra, thử lại nhé')
@@ -388,7 +393,7 @@ function EditLoaiNhanSuModal({
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-300"
           />
-          <MauHopDongSelect templates={templates} value={mauHopDongId} onChange={setMauHopDongId} />
+          <MauHopDongPicker templates={templates} value={mauHopDongIds} onChange={setMauHopDongIds} />
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
           <div className="flex gap-2 mt-3">
             <button
@@ -428,8 +433,8 @@ function ManageLoaiNhanSuModal({
   list: LoaiNhanSu[]
   templates: HopDongTemplate[]
   onClose: () => void
-  onCreate: (ten: string, ma: string, mauHopDongId: string | null) => Promise<LoaiNhanSu | null>
-  onUpdate: (id: string, patch: { ten: string; ma: string; mau_hop_dong_id: string | null }) => Promise<LoaiNhanSu | null>
+  onCreate: (ten: string, ma: string, mauHopDongIds: string[]) => Promise<LoaiNhanSu | null>
+  onUpdate: (id: string, patch: { ten: string; ma: string; mau_hop_dong_ids: string[] }) => Promise<LoaiNhanSu | null>
 }) {
   const [editing, setEditing] = useState<LoaiNhanSu | null>(null)
   const [creating, setCreating] = useState(false)
@@ -457,7 +462,7 @@ function ManageLoaiNhanSuModal({
                   <p className="text-sm font-semibold text-gray-900 truncate">{l.ten}</p>
                   <p className="text-xs text-gray-400">
                     Mã: {l.ma}
-                    {l.mau_hop_dong?.ten ? <> · Mẫu HĐ: {l.mau_hop_dong.ten}</> : <span className="text-amber-500"> · Chưa gán mẫu HĐ</span>}
+                    {l.mau_hop_dong_list.length > 0 ? <> · Mẫu HĐ: {l.mau_hop_dong_list.map((t) => t.ten).join(', ')}</> : <span className="text-amber-500"> · Chưa gán mẫu HĐ</span>}
                   </p>
                 </div>
                 <Pencil size={14} className="text-gray-300 shrink-0" />

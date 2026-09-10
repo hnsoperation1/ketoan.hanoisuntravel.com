@@ -73,9 +73,10 @@ export interface LoaiNhanSu {
   ten: string
   ma: string
   created_at: string
-  mau_hop_dong_id: string | null
-  /** Chỉ có khi API embed qua select — xem GET /api/loai-nhan-su. */
-  mau_hop_dong?: { id: string; ten: string } | null
+  /** Nhiều-nhiều qua bảng nối loai_nhan_su_mau_hop_dong — 1 loại nhân sự có
+   *  thể áp nhiều mẫu HĐ khác nhau (vd theo mức lương/mùa). Chỉ có khi API
+   *  embed qua select — xem GET /api/loai-nhan-su. */
+  mau_hop_dong_list: { id: string; ten: string }[]
 }
 
 export interface Doan {
