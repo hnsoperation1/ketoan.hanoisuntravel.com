@@ -16,16 +16,16 @@ export function formatDateVNFull(value: string | null | undefined): string {
 
 /** ISO timestamptz (vd created_at) -> "dd/mm/yyyy HH:mm" theo giờ VN. Khác
  *  formatDateVN (chỉ nhận date trơn yyyy-mm-dd, không có giờ) — dùng riêng
- *  cho các cột "Ngày giờ tạo" cần cả giờ phút. */
+ *  cho các cột "Ngày giờ tạo" cần cả giờ phút. Tự ghép chuỗi theo đúng thứ
+ *  tự ngày trước giờ sau — toLocaleString('vi-VN', {day,month,year,hour,
+ *  minute}) mặc định trả về giờ đứng TRƯỚC ngày, không đổi được qua options. */
 export function formatDateTimeVN(value: string | null | undefined): string {
   if (!value) return ''
   const d = new Date(value)
   if (isNaN(d.getTime())) return value
-  return d.toLocaleString('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+  const datePart = d.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' })
+  const timePart = d.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' })
+  return `${datePart} ${timePart}`
 }
 
 /** Suy ra Tỉnh/Thành phố từ địa chỉ đầy đủ — luôn là phần cuối cùng sau dấu phẩy

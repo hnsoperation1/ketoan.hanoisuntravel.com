@@ -15,8 +15,7 @@ const DOAN_COLS = [
   { key: 'ngay_di', label: 'Ngày đi', width: 120 },
   { key: 'ngay_ve', label: 'Ngày về', width: 120 },
   { key: 'so_khach', label: 'Số khách dự kiến', align: 'right' as const, width: 140 },
-  { key: 'created_at', label: 'Ngày giờ tạo', width: 150 },
-  { key: 'creator', label: 'Người tạo', width: 140 },
+  { key: 'created_at', label: 'Ngày tạo', width: 220 },
 ]
 
 const EMPTY_FORM = {
@@ -110,7 +109,7 @@ export default function QuyetToanTourPage() {
   const doanTotalWidth = DOAN_COLS.reduce((sum, c) => sum + (doanWidths[c.key] ?? c.width), 0)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn tour</h1>
@@ -215,8 +214,10 @@ export default function QuyetToanTourPage() {
                     <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatDateVN(d.ngay_di)}</td>
                     <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{d.ngay_ve ? formatDateVN(d.ngay_ve) : '—'}</td>
                     <td className="px-4 py-2.5 text-right whitespace-nowrap text-gray-700 font-semibold">{d.sl_khach ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{d.created_at ? formatDateTimeVN(d.created_at) : '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap truncate" title={d.creator?.full_name ?? ''}>{d.creator?.full_name ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap truncate leading-tight" title={d.creator?.full_name ?? ''}>
+                      {d.creator?.full_name && <div>{d.creator.full_name}</div>}
+                      <div className={d.creator?.full_name ? 'text-xs text-gray-400' : ''}>{d.created_at ? formatDateTimeVN(d.created_at) : '—'}</div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -224,7 +225,7 @@ export default function QuyetToanTourPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((d) => (
             <Link
               key={d.id}
