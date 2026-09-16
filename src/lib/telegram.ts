@@ -25,8 +25,20 @@ export function sendMessage(chatId: number, text: string, buttons?: InlineButton
   })
 }
 
-export function answerCallbackQuery(callbackQueryId: string, text?: string) {
-  return call('answerCallbackQuery', { callback_query_id: callbackQueryId, text })
+export function answerCallbackQuery(callbackQueryId: string, text?: string, showAlert = false) {
+  return call('answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: showAlert })
+}
+
+// Sửa tin nhắn cũ tại chỗ (đổi trạng thái phiếu) thay vì gửi tin mới — giữ
+// luồng duyệt phiếu kho gọn trong đúng 1 tin nhắn trong nhóm.
+export function editMessageText(chatId: number, messageId: number, text: string, buttons?: InlineButton[][]) {
+  return call('editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: 'HTML',
+    reply_markup: buttons ? { inline_keyboard: buttons } : undefined,
+  })
 }
 
 export function editMessageReplyMarkup(chatId: number, messageId: number, buttons?: InlineButton[][]) {

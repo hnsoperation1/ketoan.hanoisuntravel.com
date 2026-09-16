@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, Package } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -127,6 +127,19 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             collapsed={collapsed}
             onClick={onMobileClose}
           />
+        </div>
+
+        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+          {!collapsed && (
+            <p
+              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
+              style={{ color: '#0069a0' }}
+            >
+              Kho quà tặng
+            </p>
+          )}
+          <NavLink href="/kho" label="Tổng quan" icon={Package} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
+          <NavLink href="/kho/cai-dat" label="Cài đặt kho" icon={UserCog} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
         </div>
 
         <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
