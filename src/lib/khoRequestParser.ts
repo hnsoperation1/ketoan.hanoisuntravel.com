@@ -1,7 +1,7 @@
 // Đọc tin nhắn tự do trong nhóm Telegram kho, dùng LLM (OpenAI gpt-4o-mini)
 // để nhận diện có phải phiếu nhập/xuất/chuyển kho không, và nếu đúng thì
 // tách thành dữ liệu có cấu trúc. Cùng cách gọi REST API trực tiếp bằng
-// fetch như leaveRequestParser.ts bên ihns.vn (không thêm SDK openai chỉ để
+// fetch như leaveRequestParser.ts bên chamcong.ihns.vn (không thêm SDK openai chỉ để
 // dùng 1 lệnh gọi đơn giản).
 
 export type KhoLoaiPhieu = 'nhap' | 'xuat' | 'chuyen'
