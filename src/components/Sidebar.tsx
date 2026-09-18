@@ -20,6 +20,28 @@ type NavLinkProps = {
   onClick?: () => void
 }
 
+// Tiêu đề nhóm nhưng CŨNG LÀ link (vd "Kế toán vé máy bay" trỏ vào
+// /ve-may-bay) — khi đang đứng đúng trang đó thì tô nền xanh theme, dạng
+// thanh full-bleed sát mép giống hệt NavLink thường (không bo góc), chỉ
+// khác màu xanh vì đây là "trang chủ nhóm" chứ không phải 1 mục con.
+function SectionLink({ href, label, pathname, onClick }: { href: string; label: string; pathname: string; onClick?: () => void }) {
+  const active = pathname === href
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={clsx(
+        'block text-[11px] md:text-[10px] font-bold uppercase tracking-widest py-1.5 mb-2 md:mb-1.5 transition-colors',
+        'px-5 -mx-4 md:px-6 md:-mx-3',
+        !active && 'hover:opacity-70',
+      )}
+      style={active ? { background: '#127faf', color: 'white' } : { color: '#0069a0' }}
+    >
+      {label}
+    </Link>
+  )
+}
+
 function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick }: NavLinkProps) {
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
   return (
@@ -143,16 +165,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </div>
 
         <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
-          {!collapsed && (
-            <Link
-              href="/ve-may-bay"
-              onClick={onMobileClose}
-              className="block text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3 hover:opacity-70 transition-opacity"
-              style={{ color: '#0069a0' }}
-            >
-              Kế toán vé máy bay
-            </Link>
-          )}
+          {!collapsed && <SectionLink href="/ve-may-bay" label="Kế toán vé máy bay" pathname={pathname} onClick={onMobileClose} />}
           <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/tong-hop-cong-no-ncc" label="Tổng hợp công nợ NCC" icon={Table2} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
           <NavLink href="/ve-may-bay/cong-no-ncc" label="Đầu vào công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
