@@ -1874,8 +1874,14 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm tên, số hợp đồng..."
-            className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200"
+            className="w-full pl-8 pr-7 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
+          {search && (
+            <button onClick={() => setSearch('')} title="Bỏ tìm kiếm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+              <X size={13} />
+            </button>
+          )}
         </div>
         <FilterPicker
           label="Loại nhân sự"

@@ -232,10 +232,18 @@ export function MatchSlideOver({ target, candidatesUrl, preloaded, khSuggestions
 
           <div className="overflow-y-auto p-6 flex flex-col min-h-0">
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Hoặc tự tìm trong danh mục khách hàng</h3>
-            <input autoFocus={messages.length === 0} value={manualQuery} onChange={e => setManualQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && manualQuery.trim()) chooseManual(manualQuery.trim()) }}
-              placeholder="Tìm mã khách hoặc tên khách..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 mb-2" />
+            <div className="relative mb-2">
+              <input autoFocus={messages.length === 0} value={manualQuery} onChange={e => setManualQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && manualQuery.trim()) chooseManual(manualQuery.trim()) }}
+                placeholder="Tìm mã khách hoặc tên khách..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              {manualQuery && (
+                <button onClick={() => setManualQuery('')} title="Bỏ tìm kiếm"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
             <div className="border border-gray-100 rounded-xl overflow-y-auto divide-y divide-gray-50">
               {manualFiltered.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-gray-400">

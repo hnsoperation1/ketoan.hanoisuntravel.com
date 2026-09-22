@@ -158,8 +158,14 @@ function ContactPicker({
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder="Tìm tên, công ty, SĐT liên hệ CRM..."
-        className={INPUT}
+        className={`${INPUT} pr-8`}
       />
+      {query && (
+        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => setQuery('')}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+          <X size={14} />
+        </button>
+      )}
       {open && query.trim().length >= 2 && (
         <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-64 overflow-y-auto">
           {searching ? (
