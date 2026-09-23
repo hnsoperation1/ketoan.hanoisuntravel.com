@@ -67,3 +67,17 @@ export async function uploadGeneratedContract(
   if (signError) throw signError
   return data.signedUrl
 }
+
+/**
+ * Xoá 1 file hợp đồng đã tạo khỏi storage — nhận thẳng signed URL đã lưu ở
+ * ho_so_hop_dong_files.file_url, tự tách lại path (`hop-dong/...`) từ URL vì
+ * không lưu path trần riêng ở đâu khác.
+ */
+export async function deleteGeneratedContract(fileUrl: string): Promise<void> {
+  const marker = `/object/sign/${BUCKET}/`
+  const i = fileUrl.indexOf(marker)
+  if (i === -1) return
+  const path = decodeURIComponent(fileUrl.slice(i + marker.length).split('?')[0])
+  const admin = createAdminClient()
+  await admin.storage.from(BUCKET).remove([path])
+}

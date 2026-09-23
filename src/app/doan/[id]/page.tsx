@@ -23,9 +23,11 @@ import {
   Trash2,
   Plus,
   Search,
+  Download,
 } from 'lucide-react'
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
@@ -2027,6 +2029,16 @@ function HoSoDetailModal({
   const [files, setFiles] = useState<HoSoHopDongFile[]>([])
   // Kế toán thường chỉ xem file mới nhất; super admin xem được toàn bộ lịch sử đã xuất.
   const visibleFiles = user?.is_super_admin ? files : files.slice(0, 1)
+  // Chuột phải vào 1 file hợp đồng: Tải xuống (ai cũng có), Xóa (chỉ super admin)
+  const [fileCtxMenu, setFileCtxMenu] = useState<{ file: HoSoHopDongFile; x: number; y: number } | null>(null)
+  const fileCtxMenuRef = useRef<HTMLDivElement>(null)
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
+  useEffect(() => {
+    if (!fileCtxMenu) return
+    function h(e: MouseEvent) { if (fileCtxMenuRef.current && !fileCtxMenuRef.current.contains(e.target as Node)) setFileCtxMenu(null) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [fileCtxMenu])
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [templateId, setTemplateId] = useState('')
   const [creatingLoai, setCreatingLoai] = useState(false)
@@ -2064,6 +2076,24 @@ function HoSoDetailModal({
       setFiles(data.files)
     }
   }, [hoSo.id])
+
+  function downloadFile(file: HoSoHopDongFile) {
+    const a = document.createElement('a')
+    a.href = `/api/ho-so/${hoSo.id}/hop-dong-files/${file.id}/download`
+    a.click()
+  }
+
+  async function handleDeleteFile(file: HoSoHopDongFile) {
+    const ok = await confirm({
+      title: `Xoá file "${file.file_name ?? 'này'}"?`,
+      message: 'Không thể khôi phục sau khi xoá.',
+      confirmLabel: 'Xoá',
+      tone: 'danger',
+    })
+    if (!ok) return
+    const res = await fetch(`/api/ho-so/${hoSo.id}/hop-dong-files/${file.id}`, { method: 'DELETE' })
+    if (res.ok) setFiles((fs) => fs.filter((f) => f.id !== file.id))
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải lịch sử file khi mở modal, pattern chuẩn cho fetch-on-mount
@@ -2574,10 +2604,11 @@ function HoSoDetailModal({
                 ) : (
                   <div className="space-y-1.5">
                     {visibleFiles.map((f) => (
-                      <a
+                      <div
                         key={f.id}
-                        href={`/api/ho-so/${hoSo.id}/hop-dong-files/${f.id}/download`}
-                        className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs hover:bg-gray-50 transition-colors"
+                        onContextMenu={(e) => { e.preventDefault(); setFileCtxMenu({ file: f, x: e.clientX, y: e.clientY }) }}
+                        title="Chuột phải để tải xuống"
+                        className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-xs hover:bg-gray-50 transition-colors cursor-context-menu"
                       >
                         <span className="flex items-center gap-1.5 text-brand-600 font-medium truncate">
                           <FileText size={13} className="shrink-0" /> {f.file_name ?? 'Xem file'}
@@ -2591,7 +2622,7 @@ function HoSoDetailModal({
                             minute: '2-digit',
                           })}
                         </span>
-                      </a>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -2640,6 +2671,29 @@ function HoSoDetailModal({
           }}
         />
       )}
+      {fileCtxMenu && (
+        <div
+          ref={fileCtxMenuRef}
+          className="fixed z-[200] w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1"
+          style={{ left: Math.min(fileCtxMenu.x, window.innerWidth - 180), top: Math.min(fileCtxMenu.y, window.innerHeight - 100) }}
+        >
+          <button
+            onClick={() => { downloadFile(fileCtxMenu.file); setFileCtxMenu(null) }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Download size={13} className="text-gray-400" /> Tải xuống
+          </button>
+          {user?.is_super_admin && (
+            <button
+              onClick={() => { const f = fileCtxMenu.file; setFileCtxMenu(null); void handleDeleteFile(f) }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
+            >
+              <Trash2 size={13} /> Xóa
+            </button>
+          )}
+        </div>
+      )}
+      {confirmDialog}
     </>
   )
 }
