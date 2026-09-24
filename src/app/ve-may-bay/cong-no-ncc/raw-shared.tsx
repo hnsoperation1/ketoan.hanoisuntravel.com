@@ -14,6 +14,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Trash2, Maximize2, Minimize2, Menu, MessageSquareText, MessageSquareOff, Settings, ArrowRightToLine, Loader2 } from 'lucide-react'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { useResizableRows } from '@/hooks/useResizableRows'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
@@ -23,6 +24,17 @@ import type { RawCandidateMessage, RawKhachInfo } from './RawMatchPanel'
 export function formatGiaVe(n: number | null | undefined): string {
   if (n == null) return '—'
   return Math.round(n).toLocaleString('vi-VN')
+}
+
+function excelColumnLabel(index: number): string {
+  let label = ''
+  let value = index + 1
+  while (value > 0) {
+    const remainder = (value - 1) % 26
+    label = String.fromCharCode(65 + remainder) + label
+    value = Math.floor((value - 1) / 26)
+  }
+  return label
 }
 
 // Nhận diện ô raw NCC là số THUẦN (vd "899000", "-1932000") để tách hàng
@@ -850,6 +862,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   headers.forEach((_, i) => { rawColDefaults[String(i)] = 110 })
   for (const c of RAW_EXTRA_COLS) rawColDefaults[c.key] = c.width
   const { widths: rawWidths, startResize: startRawResize } = useResizableColumns(`raw-table-${ncc}`, rawColDefaults)
+  const { heights: rawRowHeights, startResize: startRawRowResize } = useResizableRows(`raw-table-${ncc}`, 32)
 
   // ── Mô hình cột có THỨ TỰ ────────────────────────────────────────────
   // Gộp cột dữ liệu (đọc từ file) và 4 cột thêm của app về 1 danh sách duy
@@ -892,7 +905,7 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
   // còn trống, không đợi có dữ liệu mới thấy Mã khách/Giá bán/TKT...
   const activeCols = orderedCols
   const visibleCols = activeCols.filter(c => !hiddenColSet.has(c.key))
-  const rawTotalWidth = visibleCols.reduce((sum, c) => sum + c.width, 0)
+  const rawTotalWidth = 40 + visibleCols.reduce((sum, c) => sum + c.width, 0)
 
   // Chỉ số dùng cho việc kéo-chọn-vùng/Ctrl+C/mũi tên (useCellSelection):
   // đánh số LIÊN TỤC theo thứ tự nhìn thấy nhưng CHỈ tính cột dữ liệu — 4
@@ -1003,8 +1016,25 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
       <div {...wrapProps}
         className="flex-1 min-h-0 overflow-auto select-none outline-none">
         <table className="list-table text-xs fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: rawTotalWidth }}>
+          <colgroup>
+            <col style={{ width: 40 }} />
+            {visibleCols.map(col => <col key={col.key} style={{ width: col.width }} />)}
+          </colgroup>
           <thead className="sticky top-0 z-10">
+            <tr className="h-6 bg-gray-100 text-center text-[10px] font-medium text-gray-400">
+              <th className="sticky left-0 z-30 w-10 min-w-10 border border-gray-200 bg-gray-100" />
+              {visibleCols.map((col, index) => (
+                <th key={col.key} className="relative h-6 border border-gray-200 bg-gray-100 font-medium select-none">
+                  {excelColumnLabel(index)}
+                  <div
+                    className="absolute -right-px top-0 z-30 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60"
+                    onMouseDown={event => startRawResize(col.key, event)}
+                  />
+                </th>
+              ))}
+            </tr>
             <tr className="bg-gray-50 text-gray-500">
+              <th className="sticky left-0 z-20 w-10 min-w-10 border border-gray-200 bg-gray-100 text-center font-medium text-gray-400 select-none">#</th>
               {visibleCols.map(col => (
                 <th key={col.key} style={{ width: col.width }}
                   draggable
@@ -1016,7 +1046,6 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
                   title="Kéo để đổi vị trí cột"
                   className={`relative px-2 py-1.5 font-semibold border border-gray-200 whitespace-nowrap overflow-hidden select-none cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'} ${dragColClass(col.key)}`}>
                   {col.label}
-                  <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startRawResize(col.key, e)} />
                 </th>
               ))}
             </tr>
@@ -1040,7 +1069,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               // phân biệt.
               const showRelatedColor = isRelated && !onlyShowRelated
               return (
-              <tr key={i} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : showRelatedColor ? 'bg-violet-50' : ''}`}>
+              <tr key={i} style={{ height: rawRowHeights[String(i)] ?? 32 }} className={`border-t border-gray-100 ${i === selectedRow ? 'bg-amber-50' : showRelatedColor ? 'bg-violet-50' : ''}`}>
+                <td className="sticky left-0 z-[5] w-10 border border-gray-200 bg-gray-100 text-center text-[11px] text-gray-400 relative select-none">
+                  {i + 1}
+                  <div
+                    className="absolute -bottom-px left-0 z-20 h-2 w-full cursor-row-resize hover:bg-brand-400/50 active:bg-brand-500/60"
+                    onMouseDown={event => startRawRowResize(String(i), event)}
+                  />
+                </td>
                 {visibleCols.map(col => {
                   // Cột dữ liệu (đọc từ file) — dataIndex giữ vị trí GỐC
                   // trong rows[] nên kéo đổi chỗ cột không làm lệch dữ liệu.
@@ -1136,7 +1172,14 @@ export function RawTableCard({ ncc, headers, rows, info, onDelete, matches, onOp
               </tr>
               )
             }) : Array.from({ length: EMPTY_GRID_ROWS }).map((_, i) => (
-              <tr key={i}>
+              <tr key={i} style={{ height: rawRowHeights[`empty-${i}`] ?? 32 }}>
+                <td className="sticky left-0 z-[5] w-10 border border-gray-200 bg-gray-100 text-center text-[11px] text-gray-400 relative select-none">
+                  {i + 1}
+                  <div
+                    className="absolute -bottom-px left-0 z-20 h-2 w-full cursor-row-resize hover:bg-brand-400/50 active:bg-brand-500/60"
+                    onMouseDown={event => startRawRowResize(`empty-${i}`, event)}
+                  />
+                </td>
                 {visibleCols.map(col => <td key={col.key} className={`border border-gray-100 h-8 ${dragColClass(col.key)}`}>&nbsp;</td>)}
               </tr>
             ))}
