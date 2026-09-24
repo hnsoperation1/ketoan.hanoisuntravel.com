@@ -1,11 +1,11 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, Funnel, X } from 'lucide-react'
 
 type Option = { value: string; label: string }
 
 export default function FilterPicker({
-  label, value, onChange, options, colorMap, align = 'left', wide = false,
+  label, value, onChange, options, colorMap, align = 'left', wide = false, showFilterIcon = false,
 }: {
   label: string
   value: string
@@ -14,6 +14,7 @@ export default function FilterPicker({
   colorMap?: Record<string, string>
   align?: 'left' | 'right'
   wide?: boolean
+  showFilterIcon?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -39,6 +40,7 @@ export default function FilterPicker({
             : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
         }`}
       >
+        {showFilterIcon && <Funnel size={12} className="shrink-0" />}
         {isActive ? (selected?.label ?? label) : label}
         {isActive ? (
           <span

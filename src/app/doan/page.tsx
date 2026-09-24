@@ -184,7 +184,7 @@ export default function QuyetToanTourPage() {
       ) : viewMode === 'table' ? (
         <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
           <div className="overflow-x-auto">
-            <table className="text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: doanTotalWidth }}>
+            <table className="tour-accounting-grid text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: doanTotalWidth }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {DOAN_COLS.map(c => (

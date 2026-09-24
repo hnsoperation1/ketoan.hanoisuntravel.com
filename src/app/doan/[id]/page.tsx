@@ -643,6 +643,7 @@ export default function DoanDetailPage() {
                     value={filterLoaiId}
                     onChange={setFilterLoaiId}
                     options={loaiNhanSu.list.map((l) => ({ value: l.id, label: l.ten }))}
+                    showFilterIcon
                   />
                   <button
                     type="button"
@@ -651,7 +652,7 @@ export default function DoanDetailPage() {
                     className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
                   >
                     <Pencil size={13} />
-                    Danh sách loại nhân sự
+                    DS loại nhân sự
                   </button>
                   <div className="flex-1" />
                   <button
@@ -664,7 +665,7 @@ export default function DoanDetailPage() {
                 </div>
 
                 <div className="bg-white border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-                  <table className="text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
+                  <table className="tour-accounting-grid text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
                     <thead>
                       <tr className="bg-gray-50">
                         {HO_SO_COLS.map((c) => (
@@ -1915,7 +1916,7 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
       </div>
 
       <div className="bg-white border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: ftTotalWidth }}>
+        <table className="tour-accounting-grid text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: ftTotalWidth }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {FILES_TAB_COLS.map((c) => (

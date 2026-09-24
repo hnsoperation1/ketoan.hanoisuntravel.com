@@ -141,6 +141,13 @@ a,
   overflow: visible;
 }
 
+/* Lưới bảng dùng chung trong phân hệ Kế toán tour. Border nằm trực tiếp trên
+   mọi ô để ranh giới cột luôn rõ, giúp người dùng nhận biết vị trí kéo resize. */
+.tour-accounting-grid th,
+.tour-accounting-grid td {
+  border: 1px solid #e5e7eb;
+}
+
 /* select toàn app: bỏ mũi tên mặc định của trình duyệt (to/nhỏ, cách chữ
    tuỳ hệ điều hành, không đồng nhất giữa Chrome/Firefox/Safari) — thay
    bằng mũi tên nhỏ nằm sát ngay sau chữ. padding-right dùng !important vì
