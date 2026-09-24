@@ -212,7 +212,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       <div className={clsx('py-4 md:py-4', collapsed ? 'px-1.5' : 'px-4 md:px-4')} style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
         {user && (
           <div className={clsx('flex items-center gap-3 mb-3', collapsed ? 'md:justify-center' : 'px-1')}>
-            <UserAvatar email={user.email} className="w-10 h-10 md:w-8 md:h-8 text-sm md:text-xs" />
+            <UserAvatar email={user.email} name={user.full_name} avatarUrl={user.avatar_url} className="w-10 h-10 md:w-8 md:h-8 text-sm md:text-xs" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm md:text-xs font-semibold truncate" style={{ color: '#003d5c' }}>

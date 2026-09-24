@@ -81,7 +81,7 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
               <div className="text-[11px] text-gray-400 leading-tight">Kế toán</div>
             </div>
             <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-            <UserAvatar email={user.email} className="w-7 h-7 text-[10px]" />
+            <UserAvatar email={user.email} name={user.full_name} avatarUrl={user.avatar_url} className="w-7 h-7 text-[10px]" />
           </button>
 
           {open && (

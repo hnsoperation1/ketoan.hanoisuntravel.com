@@ -6,6 +6,7 @@ interface AuthUser {
   id: string
   email: string
   full_name: string
+  avatar_url: string | null
   is_super_admin: boolean
   is_boss: boolean
 }

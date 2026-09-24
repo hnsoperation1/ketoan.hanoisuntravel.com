@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
   const [{ data: isSuperAdmin }, { data: profile }] = await Promise.all([
     supabase.rpc('is_super_admin'),
-    supabase.from('users').select('role, full_name').eq('id', data.user.id).single(),
+    supabase.from('users').select('role, full_name, avatar_url').eq('id', data.user.id).single(),
   ])
 
   return NextResponse.json({
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       id: data.user.id,
       email: data.user.email,
       full_name: profile?.full_name ?? data.user.email,
+      avatar_url: profile?.avatar_url ?? null,
       is_super_admin: isSuperAdmin ?? false,
       is_boss: profile?.role === 'boss',
     },
