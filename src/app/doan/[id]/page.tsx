@@ -2726,6 +2726,7 @@ function ImagePanel({
 
   const selected = DETAIL_IMAGE_FIELDS[selectedIdx]
   const selectedUrl = hoSo[selected.key]
+  const selectedViewUrl = `/api/ho-so/${hoSo.id}/anh/${selected.key}`
   const selectedUploading = uploadingField === selected.key
 
   return (
@@ -2733,7 +2734,7 @@ function ImagePanel({
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ảnh hồ sơ</p>
 
       {selectedUrl ? (
-        <InlineImageViewer url={selectedUrl} label={selected.label} />
+        <InlineImageViewer url={selectedViewUrl} label={selected.label} />
       ) : (
         <div className="h-72 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300">
           <FileText size={24} />
@@ -2768,8 +2769,8 @@ function ImagePanel({
                 } ${url ? 'bg-gray-50' : 'border-dashed border-gray-200 bg-gray-50'}`}
               >
                 {url ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- thumbnail ảnh Supabase Storage (signed URL động)
-                  <img src={url} alt={f.label} className="w-full h-full object-cover" />
+                  // eslint-disable-next-line @next/next/no-img-element -- API cùng origin ký lại URL private rồi redirect tới Storage
+                  <img src={`/api/ho-so/${hoSo.id}/anh/${f.key}`} alt={f.label} className="w-full h-full object-cover" />
                 ) : (
                   <FileText size={16} className="text-gray-300" />
                 )}

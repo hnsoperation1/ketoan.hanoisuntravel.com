@@ -2,6 +2,36 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 const BUCKET = 'ho-so-hdv'
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 ngày
+const VIEW_SIGNED_URL_TTL_SECONDS = 60 * 10 // URL xem được ký mới theo từng lần mở hồ sơ
+
+/**
+ * Các bản ghi cũ đã lưu nguyên signed URL 7 ngày vào DB. Dù token đã hết hạn,
+ * phần path nằm trước query string vẫn dùng được để ký lại URL mới mà không
+ * cần upload lại ảnh.
+ */
+export function getHoSoImagePath(storedValue: string): string | null {
+  const marker = `/object/sign/${BUCKET}/`
+  const markerIndex = storedValue.indexOf(marker)
+  if (markerIndex >= 0) {
+    return decodeURIComponent(storedValue.slice(markerIndex + marker.length).split('?')[0])
+  }
+
+  // Chấp nhận path trần cho dữ liệu mới nếu sau này DB ngừng lưu signed URL.
+  if (!storedValue.includes('://') && !storedValue.startsWith('/')) return storedValue
+  return null
+}
+
+export async function createHoSoImageViewUrl(storedValue: string): Promise<string> {
+  const path = getHoSoImagePath(storedValue)
+  if (!path) throw new Error('Không xác định được đường dẫn ảnh hồ sơ')
+
+  const admin = createAdminClient()
+  const { data, error } = await admin.storage
+    .from(BUCKET)
+    .createSignedUrl(path, VIEW_SIGNED_URL_TTL_SECONDS)
+  if (error) throw error
+  return data.signedUrl
+}
 
 /**
  * Upload ảnh CCCD/thẻ HDV vào bucket private, trả về signed URL có hạn.
