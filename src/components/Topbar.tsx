@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { UserAvatar } from '@/components/UserAvatar'
 import NotificationBell from '@/components/NotificationBell'
+import { AppSwitcher } from '@/components/AppSwitcher'
 
 export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggle?: () => void }) {
   const { breadcrumb, onRefresh } = useTopbar()
@@ -67,19 +68,20 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
         </button>
       )}
       <NotificationBell />
+      <AppSwitcher current="ketoan" />
 
       {user && (
         <div ref={ref} className="relative">
           <button
             onClick={() => setOpen((o) => !o)}
-            className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 rounded-full border border-gray-200 py-1 pl-3 pr-1 shadow-sm hover:bg-gray-50 transition-colors"
           >
-            <UserAvatar email={user.email} className="w-6 h-6 text-[10px]" />
             <div className="text-left hidden sm:block">
               <div className="text-sm font-semibold text-gray-800 leading-tight">{user.full_name}</div>
               <div className="text-[11px] text-gray-400 leading-tight">Kế toán</div>
             </div>
             <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+            <UserAvatar email={user.email} className="w-7 h-7 text-[10px]" />
           </button>
 
           {open && (
