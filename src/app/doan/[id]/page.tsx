@@ -666,12 +666,12 @@ export default function DoanDetailPage() {
                 <div className="bg-white border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
                   <table className="text-sm border-collapse fixed-cols-table" style={{ tableLayout: 'fixed', width: hsTotalWidth }}>
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
+                      <tr className="bg-gray-50">
                         {HO_SO_COLS.map((c) => (
                           <th
                             key={c.key}
                             style={{ width: hsWidths[c.key] ?? c.width }}
-                            className={`relative px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${
+                            className={`relative border border-gray-200 px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none ${
                               c.align === 'right' ? 'text-right' : 'text-left'
                             }`}
                           >
@@ -681,7 +681,7 @@ export default function DoanDetailPage() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody>
                       {filteredHoSo.map((r) => (
                         <HoSoRow
                           key={`${r.id}:${r.so_ngay_cong_tac}:${r.chi_tra}`}
@@ -697,7 +697,7 @@ export default function DoanDetailPage() {
                       ))}
                       {filteredHoSo.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-4 py-14 text-center text-gray-400">
+                          <td colSpan={8} className="border border-gray-200 px-4 py-14 text-center text-gray-400">
                             {hoSo.length === 0
                               ? 'Chưa có ai trong đoàn này. Gửi ảnh CCCD/thẻ HDV cho Telegram bot để thêm.'
                               : 'Không có ai thuộc loại nhân sự này.'}
@@ -867,7 +867,7 @@ function HoSoRow({
   return (
     <>
     <tr className="hover:bg-gray-50/70 transition-colors align-top">
-      <td className="px-4 py-3">
+      <td className="border border-gray-200 px-4 py-3">
         <div className="flex flex-col items-center gap-0.5">
           <button
             type="button"
@@ -887,7 +887,7 @@ function HoSoRow({
           </button>
         </div>
       </td>
-      <td className="px-4 py-3">
+      <td className="border border-gray-200 px-4 py-3">
         <button
           onClick={onView}
           className="font-semibold text-gray-900 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors text-left block"
@@ -897,17 +897,17 @@ function HoSoRow({
         <div className="text-xs text-gray-900 font-mono mt-1">CCCD: {n.so_cccd ?? '-'}</div>
         <div className="text-xs text-gray-900 mt-1">Ngày sinh: {formatDateVN(n.ngay_sinh) || '-'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-900">
+      <td className="border border-gray-200 px-4 py-3 text-xs text-gray-900">
         <div>SĐT: {n.sdt ?? '-'}</div>
         <div className="mt-1">Email: {n.email ?? '-'}</div>
         <div className="mt-1">ĐC: {n.dia_chi ?? '-'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-900">
+      <td className="border border-gray-200 px-4 py-3 text-xs text-gray-900">
         <div>Số thẻ: {n.so_the_hdv ?? '-'}</div>
         <div className="mt-1">Loại thẻ: {n.loai_the_hdv ?? '-'}</div>
         <div className="mt-1">Hạn thẻ: {formatDateVN(n.han_the_hdv) || '-'}</div>
       </td>
-      <td className="px-4 py-3 min-w-42.5">
+      <td className="border border-gray-200 px-4 py-3 min-w-42.5">
         <div className="flex items-start justify-end gap-1">
           <div className="text-xs text-gray-900 font-bold text-right">
             <div>Số ngày: {soNgayNum > 0 ? soNgayNum : '-'}</div>
@@ -925,16 +925,16 @@ function HoSoRow({
           </button>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-900 font-bold text-right">
+      <td className="border border-gray-200 px-4 py-3 text-xs text-gray-900 font-bold text-right">
         <div>TNCN: {soTienChiTra > 0 ? `${thueNop.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
         <div className="mt-1">CTP/ngày: {soTienChiTra > 0 ? `${donGiaNgay.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
         <div className="mt-1">Tổng: {soTienChiTra > 0 ? `${soTienChiTra.toLocaleString('vi-VN')} VNĐ` : '-'}</div>
       </td>
-      <td className="px-4 py-3 text-xs text-gray-900">
+      <td className="border border-gray-200 px-4 py-3 text-xs text-gray-900">
         <div>STK: {n.stk ?? '-'}</div>
         <div className="mt-1">Ngân hàng: {n.ten_ngan_hang ?? '-'}</div>
       </td>
-      <td className="px-4 py-3">
+      <td className="border border-gray-200 px-4 py-3">
         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.trang_thai]}`}>
           {TRANG_THAI_LABELS[r.trang_thai]}
         </span>
@@ -1812,7 +1812,28 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
   const [latestFileId, setLatestFileId] = useState<Record<string, string>>({})
   const [filterLoaiId, setFilterLoaiId] = useState('')
   const [search, setSearch] = useState('')
+  const [downloadMenu, setDownloadMenu] = useState<{ x: number; y: number; href: string } | null>(null)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
   const loaiNhanSu = useLoaiNhanSuList()
+
+  useEffect(() => {
+    if (!downloadMenu) return
+    const close = (event: MouseEvent) => {
+      if (!downloadMenuRef.current?.contains(event.target as Node)) setDownloadMenu(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDownloadMenu(null)
+    }
+    const closeOnScroll = () => setDownloadMenu(null)
+    window.addEventListener('mousedown', close)
+    window.addEventListener('scroll', closeOnScroll, true)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.removeEventListener('mousedown', close)
+      window.removeEventListener('scroll', closeOnScroll, true)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [downloadMenu])
 
   useEffect(() => {
     let cancelled = false
@@ -1928,6 +1949,14 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
                       {latestFileId[r.id] ? (
                         <a
                           href={`/api/ho-so/${r.id}/hop-dong-files/${latestFileId[r.id]}/download`}
+                          onContextMenu={(event) => {
+                            event.preventDefault()
+                            setDownloadMenu({
+                              x: event.clientX,
+                              y: event.clientY,
+                              href: `/api/ho-so/${r.id}/hop-dong-files/${latestFileId[r.id]}/download`,
+                            })
+                          }}
                           className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline"
                         >
                           <FileText size={13} /> {buildContractFileName(doan, r)}
@@ -1952,6 +1981,25 @@ function FilesTab({ doan, hoSo }: { doan: Doan; hoSo: HoSoWithNhanSu[] }) {
           </tbody>
         </table>
       </div>
+      {downloadMenu && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={downloadMenuRef}
+          className="fixed z-[250] w-44 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
+          style={{
+            left: Math.min(downloadMenu.x, window.innerWidth - 180),
+            top: Math.min(downloadMenu.y, window.innerHeight - 52),
+          }}
+        >
+          <a
+            href={downloadMenu.href}
+            onClick={() => setDownloadMenu(null)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <Download size={13} className="text-gray-400" /> Tải xuống
+          </a>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
