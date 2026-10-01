@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Check, Copy, FileText, Loader2, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react'
 import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
@@ -15,7 +15,7 @@ const BIEU_MAU_COLS = [
   { key: 'loai', label: 'Loại', width: 140 },
   { key: 'file', label: 'File', width: 220 },
   { key: 'ngay_tao', label: 'Ngày tạo', width: 130 },
-  { key: 'action', label: '', width: 80 },
+  { key: 'action', label: '', width: 104 },
 ]
 
 // Nút copy riêng cho từng placeholder — click là copy nguyên chuỗi
@@ -105,6 +105,7 @@ export default function BieuMauHopDongPage() {
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [replacingTemplate, setReplacingTemplate] = useState<HopDongTemplate | null>(null)
 
   const notAllowed = !authLoading && !!user && !user.is_super_admin
 
@@ -212,12 +213,22 @@ export default function BieuMauHopDongPage() {
                     </td>
                     <td {...cellProps(i, 3)} className={cellClassName(i, 3, 'px-4 py-3 text-gray-400 text-xs whitespace-nowrap cursor-cell')}>{formatDateVN(t.created_at.slice(0, 10))}</td>
                     <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setReplacingTemplate(t)}
+                        title="Đổi file biểu mẫu"
+                        className="p-1.5 rounded-lg hover:bg-brand-50 text-gray-300 hover:text-brand-600 transition-colors"
+                      >
+                        <RefreshCw size={15} />
+                      </button>
                       <button
                         onClick={() => handleDelete(t.id)}
+                        title="Xóa biểu mẫu"
                         className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={15} />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -261,7 +272,98 @@ export default function BieuMauHopDongPage() {
           }}
         />
       )}
+      {replacingTemplate && (
+        <ReplaceTemplateModal
+          template={replacingTemplate}
+          onClose={() => setReplacingTemplate(null)}
+          onReplaced={() => {
+            setReplacingTemplate(null)
+            load()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function ReplaceTemplateModal({
+  template,
+  onClose,
+  onReplaced,
+}: {
+  template: HopDongTemplate
+  onClose: () => void
+  onReplaced: () => void
+}) {
+  const [file, setFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!file || submitting) return
+    setSubmitting(true)
+    setError('')
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`/api/hop-dong-templates/${template.id}`, { method: 'PATCH', body: formData })
+    const data = await res.json().catch(() => ({}))
+    setSubmitting(false)
+    if (!res.ok) {
+      setError(data.error ?? 'Không thể đổi file biểu mẫu')
+      return
+    }
+    onReplaced()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Đổi file biểu mẫu</h2>
+              <p className="mt-0.5 text-xs text-gray-400">{template.ten}</p>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+              <X size={18} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <div>
+              <p className="mb-1 text-xs font-semibold text-gray-500">File hiện tại</p>
+              <p className="text-sm text-gray-700 break-all">{template.file_name}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">
+                File .docx mới <span className="text-red-400">*</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-500 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+                <Upload size={15} />
+                <span className="min-w-0 truncate">{file ? file.name : 'Chọn file...'}</span>
+                <input type="file" accept=".docx" required className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
+            {error && <p className="text-xs text-red-500">{error}</p>}
+            <p className="text-xs text-amber-600">File mới sẽ được dùng cho những lần xuất hợp đồng tiếp theo.</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={!file || submitting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-600 disabled:opacity-60"
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                Đổi mẫu
+              </button>
+              <button type="button" onClick={onClose} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50">
+                Hủy
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   )
 }
 
