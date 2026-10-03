@@ -94,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetch('/api/auth/logout', { method: 'POST' })
     setUser(null)
     writeCache(null)
+    window.location.replace('https://ihns.vn/api/sso/logout?client=ketoan')
   }
 
   return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>

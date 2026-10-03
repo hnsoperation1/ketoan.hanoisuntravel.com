@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return
-    if (!user && !isLoginPage) router.replace('/login')
+    if (!user && !isLoginPage) router.replace(`/login?next=${encodeURIComponent(pathname)}`)
     if (user && isLoginPage) router.replace('/')
   }, [user, loading, isLoginPage, router])
 
