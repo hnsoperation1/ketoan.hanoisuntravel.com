@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { Check, Copy, FileText, Loader2, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react'
 import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
-import { useAuth } from '@/contexts/auth'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
@@ -99,19 +97,11 @@ const PLACEHOLDER_GROUPS: { title: string; fields: { tag: string; label: string 
 ]
 
 export default function BieuMauHopDongPage() {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [templates, setTemplates] = useState<HopDongTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [replacingTemplate, setReplacingTemplate] = useState<HopDongTemplate | null>(null)
-
-  const notAllowed = !authLoading && !!user && !user.is_super_admin
-
-  useEffect(() => {
-    if (notAllowed) router.replace('/')
-  }, [notAllowed, router])
 
   const load = useCallback(async () => {
     const res = await fetch('/api/hop-dong-templates')
@@ -124,8 +114,8 @@ export default function BieuMauHopDongPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải danh sách khi mount, pattern chuẩn cho fetch-on-mount
-    if (!notAllowed) void load()
-  }, [load, notAllowed])
+    void load()
+  }, [load])
 
   useEffect(() => {
     setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Biểu mẫu hợp đồng</span>)
@@ -151,8 +141,6 @@ export default function BieuMauHopDongPage() {
     await fetch(`/api/hop-dong-templates/${id}`, { method: 'DELETE' })
     load()
   }
-
-  if (notAllowed) return null
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
