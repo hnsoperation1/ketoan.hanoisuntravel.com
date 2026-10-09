@@ -1,5 +1,5 @@
-import { Calculator, ClipboardList, Contact, Fingerprint, FolderKanban, PackageSearch, Users2, type LucideIcon } from 'lucide-react'
-export type IhnsAppId = 'crm' | 'operation' | 'ketoan' | 'chamcong' | 'hrm' | 'congviec' | 'khoquatang'
+import { Calculator, ClipboardList, Contact, Fingerprint, FolderKanban, PackageSearch, Plane, Users2, type LucideIcon } from 'lucide-react'
+export type IhnsAppId = 'crm' | 'operation' | 'ketoan' | 'chamcong' | 'hrm' | 'congviec' | 'khoquatang' | 'phongve'
 export type IhnsApp = { id: IhnsAppId; label: string; description: string; href: string; Icon: LucideIcon; gradient: string }
 export const IHNS_APPS: IhnsApp[] = [
   { id: 'crm', label: 'CRM', description: 'Quản lý khách hàng, đơn hàng, chiến dịch', href: 'https://crm.ihns.vn', Icon: Contact, gradient: 'from-emerald-400 to-teal-600' },
@@ -9,4 +9,5 @@ export const IHNS_APPS: IhnsApp[] = [
   { id: 'hrm', label: 'HRM', description: 'Sổ quản lý lao động và quản trị chấm công', href: 'https://hrm.ihns.vn', Icon: Users2, gradient: 'from-sky-500 to-blue-600' },
   { id: 'congviec', label: 'Công việc', description: 'Quản lý công việc', href: 'https://ihns.vn/cong-viec', Icon: ClipboardList, gradient: 'from-rose-400 to-red-600' },
   { id: 'khoquatang', label: 'Kho quà tặng', description: 'Quản lý kho, nhập xuất chuyển', href: 'https://ihns.vn/kho-qua-tang', Icon: PackageSearch, gradient: 'from-orange-500 to-amber-600' },
+  { id: 'phongve', label: 'Phòng vé', description: 'Bot vé máy bay, nhóm Telegram, booking', href: 'https://ihns.vn/phong-ve', Icon: Plane, gradient: 'from-cyan-500 to-teal-700' },
 ]
