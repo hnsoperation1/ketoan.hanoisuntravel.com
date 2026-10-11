@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { useTopbar } from '@/contexts/topbar'
+import { SaBadge } from '@/components/SaBadge'
 
 const THEME_OPTIONS: { key: 'default' | 'dense'; label: string; desc: string }[] = [
   { key: 'dense', label: 'Dày đặc (mặc định)', desc: 'Bảng kẻ ô, gọn hàng — thử nghiệm theo kiểu Translead CRM' },
@@ -39,7 +40,10 @@ export default function CaiDatPage() {
 
       {user?.is_super_admin && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3 mt-4">
-          <p className="text-xs font-semibold text-gray-500">Giao diện</p>
+          <p className="text-xs font-semibold text-gray-500">
+            Giao diện
+            <SaBadge className="ml-1.5" />
+          </p>
           <div className="flex flex-col sm:flex-row gap-2">
             {THEME_OPTIONS.map(o => (
               <button

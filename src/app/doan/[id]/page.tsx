@@ -28,6 +28,7 @@ import {
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { SaBadge } from '@/components/SaBadge'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
@@ -2652,7 +2653,7 @@ function HoSoDetailModal({
                   <p className="text-xs text-gray-400">Chưa có file nào được xuất.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {visibleFiles.map((f) => (
+                    {visibleFiles.map((f, i) => (
                       <div
                         key={f.id}
                         onContextMenu={(e) => { e.preventDefault(); setFileCtxMenu({ file: f, x: e.clientX, y: e.clientY }) }}
@@ -2661,6 +2662,8 @@ function HoSoDetailModal({
                       >
                         <span className="flex items-center gap-1.5 text-brand-600 font-medium truncate">
                           <FileText size={13} className="shrink-0" /> {f.file_name ?? 'Xem file'}
+                          {/* File cũ hơn bản mới nhất = lịch sử chỉ Super Admin thấy (xem visibleFiles) */}
+                          {i > 0 && <SaBadge />}
                         </span>
                         <span className="text-gray-400">
                           {new Date(f.created_at).toLocaleString('vi-VN', {
@@ -2738,6 +2741,7 @@ function HoSoDetailModal({
               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
             >
               <Trash2 size={13} /> Xóa
+              <SaBadge />
             </button>
           )}
         </div>

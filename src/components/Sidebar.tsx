@@ -7,6 +7,7 @@ import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, Pa
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
+import { SaBadge } from '@/components/SaBadge'
 import { canScreen, type ScreenId } from '@/lib/screens'
 
 type Props = { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }
@@ -19,6 +20,8 @@ type NavLinkProps = {
   pathname: string
   collapsed: boolean
   onClick?: () => void
+  /** Mục chỉ Super Admin thấy → gắn huy hiệu "SA" sau nhãn (ẩn theo nhãn khi thu sidebar) */
+  sa?: boolean
 }
 
 // Tiêu đề nhóm nhưng CŨNG LÀ link (vd "Kế toán vé máy bay" trỏ vào
@@ -43,7 +46,7 @@ function SectionLink({ href, label, pathname, onClick }: { href: string; label: 
   )
 }
 
-function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick }: NavLinkProps) {
+function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick, sa }: NavLinkProps) {
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
   return (
     <Link
@@ -60,8 +63,16 @@ function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick 
       style={active ? { background: '#ef5e2f', color: 'white' } : { color: '#003d5c' }}
     >
       <Icon className="flex-shrink-0 w-[22px] h-[22px] md:w-[18px] md:h-[18px]" strokeWidth={active ? 2.5 : 2} />
-      <span className="md:hidden">{label}</span>
-      {!collapsed && <span className="hidden md:block">{label}</span>}
+      <span className="md:hidden">
+        {label}
+        {sa && <SaBadge className="ml-1.5" />}
+      </span>
+      {!collapsed && (
+        <span className="hidden md:block">
+          {label}
+          {sa && <SaBadge className="ml-1.5" />}
+        </span>
+      )}
     </Link>
   )
 }
@@ -209,6 +220,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   pathname={pathname}
                   collapsed={collapsed}
                   onClick={onMobileClose}
+                  sa={item.superAdminOnly}
                 />
               ))}
             </div>

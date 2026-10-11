@@ -12,6 +12,7 @@ import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-statu
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { SaBadge } from '@/components/SaBadge'
 
 export type DebtRow = {
   id: string
@@ -789,7 +790,8 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
             {cols.map(c => (
               <th key={c.key} style={{ width: colW(c) }}
                 className={`${TH} select-none ${c.align === 'right' ? 'text-right' : ''}`}>
-                {c.label}
+                {/* Cột nút xoá chỉ có khi onDelete (chỉ Super Admin) → tiêu đề cột là huy hiệu "SA" */}
+                {c.key === 'action' ? <SaBadge /> : c.label}
                 <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startResize(c.key, e)} />
               </th>
             ))}
@@ -980,8 +982,9 @@ function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
               <EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} />
             </div>
             {onDelete && (
-              <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+              <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="flex items-center gap-1 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
                 <Trash2 size={14} />
+                <SaBadge />
               </button>
             )}
           </div>
@@ -1004,8 +1007,9 @@ function CardView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
                 <div className="text-sm font-bold text-gray-900">{r.pax_name ?? '—'}</div>
               </div>
               {onDelete && (
-                <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="flex items-center gap-1 p-1 text-gray-300 hover:text-red-500 transition-colors">
                   <Trash2 size={13} />
+                  <SaBadge />
                 </button>
               )}
             </div>

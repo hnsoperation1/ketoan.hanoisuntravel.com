@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { SaBadge } from '@/components/SaBadge'
 
 type Tkt = { id: string; tkt_code: string; ten_nhan_vien: string | null; active: boolean; created_at: string }
 
@@ -51,7 +52,8 @@ export default function TktPage() {
   }, [loadData])
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">TKT</span>)
+    // Cả trang chỉ Super Admin → huy hiệu "SA" ngay sau tiêu đề trang
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">TKT<SaBadge className="ml-1.5" /></span>)
     setOnRefresh(loadData)
     return () => {
       setBreadcrumb(null)

@@ -6,6 +6,7 @@ import { ChevronRight, Users, Table2, FileSpreadsheet, FileStack, Plane, Receipt
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 import { canScreen, type ScreenId } from '@/lib/screens'
+import { SaBadge } from '@/components/SaBadge'
 
 // Trang tổng quan riêng cho mảng "Kế toán vé máy bay" — hiện tại chỉ là
 // lưới link sang các màn con (đồng bộ đúng danh sách/quyền xem ở
@@ -41,9 +42,10 @@ export default function VeMayBayDashboardPage() {
     return () => setBreadcrumb(null)
   }, [setBreadcrumb])
 
+  // sa = link chỉ Super Admin thấy → gắn huy hiệu "SA" sau nhãn
   const links = [
-    ...LINKS.filter(l => canScreen(user, l.screen)),
-    ...(user?.is_super_admin ? ADMIN_LINKS : []),
+    ...LINKS.filter(l => canScreen(user, l.screen)).map(l => ({ ...l, sa: false })),
+    ...(user?.is_super_admin ? ADMIN_LINKS.map(l => ({ ...l, sa: true })) : []),
   ]
 
   return (
@@ -58,7 +60,10 @@ export default function VeMayBayDashboardPage() {
               <l.icon size={20} className="text-brand-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-900">{l.label}</div>
+              <div className="font-semibold text-gray-900">
+                {l.label}
+                {l.sa && <SaBadge className="ml-1.5" />}
+              </div>
             </div>
             <ChevronRight size={16} className="text-gray-300 group-hover:text-brand-500 transition-colors flex-shrink-0" />
           </Link>

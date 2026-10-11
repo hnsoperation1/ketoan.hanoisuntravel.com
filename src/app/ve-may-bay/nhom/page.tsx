@@ -5,6 +5,7 @@ import { RefreshCw, Send, ShieldCheck, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { SaBadge } from '@/components/SaBadge'
 
 const NHOM_COLS = [
   { key: 'nhom', label: 'Nhóm', width: 220 },
@@ -110,7 +111,8 @@ export default function NhomTelegramPage() {
   }, [loadData])
 
   useEffect(() => {
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Nhóm Telegram</span>)
+    // Cả trang chỉ Super Admin → huy hiệu "SA" ngay sau tiêu đề trang
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Nhóm Telegram<SaBadge className="ml-1.5" /></span>)
     setOnRefresh(loadData)
     return () => {
       setBreadcrumb(null)

@@ -7,6 +7,7 @@ import DateInput from '@/components/DateInput'
 import { RoutingText } from '@/components/RoutingText'
 import FilterPicker from '@/components/FilterPicker'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { SaBadge } from '@/components/SaBadge'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -627,6 +628,7 @@ export default function VeMayBayPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50">
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
             Xoá {selectedIds.size} đã chọn
+            <SaBadge />
           </button>
         )}
 
@@ -644,9 +646,11 @@ export default function VeMayBayPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
                 {user?.is_super_admin && (
-                  <th className="w-8 pl-3">
+                  // Cột chọn để xoá hàng loạt — chỉ Super Admin; cột hẹp nên huy hiệu "SA" thu nhỏ đè góc trên phải
+                  <th className="relative w-8 pl-3">
                     <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll}
                       className="rounded border-gray-300 text-brand-600 focus:ring-brand-400" />
+                    <SaBadge className="absolute right-0 top-0 origin-top-right scale-75" />
                   </th>
                 )}
                 <th className="w-8" />
