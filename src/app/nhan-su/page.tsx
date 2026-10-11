@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { RefreshCw, Search, X, Loader2, Eye, ArrowRight, QrCode } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
@@ -9,6 +8,7 @@ import { TRANG_THAI_LABELS } from '@/types'
 import type { LoaiNhanSu, TrangThaiHoSo } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import DateInput from '@/components/DateInput'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
 const TONG_HOP_COLS = [
@@ -225,14 +225,13 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
       ]
     : []
 
-  return createPortal(
-    <>
+  // Nền mờ tách riêng (mờ dần theo `visible`) để panel chỉ trượt vào; không
+  // đóng khi bấm ra ngoài — chỉ nút X.
+  return (
+    <ModalOverlay className="z-150 flex justify-end">
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={close}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-160 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
@@ -291,8 +290,7 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
           </div>
         )}
       </div>
-    </>,
-    document.body,
+    </ModalOverlay>
   )
 }
 
@@ -306,8 +304,8 @@ function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) 
   const qrUrl = bin && h.nhansu?.stk ? buildVietQrUrl(bin, h.nhansu.stk, h.chi_tra, content) : null
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+    <ModalOverlay className="z-300 flex items-center justify-center bg-black/30 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900">QR thanh toán CTP</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={16} /></button>
@@ -327,7 +325,7 @@ function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) 
           </>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

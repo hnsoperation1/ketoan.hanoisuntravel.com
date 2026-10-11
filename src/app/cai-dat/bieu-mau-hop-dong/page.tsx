@@ -6,6 +6,7 @@ import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { SaBadge } from '@/components/SaBadge'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
@@ -307,9 +308,7 @@ function ReplaceTemplateModal({
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+    <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div>
@@ -352,8 +351,7 @@ function ReplaceTemplateModal({
             </div>
           </form>
         </div>
-      </div>
-    </>
+    </ModalOverlay>
   )
 }
 
@@ -384,9 +382,7 @@ function UploadTemplateModal({ onClose, onUploaded }: { onClose: () => void; onU
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+    <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-bold text-gray-900">Thêm biểu mẫu</h2>
@@ -452,7 +448,6 @@ function UploadTemplateModal({ onClose, onUploaded }: { onClose: () => void; onU
             </div>
           </form>
         </div>
-      </div>
-    </>
+    </ModalOverlay>
   )
 }

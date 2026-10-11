@@ -12,6 +12,7 @@ import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-statu
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
 
 export type DebtRow = {
@@ -417,11 +418,11 @@ function GhiChuCell({ value, onSave }: { value: string | null; onSave: (v: strin
           {value || 'Ghi chú...'}
         </button>
       </div>
-      {open && createPortal(
-        // Esc = đóng KHÔNG lưu; bấm nền ngoài = lưu rồi đóng (giống hành vi
-        // rời ô nhập trong bảng). Ctrl/Cmd+Enter lưu nhanh khi đang gõ.
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={save}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+      {open && (
+        // Esc = đóng KHÔNG lưu; bấm nền ngoài KHÔNG đóng (quy tắc modal chung
+        // 2026-10-12) — chỉ Lưu/Huỷ/X. Ctrl/Cmd+Enter lưu nhanh khi đang gõ.
+        <ModalOverlay className="z-[200] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <h3 className="text-sm font-bold text-gray-800">Ghi chú</h3>
               <button onClick={() => setOpen(false)} title="Đóng, không lưu"
@@ -449,8 +450,7 @@ function GhiChuCell({ value, onSave }: { value: string | null; onSave: (v: strin
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </>
   )
@@ -489,11 +489,13 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
         className={`${CELL_INPUT} text-left truncate ${value ? '' : 'text-gray-300'}`}>
         {value || 'Tìm mã khách...'}
       </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-100 flex-shrink-0">
-              <div className="relative">
+      {/* z-[200] (trước là z-50): ô này cũng nằm trong bảng Excel khi bấm
+          "Phóng to" (khung z-[100]) — z-50 thì modal bị khung đó che mất. */}
+      {open && (
+        <ModalOverlay className="z-[200] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex-shrink-0 flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <input autoFocus value={q} onChange={e => setQ(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && q.trim()) choose(q.trim()) }}
                   placeholder="Tìm mã khách hoặc tên khách..."
@@ -505,6 +507,11 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
                   </button>
                 )}
               </div>
+              {/* Bấm ra nền mờ không còn đóng modal — nút X để thoát không chọn. */}
+              <button type="button" onClick={() => setOpen(false)} title="Đóng"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
+                <X size={16} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               {filtered.length === 0 ? (
@@ -541,8 +548,7 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </>
   )
@@ -1384,9 +1390,9 @@ export default function TongHopCongNoNccPage() {
       {dialog}
       {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
           (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
-      {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
-      <div className="fixed inset-0 z-[100] bg-black/40" onClick={resetWizard}>
-      <div className="bg-white w-screen h-screen overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      {(sheets.length > 0 || (importError && sheets.length === 0)) && (
+      <ModalOverlay className="z-[100] bg-black/40">
+      <div className="bg-white w-screen h-screen overflow-y-auto p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
           <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
@@ -1531,8 +1537,7 @@ export default function TongHopCongNoNccPage() {
           </div>
         )}
       </div>
-      </div>,
-      document.body
+      </ModalOverlay>
       )}
 
       {/* Filters + view mode */}

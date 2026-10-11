@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
-import { createPortal } from 'react-dom'
 import { Search, RefreshCw, ChevronRight, ChevronDown, Check, X, Trash2, Loader2 } from 'lucide-react'
 import DateInput from '@/components/DateInput'
 import { RoutingText } from '@/components/RoutingText'
 import FilterPicker from '@/components/FilterPicker'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
@@ -81,11 +81,12 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
         className={`${CELL_INPUT} text-left truncate ${value ? '' : 'text-gray-300'}`}>
         {value || 'Tìm mã khách...'}
       </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-100 flex-shrink-0">
-              <div className="relative">
+      {/* Không đóng khi bấm ra nền mờ — chỉ nút X, phím Esc hoặc chọn 1 mã. */}
+      {open && (
+        <ModalOverlay className="flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex-shrink-0 flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <input autoFocus value={q} onChange={e => setQ(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && q.trim()) choose(q.trim()) }}
                   placeholder="Tìm mã khách hoặc tên khách..."
@@ -97,6 +98,10 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
                   </button>
                 )}
               </div>
+              <button type="button" onClick={() => setOpen(false)} title="Đóng"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
+                <X size={16} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               {filtered.length === 0 ? (
@@ -140,8 +145,7 @@ function MaKhachCell({ value, onSave, options }: { value: string | null; onSave:
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </>
   )
@@ -242,11 +246,12 @@ function KhachHangFilterButton({ value, onChange, options }: { value: string; on
           <ChevronDown size={10} />
         )}
       </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-100 flex-shrink-0">
-              <div className="relative">
+      {/* Không đóng khi bấm ra nền mờ — chỉ nút X, phím Esc hoặc chọn 1 mã. */}
+      {open && (
+        <ModalOverlay className="flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[75vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex-shrink-0 flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <input autoFocus value={q} onChange={e => setQ(e.target.value)}
                   placeholder="Tìm mã khách hoặc tên khách..."
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
@@ -257,6 +262,10 @@ function KhachHangFilterButton({ value, onChange, options }: { value: string; on
                   </button>
                 )}
               </div>
+              <button type="button" onClick={() => setOpen(false)} title="Đóng"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 shrink-0">
+                <X size={16} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <div onClick={() => choose('')}
@@ -290,8 +299,7 @@ function KhachHangFilterButton({ value, onChange, options }: { value: string; on
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </>
   )

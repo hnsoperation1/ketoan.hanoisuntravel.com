@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { X, Pencil, Sparkles, Check } from 'lucide-react'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import type { RawCandidatePax } from './RawMatchPanel'
 
 // Modal nhỏ giữa màn hình — bấm vào 1 tin nhắn Telegram có khách khớp được
@@ -18,9 +18,10 @@ export function MatchSuggestionModal({ suggestions, onApply, onClose }: {
   onClose: () => void
 }) {
   if (suggestions.length === 0) return null
-  return createPortal(
-    <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+  // Không đóng khi bấm ra nền mờ — chỉ nút X.
+  return (
+    <ModalOverlay className="z-[200] bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
             <Sparkles size={15} className="text-amber-500 shrink-0" />
@@ -36,8 +37,7 @@ export function MatchSuggestionModal({ suggestions, onApply, onClose }: {
           ))}
         </div>
       </div>
-    </div>,
-    document.body,
+    </ModalOverlay>
   )
 }
 

@@ -6,6 +6,7 @@ import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2, Eye, P
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { ModalOverlay } from '@/components/ModalOverlay'
 
 const DM_KH_COLS = [
   { key: 'nguon', label: 'Nguồn', width: 110 },
@@ -255,8 +256,8 @@ function ContactAssignModal({
   }
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+    <ModalOverlay className="z-300 flex items-center justify-center bg-black/30 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
         <h2 className="font-bold text-gray-900">Liên hệ phụ trách</h2>
         <p className="text-xs text-gray-400 mb-3">{khach.ma_khach}</p>
 
@@ -308,7 +309,7 @@ function ContactAssignModal({
           </>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -411,14 +412,13 @@ function CustomerDetailPanel({
     { label: 'Ghi chú', value: c?.note ?? '—' },
   ]
 
-  return createPortal(
-    <>
+  // Nền mờ tách riêng (mờ dần theo `visible`) để panel chỉ trượt vào; không
+  // đóng khi bấm ra ngoài — chỉ nút X.
+  return (
+    <ModalOverlay className="z-150 flex justify-end">
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={close}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-160 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
@@ -570,8 +570,7 @@ function CustomerDetailPanel({
           </div>
         </form>
       </div>
-    </>,
-    document.body,
+    </ModalOverlay>
   )
 }
 
@@ -795,8 +794,8 @@ export default function DanhMucKhachHangPage() {
   )
 
   const formModal = formOpen && (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+    <ModalOverlay className="z-[200] flex items-center justify-center bg-black/30 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5">
         <h2 className="font-bold text-gray-900 mb-3">Thêm khách hàng</h2>
         <div className="space-y-3">
           <div>
@@ -841,7 +840,7 @@ export default function DanhMucKhachHangPage() {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 
   const customerDetailPanel = viewingKhach && (

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { AlertTriangle, Info, CheckCircle2, Loader2 } from 'lucide-react'
+import { ModalOverlay } from '@/components/ModalOverlay'
 
 // Hộp thoại xác nhận/thông báo dùng chung — thay cho window.confirm/alert
 // mặc định của trình duyệt (hiện ra ở mép trên màn hình, chữ "ketoan.
@@ -96,13 +96,12 @@ function ConfirmDialog({ spec, onClose }: { spec: DialogSpec; onClose: (ok: bool
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  return createPortal(
-    <div
-      className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}
-      onClick={() => onClose(false)}>
+  // Không đóng khi bấm ra nền mờ — chỉ nút Huỷ/Xác nhận/Đóng hoặc phím Esc/Enter.
+  return (
+    <ModalOverlay
+      className={`z-[300] flex items-center justify-center bg-black/40 p-4 transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-150 ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-        onClick={e => e.stopPropagation()}>
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-150 ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
         <div className="flex items-start gap-3 p-5">
           <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${iconClass}`}>
             <Icon size={18} />
@@ -129,7 +128,6 @@ function ConfirmDialog({ spec, onClose }: { spec: DialogSpec; onClose: (ok: bool
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </ModalOverlay>
   )
 }

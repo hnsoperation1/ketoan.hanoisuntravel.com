@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { RefreshCw, Loader2, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { type MatchStatus } from '@/lib/ve-may-bay/match-status'
@@ -9,6 +8,7 @@ import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { RawMatchPanel, type RawCandidateMessage, type RawKhachInfo, type RawCandidatePax } from './RawMatchPanel'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import {
   type SheetData, type RawBatch,
   parseCsvGrid, parseXlsFile, parseXlsxSheetsAny,
@@ -510,9 +510,9 @@ export default function CongNoVePage() {
 
       {/* Nhập công nợ từ file — hiện dạng modal, chỉ khi có việc cần xử lý
           (chọn sheet/tiêu đề/cột...), không chiếm chỗ trên trang nữa. */}
-      {(sheets.length > 0 || (importError && sheets.length === 0)) && createPortal(
-      <div className="fixed inset-0 z-[100] bg-black/40" onClick={resetWizard}>
-      <div className="bg-white w-screen h-screen overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      {(sheets.length > 0 || (importError && sheets.length === 0)) && (
+      <ModalOverlay className="z-[100] bg-black/40">
+      <div className="bg-white w-screen h-screen overflow-y-auto p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900">Nhập công nợ từ file</h2>
           <button onClick={resetWizard} title="Đóng" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
@@ -651,8 +651,7 @@ export default function CongNoVePage() {
           </div>
         )}
       </div>
-      </div>,
-      document.body
+      </ModalOverlay>
       )}
 
       <div className="flex-1 min-h-0 flex items-stretch pt-2">

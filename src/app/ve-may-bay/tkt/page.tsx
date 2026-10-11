@@ -7,6 +7,7 @@ import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { SaBadge } from '@/components/SaBadge'
+import { ModalOverlay } from '@/components/ModalOverlay'
 
 type Tkt = { id: string; tkt_code: string; ten_nhan_vien: string | null; active: boolean; created_at: string }
 
@@ -144,8 +145,8 @@ export default function TktPage() {
       </div>
 
       {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setFormOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+        <ModalOverlay className="flex items-center justify-center bg-black/30 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
             <h2 className="font-bold text-gray-900 mb-3">{editingId ? 'Sửa TKT' : 'Thêm TKT'}</h2>
             <div className="space-y-3">
               <div>
@@ -165,7 +166,7 @@ export default function TktPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">

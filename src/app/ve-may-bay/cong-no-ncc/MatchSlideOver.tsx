@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { filterKhachOptions, type KhachOpt } from '@/lib/ve-may-bay/khach-opt'
 import { MatchStatusBadge, type MatchStatus } from '@/lib/ve-may-bay/match-status'
 
@@ -136,10 +136,12 @@ export function MatchSlideOver({ target, candidatesUrl, preloaded, khSuggestions
   const manualFiltered = filterKhachOptions(khSuggestions, manualQuery)
   const selectedMessage = messages.find(m => m.parse_log_id === selectedMsgId) ?? null
 
-  return createPortal(
-    <>
-      <div className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={close} />
-      <div className={`fixed inset-y-0 right-0 z-160 w-full max-w-6xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+  // Nền mờ tách riêng (mờ dần theo `visible`) để panel chỉ trượt vào; không
+  // đóng khi bấm ra ngoài — chỉ nút X (hoặc chọn xong 1 mã khách).
+  return (
+    <ModalOverlay className="z-150 flex justify-end">
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`relative h-full w-full max-w-6xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Khớp mã khách theo mã vé</p>
@@ -268,7 +270,6 @@ export function MatchSlideOver({ target, candidatesUrl, preloaded, khSuggestions
           </div>
         </div>
       </div>
-    </>,
-    document.body,
+    </ModalOverlay>
   )
 }

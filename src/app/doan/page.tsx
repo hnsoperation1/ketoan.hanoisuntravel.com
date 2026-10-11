@@ -7,6 +7,7 @@ import type { Doan } from '@/types'
 import { formatDateVN, formatDateTimeVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import DateInput from '@/components/DateInput'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
 const DOAN_COLS = [
@@ -272,9 +273,7 @@ export default function QuyetToanTourPage() {
       )}
 
       {showForm && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowForm(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+          <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-bold text-gray-900">Thêm đoàn mới</h2>
@@ -386,8 +385,7 @@ export default function QuyetToanTourPage() {
                 </div>
               </form>
             </div>
-          </div>
-        </>
+          </ModalOverlay>
       )}
     </div>
   )

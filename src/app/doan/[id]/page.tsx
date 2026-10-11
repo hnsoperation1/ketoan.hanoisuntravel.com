@@ -28,6 +28,7 @@ import {
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
@@ -295,9 +296,7 @@ function CreateLoaiNhanSuModal({
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-[60]" onClick={() => !saving && onClose()} />
-      <div className="fixed inset-0 flex items-center justify-center z-[70] px-4">
+    <ModalOverlay className="z-[70] flex items-center justify-center bg-black/30 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Tạo loại nhân sự mới</h3>
           <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
@@ -338,8 +337,7 @@ function CreateLoaiNhanSuModal({
             </button>
           </div>
         </div>
-      </div>
-    </>
+    </ModalOverlay>
   )
 }
 
@@ -376,9 +374,7 @@ function EditLoaiNhanSuModal({
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-[60]" onClick={() => !saving && onClose()} />
-      <div className="fixed inset-0 flex items-center justify-center z-[70] px-4">
+    <ModalOverlay className="z-[70] flex items-center justify-center bg-black/30 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Sửa loại nhân sự</h3>
           <label className="block text-xs font-semibold text-gray-500 mb-1">Tên loại</label>
@@ -417,8 +413,7 @@ function EditLoaiNhanSuModal({
             </button>
           </div>
         </div>
-      </div>
-    </>
+    </ModalOverlay>
   )
 }
 
@@ -444,8 +439,7 @@ function ManageLoaiNhanSuModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+      <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 max-h-[85vh] flex flex-col">
           <div className="flex items-center justify-between mb-3 shrink-0">
             <h3 className="text-sm font-bold text-gray-900">Danh sách loại nhân sự</h3>
@@ -482,7 +476,7 @@ function ManageLoaiNhanSuModal({
             Loại nhân sự
           </button>
         </div>
-      </div>
+      </ModalOverlay>
       {editing && (
         <EditLoaiNhanSuModal
           loai={editing}
@@ -754,16 +748,17 @@ export default function DoanDetailPage() {
         />
       )}
 
+      {/* z-[400]: modal giờ gắn vào <body> (ModalOverlay) nên toast phải nổi
+          trên mọi lớp modal (kể cả ConfirmDialog z-[300]) — vd "Đã thêm …"
+          hiện khi modal Thêm nhân sự vẫn đang mở. */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg">
+        <div className="fixed bottom-6 right-6 z-[400] bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg">
           {toast}
         </div>
       )}
 
       {deleteOpen && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !deleting && setDeleteOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+          <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Xóa đoàn?</h3>
               <p className="text-xs text-gray-500 mb-4">
@@ -790,8 +785,7 @@ export default function DoanDetailPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </>
+          </ModalOverlay>
       )}
     </div>
   )
@@ -943,11 +937,8 @@ function HoSoRow({
       </td>
     </tr>
 
-    {editOpen &&
-      createPortal(
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={closeEdit} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+    {editOpen && (
+          <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-gray-900">
@@ -974,16 +965,11 @@ function HoSoRow({
                 </div>
               </div>
             </div>
-          </div>
-        </>,
-        document.body,
+          </ModalOverlay>
       )}
 
-    {deleteOpen &&
-      createPortal(
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !deleting && setDeleteOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+    {deleteOpen && (
+          <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Xóa khỏi đoàn?</h3>
               <p className="text-xs text-gray-500 mb-4">
@@ -1010,9 +996,7 @@ function HoSoRow({
                 </button>
               </div>
             </div>
-          </div>
-        </>,
-        document.body,
+          </ModalOverlay>
       )}
     </>
   )
@@ -1335,8 +1319,7 @@ function AddNhanSuModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+      <ModalOverlay className="flex items-center justify-center bg-black/30 px-4">
         <div
           className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col ${phase === 'review' ? 'max-w-5xl' : 'max-w-lg'}`}
         >
@@ -1574,7 +1557,7 @@ function AddNhanSuModal({
               </div>
             )}
         </div>
-      </div>
+      </ModalOverlay>
       {creatingLoai && (
         <CreateLoaiNhanSuModal
           templates={loaiNhanSu.templates}
@@ -2271,12 +2254,11 @@ function HoSoDetailModal({
   }
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={onClose}
-      />
-      <div className="fixed inset-y-0 right-0 z-50 flex max-w-full">
+    <ModalOverlay className="flex justify-end">
+      {/* Nền mờ tách riêng (mờ dần theo `visible`) để panel chỉ trượt vào, không
+          mờ theo; không đóng khi bấm ra ngoài — chỉ nút X. */}
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} />
+      <div className="relative flex h-full max-w-full">
         <div
           className={`bg-white shadow-2xl w-screen max-w-5xl h-full overflow-hidden flex flex-col transition-transform duration-300 ease-out ${
             visible ? 'translate-x-0' : 'translate-x-full'
@@ -2747,7 +2729,7 @@ function HoSoDetailModal({
         </div>
       )}
       {confirmDialog}
-    </>
+    </ModalOverlay>
   )
 }
 

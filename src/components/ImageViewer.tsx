@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Download, RotateCcw, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ModalOverlay } from '@/components/ModalOverlay'
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 5
@@ -45,7 +46,7 @@ export default function ImageViewer({ url, label, onClose }: { url: string; labe
   }
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/90 flex flex-col select-none">
+    <ModalOverlay className="z-100 bg-black/90 flex flex-col select-none">
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
         <span className="text-sm font-medium text-white truncate">{label}</span>
         <div className="flex items-center gap-1">
@@ -102,7 +103,7 @@ export default function ImageViewer({ url, label, onClose }: { url: string; labe
           }}
         />
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

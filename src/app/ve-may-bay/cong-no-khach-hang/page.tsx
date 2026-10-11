@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
-import { createPortal } from 'react-dom'
 import { RefreshCw, Search, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { ModalOverlay } from '@/components/ModalOverlay'
 
 const PHAT_SINH_COLS = [
   { key: 'ngay_xuat', label: 'Ngày xuất', width: 110 },
@@ -82,14 +82,13 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
     setTimeout(onClose, 200)
   }
 
-  return createPortal(
-    <>
+  // Nền mờ tách riêng (mờ dần theo `visible`) để panel chỉ trượt vào; không
+  // đóng khi bấm ra ngoài — chỉ nút X.
+  return (
+    <ModalOverlay className="z-150 flex justify-end">
+      <div className={`absolute inset-0 bg-black/30 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`fixed inset-0 bg-black/30 z-150 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={close}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-160 w-full max-w-4xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`relative h-full w-full max-w-4xl bg-white shadow-2xl flex flex-col transition-transform duration-200 ${visible ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
@@ -191,8 +190,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
           )}
         </div>
       </div>
-    </>,
-    document.body,
+    </ModalOverlay>
   )
 }
 
