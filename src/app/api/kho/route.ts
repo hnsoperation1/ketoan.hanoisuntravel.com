@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireScreen } from '@/lib/auth'
+import { requireScreen, requireSuperAdminKeToan } from '@/lib/auth'
 
+// Dùng chung cho màn Kho (kt-kho) và trang Cài đặt kho (chỉ Super Admin — luôn qua requireScreen)
 export async function GET() {
-  const { unauthorized } = await requireScreen('kt-kho', 'kt-kho-cai-dat')
+  const { unauthorized } = await requireScreen('kt-kho')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()
@@ -18,8 +19,9 @@ export async function GET() {
   return NextResponse.json({ kho, vatPham, tonKho })
 }
 
+// Thêm kho — trang Cài đặt kho, chỉ Super Admin
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireScreen('kt-kho-cai-dat')
+  const { unauthorized } = await requireSuperAdminKeToan()
   if (unauthorized) return unauthorized
 
   const body = await req.json()

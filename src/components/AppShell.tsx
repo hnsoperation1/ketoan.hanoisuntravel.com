@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { TopbarProvider } from '@/contexts/topbar'
-import { canScreen, screenForPath } from '@/lib/screens'
+import { canScreen, isSuperAdminPath, screenForPath } from '@/lib/screens'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import { NoScreenAccess } from './NoScreenAccess'
@@ -51,9 +51,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Cổng phân quyền theo MÀN — 1 chỗ duy nhất cho mọi trang (bảng đường dẫn →
   // màn nằm ở lib/screens.ts). Trang không thuộc màn nào (/, /docs, /cai-dat,
-  // nhom/tkt) → không chặn ở đây.
+  // nhom/tkt) → không chặn ở đây. Trang nhóm "Cài đặt" (Biểu mẫu hợp đồng,
+  // Cài đặt kho) → chỉ Super Admin, ở mọi chế độ.
+  const superAdminOnly = isSuperAdminPath(pathname)
   const screen = screenForPath(pathname)
-  const blocked = screen !== null && !canScreen(user, screen)
+  const blocked = superAdminOnly ? !user?.is_super_admin : screen !== null && !canScreen(user, screen)
 
   return (
     <TopbarProvider>
@@ -69,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Topbar onMobileSidebarToggle={() => setMobileOpen((o) => !o)} />
-          <main className="flex-1 overflow-y-auto relative">{blocked ? <NoScreenAccess /> : children}</main>
+          <main className="flex-1 overflow-y-auto relative">{blocked ? <NoScreenAccess superAdminOnly={superAdminOnly} /> : children}</main>
         </div>
       </div>
     </TopbarProvider>

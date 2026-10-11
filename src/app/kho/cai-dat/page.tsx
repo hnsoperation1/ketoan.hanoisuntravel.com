@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { SaBadge } from '@/components/SaBadge'
 
 interface Kho {
   id: string
@@ -81,6 +82,8 @@ export default function KhoCaiDatPage() {
     setBreadcrumb(
       <span className="text-sm font-semibold text-gray-700">
         <a href="/kho" className="hover:underline text-gray-400">Kho quà tặng</a> / Cài đặt
+        {/* Cả trang chỉ Super Admin → huy hiệu "SA" ngay sau tiêu đề trang */}
+        <SaBadge className="ml-1.5" />
       </span>,
     )
     return () => setBreadcrumb(null)

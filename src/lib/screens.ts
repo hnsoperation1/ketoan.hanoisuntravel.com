@@ -16,7 +16,6 @@ export const SCREEN_IDS = [
   'kt-doan',
   'kt-nhan-su',
   'kt-kho',
-  'kt-kho-cai-dat',
   'kt-vmb',
   'kt-cn-kh',
   'kt-th-cn-ncc',
@@ -27,22 +26,20 @@ export const SCREEN_IDS = [
   'kt-dm-kh',
   'kt-sao-ke',
   'kt-nhat-ky',
-  'kt-bieu-mau-hd',
 ] as const
 
 export type ScreenId = (typeof SCREEN_IDS)[number]
 
 // Bảng DUY NHẤT đường dẫn → màn (AppShell chặn trang theo bảng này).
 // exact = chỉ đúng đường dẫn đó (trang hub /ve-may-bay); còn lại khớp cả
-// trang con (vd /doan/[id]). Khớp theo tiền tố DÀI NHẤT nên /kho/cai-dat
-// không bị nuốt vào /kho. Các trang KHÔNG có trong bảng thì không kiểm tra
-// màn: /, /docs, /cai-dat (cài đặt cá nhân), /ve-may-bay/nhom và
-// /ve-may-bay/tkt (2 trang này vẫn chỉ Super Admin, tự chặn trong trang).
+// trang con (vd /doan/[id]). Khớp theo tiền tố DÀI NHẤT. Các trang KHÔNG có
+// trong bảng thì không kiểm tra màn: /, /docs, /cai-dat (cài đặt cá nhân),
+// /ve-may-bay/nhom và /ve-may-bay/tkt (2 trang này vẫn chỉ Super Admin, tự
+// chặn trong trang), và các trang SUPER_ADMIN_ROUTES bên dưới.
 const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
   { path: '/doan', screen: 'kt-doan' },
   { path: '/nhan-su', screen: 'kt-nhan-su' },
   { path: '/kho', screen: 'kt-kho' },
-  { path: '/kho/cai-dat', screen: 'kt-kho-cai-dat' },
   { path: '/ve-may-bay', screen: 'kt-vmb', exact: true },
   { path: '/ve-may-bay/cong-no-khach-hang', screen: 'kt-cn-kh' },
   { path: '/ve-may-bay/tong-hop-cong-no-ncc', screen: 'kt-th-cn-ncc' },
@@ -56,11 +53,22 @@ const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
   { path: '/ve-may-bay/danh-muc-khach-hang', screen: 'kt-dm-kh' },
   { path: '/ve-may-bay/sao-ke', screen: 'kt-sao-ke' },
   { path: '/ve-may-bay/parse-logs', screen: 'kt-nhat-ky' },
-  { path: '/cai-dat/bieu-mau-hop-dong', screen: 'kt-bieu-mau-hd' },
 ]
+
+// Trang thuộc nhóm "Cài đặt" cuối Sidebar (quyết định 2026-10-11): CHỈ Super
+// Admin, ở cả chế độ mới lẫn luật cũ — KHÔNG phải màn tick được (trước là
+// kt-bieu-mau-hd / kt-kho-cai-dat). AppShell chặn theo danh sách này; nằm
+// riêng để /kho/cai-dat không bị khớp nhầm vào màn kt-kho (/kho).
+const SUPER_ADMIN_ROUTES = ['/cai-dat/bieu-mau-hop-dong', '/kho/cai-dat']
+
+/** Trang chỉ Super Admin (gồm cả trang con). */
+export function isSuperAdminPath(pathname: string): boolean {
+  return SUPER_ADMIN_ROUTES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
 
 /** Màn ứng với đường dẫn đang mở, null = trang không kiểm tra màn. */
 export function screenForPath(pathname: string): ScreenId | null {
+  if (isSuperAdminPath(pathname)) return null
   let best: { screen: ScreenId; len: number } | null = null
   for (const r of SCREEN_ROUTES) {
     const hit = r.exact ? pathname === r.path : pathname === r.path || pathname.startsWith(r.path + '/')

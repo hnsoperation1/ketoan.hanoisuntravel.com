@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, Package } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, Package, KeyRound } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -22,6 +22,8 @@ type NavLinkProps = {
   onClick?: () => void
   /** Mục chỉ Super Admin thấy → gắn huy hiệu "SA" sau nhãn (ẩn theo nhãn khi thu sidebar) */
   sa?: boolean
+  /** Link sang app khác (vd ihns.vn) → mở tab mới */
+  external?: boolean
 }
 
 // Tiêu đề nhóm nhưng CŨNG LÀ link (vd "Kế toán vé máy bay" trỏ vào
@@ -46,11 +48,13 @@ function SectionLink({ href, label, pathname, onClick }: { href: string; label: 
   )
 }
 
-function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick, sa }: NavLinkProps) {
+function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick, sa, external }: NavLinkProps) {
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
   return (
     <Link
       href={href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
       title={collapsed ? label : undefined}
       onClick={onClick}
       className={clsx(
@@ -77,21 +81,24 @@ function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick,
   )
 }
 
-function SectionTitle({ label }: { label: string }) {
+// sa = cả nhóm chỉ Super Admin → huy hiệu "SA" sau tiêu đề nhóm
+function SectionTitle({ label, sa }: { label: string; sa?: boolean }) {
   return (
     <p
       className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
       style={{ color: '#0069a0' }}
     >
       {label}
+      {sa && <SaBadge className="ml-1.5" />}
     </p>
   )
 }
 
 // Mỗi mục gắn với 1 màn (lib/screens.ts) — chỉ hiện khi canScreen. Nhóm
-// Telegram / TKT không thuộc phân quyền theo màn, vẫn chỉ Super Admin như cũ.
-type NavItem = { href: string; label: string; icon: React.ElementType; screen?: ScreenId; superAdminOnly?: true }
-type NavSection = { label: string; hub?: { href: string; screen: ScreenId }; items: NavItem[] }
+// Telegram / TKT và cả nhóm "Cài đặt" không thuộc phân quyền theo màn, chỉ
+// Super Admin. Nhóm superAdminOnly → huy hiệu SA sau tiêu đề nhóm.
+type NavItem = { href: string; label: string; icon: React.ElementType; exact?: true; screen?: ScreenId; superAdminOnly?: true; external?: true }
+type NavSection = { label: string; hub?: { href: string; screen: ScreenId }; items: NavItem[]; superAdminOnly?: true }
 
 const SECTIONS: NavSection[] = [
   {
@@ -104,8 +111,8 @@ const SECTIONS: NavSection[] = [
   {
     label: 'Kho quà tặng',
     items: [
-      { href: '/kho', label: 'Tổng quan', icon: Package, screen: 'kt-kho' },
-      { href: '/kho/cai-dat', label: 'Cài đặt kho', icon: UserCog, screen: 'kt-kho-cai-dat' },
+      // exact: Cài đặt kho (/kho/cai-dat) đã chuyển xuống nhóm "Cài đặt"
+      { href: '/kho', label: 'Tổng quan', icon: Package, exact: true, screen: 'kt-kho' },
     ],
   },
   {
@@ -129,8 +136,16 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    // Nhóm Cài đặt (luôn cuối menu) — CHỈ Super Admin ở mọi chế độ, không cấu
+    // hình theo màn (quyết định 2026-10-11): các màn cài đặt của app + link
+    // sang trang Phân quyền app của Kế toán trên ihns.vn.
     label: 'Cài đặt',
-    items: [{ href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, screen: 'kt-bieu-mau-hd' }],
+    superAdminOnly: true,
+    items: [
+      { href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, superAdminOnly: true },
+      { href: '/kho/cai-dat', label: 'Cài đặt kho', icon: UserCog, superAdminOnly: true },
+      { href: 'https://ihns.vn/cai-dat/ketoan', label: 'Phân quyền app', icon: KeyRound, superAdminOnly: true, external: true },
+    ],
   },
 ]
 
@@ -209,7 +224,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 (section.hub && hubAllowed ? (
                   <SectionLink href={section.hub.href} label={section.label} pathname={pathname} onClick={onMobileClose} />
                 ) : (
-                  <SectionTitle label={section.label} />
+                  <SectionTitle label={section.label} sa={section.superAdminOnly} />
                 ))}
               {items.map((item) => (
                 <NavLink
@@ -217,10 +232,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   href={item.href}
                   label={item.label}
                   icon={item.icon}
+                  exact={item.exact}
                   pathname={pathname}
                   collapsed={collapsed}
                   onClick={onMobileClose}
                   sa={item.superAdminOnly}
+                  external={item.external}
                 />
               ))}
             </div>

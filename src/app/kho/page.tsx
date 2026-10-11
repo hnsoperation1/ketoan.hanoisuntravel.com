@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Settings } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { useAuth } from '@/contexts/auth'
+import { SaBadge } from '@/components/SaBadge'
 import { formatDateTimeVN } from '@/lib/format'
 
 interface Kho {
@@ -53,6 +55,7 @@ const STATUS_BADGE: Record<Phieu['status'], { label: string; cls: string }> = {
 
 export default function KhoPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
+  const { user } = useAuth()
   const [kho, setKho] = useState<Kho[]>([])
   const [vatPham, setVatPham] = useState<VatPham[]>([])
   const [tonKho, setTonKho] = useState<TonKhoRow[]>([])
@@ -106,12 +109,16 @@ export default function KhoPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Kho quà tặng</h1>
-        <Link
-          href="/kho/cai-dat"
-          className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <Settings size={15} /> Cài đặt
-        </Link>
+        {/* Cài đặt kho chỉ Super Admin (nhóm "Cài đặt", quyết định 2026-10-11) */}
+        {user?.is_super_admin && (
+          <Link
+            href="/kho/cai-dat"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <Settings size={15} /> Cài đặt
+            <SaBadge />
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">

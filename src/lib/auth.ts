@@ -52,6 +52,38 @@ export async function requireSuperAdminUser() {
 }
 
 /**
+ * Như requireUser() (vẫn bắt buộc ke_toan_allowlist) + bắt buộc is_super_admin
+ * — dùng cho các màn nhóm "Cài đặt" cuối Sidebar (Biểu mẫu hợp đồng, Cài đặt
+ * kho: quyết định 2026-10-11 CHỈ Super Admin, không còn là màn tick được).
+ * Khác requireSuperAdminUser() ở chỗ vẫn bắt buộc allowlist y như
+ * requireScreen() mà các API này dùng trước đây.
+ */
+export async function requireSuperAdminKeToan() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) {
+    return { user: null, unauthorized: NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 }) }
+  }
+  const [{ data: isKeToan }, { data: isSuperAdmin }] = await Promise.all([
+    supabase.rpc('is_ke_toan'),
+    supabase.rpc('is_super_admin'),
+  ])
+  if (!isKeToan) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json({ error: 'Tài khoản không có quyền truy cập hệ thống kế toán' }, { status: 403 }),
+    }
+  }
+  if (!isSuperAdmin) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json({ error: 'Chỉ Super Admin mới có quyền truy cập' }, { status: 403 }),
+    }
+  }
+  return { user: data.user, unauthorized: null }
+}
+
+/**
  * Các màn Super Admin đã tick cho người này (screen_access.enabled = true).
  * null = đọc lỗi (vd chưa chạy migration 20261025_screen_access.sql) → nơi
  * gọi phải quay về luật CŨ, không bao giờ khoá người dùng vì lỗi đọc. Đọc
