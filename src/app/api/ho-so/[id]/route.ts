@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { tinhThueVaChiTra } from '@/lib/tax'
 
 /**
@@ -12,7 +12,7 @@ import { tinhThueVaChiTra } from '@/lib/tax'
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-nhan-su')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
   const body = await req.json()
@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 /** Xóa hồ sơ của người này khỏi đoàn — chỉ xóa dòng ho_so (kèm cascade file hợp
  *  đồng đã xuất nếu có), KHÔNG đụng tới nhansu vì người đó có thể còn ở đoàn khác. */
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
 

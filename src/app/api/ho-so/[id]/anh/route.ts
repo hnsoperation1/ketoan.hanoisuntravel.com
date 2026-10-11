@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { uploadHoSoImage } from '@/lib/storage'
 import { getErrorMessage } from '@/lib/errors'
 
@@ -10,7 +10,7 @@ const ALLOWED_FIELDS = ['anh_cccd_truoc_url', 'anh_cccd_sau_url', 'anh_the_hdv_u
 type AllowedField = (typeof ALLOWED_FIELDS)[number]
 
 export async function POST(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
 

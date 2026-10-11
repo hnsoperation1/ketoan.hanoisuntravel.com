@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { runMatchMaKhachRaw } from '@/lib/ve-may-bay/match-ma-khach-raw'
 
 // GET — toàn bộ lô công nợ NCC đã upload nguyên xi (chưa chuẩn hoá), kèm
 // theo trạng thái khớp mã khách per-dòng (ve_debt_records_raw_match) để
 // client dựng badge/cột "Mã khách" mà không cần gọi thêm request nào khác.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc', 'kt-th-cn-ncc')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()
@@ -24,7 +24,7 @@ export async function GET() {
 // POST — { ncc, source_file, headers: string[], rows: string[][] } — lưu
 // nguyên xi 1 lần upload, không map/chuẩn hoá cột.
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc', 'kt-th-cn-ncc')
   if (unauthorized) return unauthorized
 
   const body = await req.json().catch(() => null)

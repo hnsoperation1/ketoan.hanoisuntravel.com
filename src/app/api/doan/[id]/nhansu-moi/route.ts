@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { upsertNhanSuFromExtract, createHoSo } from '@/lib/ho-so'
 import { getErrorMessage } from '@/lib/errors'
 import type { AiExtractedFields } from '@/types'
@@ -23,7 +23,7 @@ interface Body {
  * ở bước extract (không upload lại).
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
   const body = (await req.json()) as Body

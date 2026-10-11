@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> }
 // giữ nguyên để truy vết) — đổi được vô số lần, gửi null để xoá tên tuỳ
 // chỉnh (quay lại hiển thị theo source_file).
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 // DELETE — xoá 1 lô upload nhầm.
 export async function DELETE(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // Gộp công nợ theo khách hàng — nối các nguồn KHÔNG có khoá ngoại chung:
 //   - "Phát sinh": ve_debt_records.ma_khach (nhập tay/upload Excel ở
@@ -46,7 +46,7 @@ function emptyAgg(ma_khach: string): Agg {
 // Trả kèm phat_sinh_rows/da_thu_rows (chi tiết từng dòng góp vào tổng) để
 // UI toggle xem chi tiết theo khách mà không cần gọi API riêng lần 2.
 export async function GET(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-kh')
   if (unauthorized) return unauthorized
 
   const { searchParams } = new URL(req.url)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // GET ?year=2026&month=8 — bản rút gọn của /api/ve-may-bay/sao-ke, mở cho cả
 // ke_toan_allowlist/boss (không chỉ super_admin) nhưng CHỈ trả về dòng có
@@ -15,7 +15,7 @@ import { requireUser } from '@/lib/auth'
 // Google Sheet, không phải cột DATE thật) nên lọc bằng LIKE hậu tố
 // "%/MM/YYYY" thay vì so sánh khoảng ngày.
 export async function GET(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-sao-ke-tc')
   if (unauthorized) return unauthorized
 
   const { searchParams } = new URL(req.url)

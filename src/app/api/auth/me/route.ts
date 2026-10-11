@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireUser, loadUserScreens } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   const { user, unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
   const supabase = await createClient()
-  const [{ data: isSuperAdmin }, { data: profile }] = await Promise.all([
+  const [{ data: isSuperAdmin }, { data: profile }, screens] = await Promise.all([
     supabase.rpc('is_super_admin'),
     supabase.from('users').select('role, full_name, avatar_url').eq('id', user.id).single(),
+    loadUserScreens(user.id),
   ])
   return NextResponse.json({
     user: {
@@ -18,6 +19,8 @@ export async function GET() {
       avatar_url: profile?.avatar_url ?? null,
       is_super_admin: isSuperAdmin ?? false,
       is_boss: profile?.role === 'boss',
+      // Màn được tick (lib/screens.ts) — null = đọc lỗi, client theo luật cũ
+      screens,
     },
   })
 }

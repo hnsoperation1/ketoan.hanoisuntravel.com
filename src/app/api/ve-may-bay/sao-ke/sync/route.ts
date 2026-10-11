@@ -2,16 +2,16 @@ import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { getGoogleAuth } from '@/lib/google'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // Đồng bộ thủ công (bấm nút trên UI) từ Google Sheet "SAO KÊ CÁ NHÂN" vào
 // bảng sao_ke_giao_dich. Không chạy định kỳ/tự động — chỉ khi user gọi POST.
 //
-// Mở cho cả ke_toan_allowlist/boss (không chỉ super_admin) — response chỉ
-// trả về SỐ LƯỢNG dòng đã đồng bộ (breakdown theo tài khoản), KHÔNG trả
-// nội dung giao dịch, nên không lộ thêm dữ liệu gì cho non-superadmin.
-// Xem dữ liệu đầy đủ vẫn chỉ super_admin (route GET /api/ve-may-bay/sao-ke
-// riêng, không đổi ở đây).
+// Mở cho người được màn Sao kê TC hoặc Đầu vào sao kê (cả 2 trang đều có
+// nút đồng bộ) — response chỉ trả về SỐ LƯỢNG dòng đã đồng bộ (breakdown
+// theo tài khoản), KHÔNG trả nội dung giao dịch, nên không lộ thêm dữ liệu
+// gì. Xem dữ liệu đầy đủ là route GET /api/ve-may-bay/sao-ke riêng (màn
+// kt-sao-ke).
 //
 // Mapping cột theo VỊ TRÍ (không theo tên header) vì header text lệch nhau
 // giữa 5 sheet — xem chú thích trong migration_sao_ke_giao_dich.sql (repo
@@ -38,7 +38,7 @@ function str(v: unknown): string | null {
 }
 
 export async function POST() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-sao-ke-tc', 'kt-sao-ke')
   if (unauthorized) return unauthorized
 
   const auth = getGoogleAuth()

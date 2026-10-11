@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { runMatchMaKhach } from '@/lib/ve-may-bay/match-ma-khach'
 
 // GET — toàn bộ dòng công nợ đã nhập (từ mọi lần upload)
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-th-cn-ncc', 'kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()
@@ -40,7 +40,7 @@ type ImportRow = {
 // POST — { ncc, source_file, rows: ImportRow[] } — nhập hàng loạt 1 lô từ
 // file Excel/CSV đã parse + map cột phía client.
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const body = await req.json().catch(() => null)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { uploadTemplateFile } from '@/lib/storage'
 import { slugifyFileName } from '@/lib/format'
 import { getErrorMessage } from '@/lib/errors'
@@ -8,7 +8,7 @@ import { getErrorMessage } from '@/lib/errors'
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-bieu-mau-hd')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
 
@@ -19,7 +19,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-bieu-mau-hd')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
   const contentType = req.headers.get('content-type') ?? ''

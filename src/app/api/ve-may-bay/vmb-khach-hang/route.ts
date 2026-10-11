@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 function normKey(s: string | null | undefined): string | null {
   const t = (s ?? '').trim()
@@ -50,7 +50,7 @@ async function loadRevenueByMaKhach(admin: ReturnType<typeof createAdminClient>)
 // theo liên hệ CRM (contact_id) đã gán + doanh thu/lợi nhuận cộng dồn, phục
 // vụ chế độ hiển thị "Đầy đủ" ở trang Danh mục khách hàng.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-xuat-ve', 'kt-dm-kh', 'kt-th-cn-ncc', 'kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()
@@ -82,7 +82,7 @@ export async function GET() {
 // migration_vmb_khach_hang_contact.sql; route /api/ve-may-bay/contacts lo
 // phần đồng bộ giá trị này sang organizations.address bên CRM.
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-dm-kh')
   if (unauthorized) return unauthorized
 
   const { id, nhom, ma_khach, ten_khach, doi_tuong_quy_tac, hinh_thuc_cong_no, phi_xuat_ve, active, contact_id, ghi_chu, dia_chi } = await req.json().catch(() => ({}))

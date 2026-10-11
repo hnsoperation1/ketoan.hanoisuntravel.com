@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { runMatchMaKhachRaw } from '@/lib/ve-may-bay/match-ma-khach-raw'
 
 // POST { batchIds?: string[] } — chạy lại thuật toán khớp mã khách cho các
 // lô công nợ NCC nguyên xi. Không truyền batchIds → chạy trên toàn bộ lô
 // (dùng cho nút "Khớp lại mã khách").
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const body = await req.json().catch(() => ({}))

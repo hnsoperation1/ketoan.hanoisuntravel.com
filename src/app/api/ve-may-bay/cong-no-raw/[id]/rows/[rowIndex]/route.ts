@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string; rowIndex: string }> }
 
@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ id: string; rowIndex: string }> }
 // matched_booking_id đi kèm) — phân biệt rõ với auto-match
 // (match-ma-khach-raw.ts) cũng gắn 'message' khi tự điền.
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id, rowIndex } = await ctx.params

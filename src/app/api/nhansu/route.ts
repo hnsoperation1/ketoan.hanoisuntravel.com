@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // GET — danh mục TOÀN BỘ nhân sự thuê ngoài (HDV/MC/...) từng làm việc,
 // không giới hạn theo đoàn — phục vụ tab "Tổng hợp" ở trang /nhan-su.
 // Số đoàn tham gia (có thể lọc theo khoảng ngày) tính riêng ở client từ
 // GET /api/nhansu/ho-so-list, không đếm sẵn ở đây nữa.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()

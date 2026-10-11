@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const SELECT_WITH_TEMPLATES = '*, mau_hop_dong_links:loai_nhan_su_mau_hop_dong(mau_hop_dong:hop_dong_templates(id, ten))'
@@ -25,7 +25,7 @@ async function setMauHopDongLinks(supabase: SupabaseClient, loaiNhanSuId: string
 }
 
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const body = await req.json().catch(() => ({}))

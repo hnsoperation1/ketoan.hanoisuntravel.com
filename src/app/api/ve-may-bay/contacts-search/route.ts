@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // GET ?q=... — tìm liên hệ bên CRM (bảng contacts, cùng Supabase project)
 // theo tên/công ty/SĐT, dùng cho ô chọn "Người làm việc" ở Danh mục khách
 // hàng VMB. Chỉ đọc, không đụng gì tới dữ liệu CRM.
 export async function GET(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-dm-kh')
   if (unauthorized) return unauthorized
 
   const q = new URL(req.url).searchParams.get('q')?.trim() ?? ''

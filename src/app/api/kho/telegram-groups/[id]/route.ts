@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-kho-cai-dat')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
 

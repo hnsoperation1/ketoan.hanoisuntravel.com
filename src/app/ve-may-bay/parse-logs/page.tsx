@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { RefreshCw, Search, ChevronRight, ShieldCheck, X } from 'lucide-react'
+import { RefreshCw, Search, ChevronRight, X } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
+import { canScreen } from '@/lib/screens'
+import { NoScreenAccess } from '@/components/NoScreenAccess'
 import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -184,18 +186,10 @@ export default function ParseLogsPage() {
   }
 
   // Trang lộ nguyên văn tin nhắn Telegram + JSON AI đọc được của MỌI TKT —
-  // chỉ Super Admin, cùng mức siết như /ve-may-bay/nhom và /ve-may-bay/tkt.
-  if (!user?.is_super_admin) {
-    return (
-      <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 40px)' }}>
-        <div className="text-center">
-          <ShieldCheck size={48} className="mx-auto text-gray-200 mb-4" />
-          <h2 className="text-xl font-bold text-gray-500 mb-2">Không có quyền truy cập</h2>
-          <p className="text-gray-400 text-sm">Chỉ Super Admin mới xem được Nhật ký bot vé.</p>
-        </div>
-      </div>
-    )
-  }
+  // chỉ người được tick màn kt-nhat-ky (hoặc Super Admin); khi chưa chạy
+  // migration screen_access thì canScreen quay về luật cũ = chỉ Super Admin.
+  // AppShell đã chặn theo đường dẫn, chặn lại ở đây cho chắc.
+  if (!canScreen(user, 'kt-nhat-ky')) return <NoScreenAccess />
 
   return (
     <div className="px-5 pt-2 pb-5 space-y-2">

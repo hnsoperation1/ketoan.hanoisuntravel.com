@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireSuperAdminUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // GET — toàn bộ ve_parse_logs (mọi lần bot trung tâm trong hns-ticket-parser
 // thử đọc 1 tin nhắn, kể cả tin không phải vé/lỗi) — bot này chạy im lặng
 // hoàn toàn, KHÔNG trả lời gì vào Telegram (xem chú thích trong
 // webhook-central/route.ts), nên đây là nơi DUY NHẤT tra được vì sao 1 tin
-// nhắn không thành ve_bookings. Chỉ Super Admin — trang này lộ nguyên văn
-// tin nhắn Telegram + JSON AI đọc được của MỌI TKT, không riêng gì kế toán
-// nên siết chặt hơn requireUser() thường dùng ở các trang /ve-may-bay khác.
+// nhắn không thành ve_bookings. Trang này lộ nguyên văn tin nhắn Telegram +
+// JSON AI đọc được của MỌI TKT, không riêng gì kế toán — chỉ người được
+// Super Admin tick màn kt-nhat-ky (hoặc Super Admin); chưa chạy migration
+// screen_access thì theo luật cũ = chỉ Super Admin (xem requireScreen).
 export async function GET() {
-  const { unauthorized } = await requireSuperAdminUser()
+  const { unauthorized } = await requireScreen('kt-nhat-ky')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

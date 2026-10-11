@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createHoSoImageViewUrl } from '@/lib/storage'
 import { getErrorMessage } from '@/lib/errors'
@@ -19,7 +19,7 @@ type Ctx = { params: Promise<{ id: string; field: string }> }
  * chỉ sống 7 ngày; route này lấy path ra từ cả URL đã hết hạn rồi tạo URL mới.
  */
 export async function GET(_request: Request, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
 
   const { id, field } = await ctx.params

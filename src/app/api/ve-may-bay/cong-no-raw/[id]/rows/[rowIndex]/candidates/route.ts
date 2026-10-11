@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { buildCandidateMessages } from '@/lib/ve-may-bay/candidate-messages'
 
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string; rowIndex: string }> }
 // nợ NCC raw. Mã vé/PNR không lưu sẵn ở đâu — tự nhận diện cột theo
 // headers của batch (findIdColumnIndex) rồi đọc thẳng từ rows[rowIndex].
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id, rowIndex } = await ctx.params

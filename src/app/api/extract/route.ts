@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { extractCccdFields, type ExtractImageInput } from '@/lib/ai-extract'
 import { getErrorMessage } from '@/lib/errors'
 
 /** Fallback thủ công từ dashboard: kế toán upload ảnh CCCD/thẻ HDV thẳng từ trình duyệt
  *  thay vì qua Telegram bot, dùng chung logic AI trích xuất trong lib/ai-extract.ts. */
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const formData = await req.formData()

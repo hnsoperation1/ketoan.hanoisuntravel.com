@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // GET — TOÀN BỘ dòng ho_so (mọi đoàn, mọi nhân sự) kèm join nhansu + doan —
 // dữ liệu gốc dùng chung cho cả 3 tab ở trang /nhan-su, MỖI DÒNG = 1 lượt
@@ -10,7 +10,7 @@ import { requireUser } from '@/lib/auth'
 // /api/nhansu riêng nữa. Xử lý lọc ở client vì khối lượng dữ liệu (vài
 // trăm dòng ho_so) còn nhẹ, đỡ phải làm nhiều route riêng cho từng cách lọc.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()

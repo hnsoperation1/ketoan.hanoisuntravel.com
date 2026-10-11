@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { buildCandidateMessages } from '@/lib/ve-may-bay/candidate-messages'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> }
 // cho slide-over chọn tay khi không tự khớp được (hoặc muốn xem lại dòng đã
 // khớp/đã chọn tay).
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-th-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params

@@ -7,6 +7,7 @@ import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, Pa
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
+import { canScreen, type ScreenId } from '@/lib/screens'
 
 type Props = { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }
 
@@ -65,9 +66,71 @@ function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick 
   )
 }
 
+function SectionTitle({ label }: { label: string }) {
+  return (
+    <p
+      className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
+      style={{ color: '#0069a0' }}
+    >
+      {label}
+    </p>
+  )
+}
+
+// Mỗi mục gắn với 1 màn (lib/screens.ts) — chỉ hiện khi canScreen. Nhóm
+// Telegram / TKT không thuộc phân quyền theo màn, vẫn chỉ Super Admin như cũ.
+type NavItem = { href: string; label: string; icon: React.ElementType; screen?: ScreenId; superAdminOnly?: true }
+type NavSection = { label: string; hub?: { href: string; screen: ScreenId }; items: NavItem[] }
+
+const SECTIONS: NavSection[] = [
+  {
+    label: 'Kế toán tour',
+    items: [
+      { href: '/doan', label: 'Danh sách đoàn', icon: FileSpreadsheet, screen: 'kt-doan' },
+      { href: '/nhan-su', label: 'Nhân sự thuê ngoài', icon: Contact, screen: 'kt-nhan-su' },
+    ],
+  },
+  {
+    label: 'Kho quà tặng',
+    items: [
+      { href: '/kho', label: 'Tổng quan', icon: Package, screen: 'kt-kho' },
+      { href: '/kho/cai-dat', label: 'Cài đặt kho', icon: UserCog, screen: 'kt-kho-cai-dat' },
+    ],
+  },
+  {
+    // Tiêu đề nhóm cũng là link sang trang hub /ve-may-bay (nếu được màn kt-vmb)
+    label: 'Kế toán vé máy bay',
+    hub: { href: '/ve-may-bay', screen: 'kt-vmb' },
+    items: [
+      { href: '/ve-may-bay/cong-no-khach-hang', label: 'Công nợ KH', icon: Users, screen: 'kt-cn-kh' },
+      { href: '/ve-may-bay/tong-hop-cong-no-ncc', label: 'Tổng hợp công nợ NCC', icon: Table2, screen: 'kt-th-cn-ncc' },
+      { href: '/ve-may-bay/cong-no-ncc', label: 'Đầu vào công nợ NCC', icon: FileSpreadsheet, screen: 'kt-cn-ncc' },
+      { href: '/ve-may-bay/cong-no-ncc-v2', label: 'Đầu vào công nợ NCC v2', icon: FileStack, screen: 'kt-cn-ncc' },
+      { href: '/ve-may-bay/cong-no-ncc-v3', label: 'Đầu vào công nợ NCC v3', icon: ListFilter, screen: 'kt-cn-ncc' },
+      { href: '/ve-may-bay/thong-tin-xuat-ve', label: 'Thông tin xuất vé', icon: Plane, screen: 'kt-xuat-ve' },
+      { href: '/ve-may-bay/sao-ke-tk', label: 'Sao kê TC', icon: Receipt, screen: 'kt-sao-ke-tc' },
+      { href: '/ve-may-bay/khach-hang-vmb', label: 'Khách hàng VMB', icon: UserSearch, screen: 'kt-kh-vmb' },
+      { href: '/ve-may-bay/danh-muc-khach-hang', label: 'Danh mục KH', icon: BookUser, screen: 'kt-dm-kh' },
+      { href: '/ve-may-bay/sao-ke', label: 'Đầu vào sao kê', icon: Landmark, screen: 'kt-sao-ke' },
+      { href: '/ve-may-bay/parse-logs', label: 'Nhật ký bot vé', icon: ScrollText, screen: 'kt-nhat-ky' },
+      { href: '/ve-may-bay/nhom', label: 'Nhóm Telegram', icon: Send, superAdminOnly: true },
+      { href: '/ve-may-bay/tkt', label: 'TKT', icon: UserCog, superAdminOnly: true },
+    ],
+  },
+  {
+    label: 'Cài đặt',
+    items: [{ href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, screen: 'kt-bieu-mau-hd' }],
+  },
+]
+
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Props) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+
+  function itemVisible(item: NavItem) {
+    if (item.superAdminOnly) return !!user?.is_super_admin
+    return item.screen ? canScreen(user, item.screen) : true
+  }
 
   return (
     <aside
@@ -124,87 +187,33 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           onClick={onMobileClose}
         />
 
-        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
-          {!collapsed && (
-            <p
-              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
-              style={{ color: '#0069a0' }}
-            >
-              Kế toán tour
-            </p>
-          )}
-          <NavLink
-            href="/doan"
-            label="Danh sách đoàn"
-            icon={FileSpreadsheet}
-            pathname={pathname}
-            collapsed={collapsed}
-            onClick={onMobileClose}
-          />
-          <NavLink
-            href="/nhan-su"
-            label="Nhân sự thuê ngoài"
-            icon={Contact}
-            pathname={pathname}
-            collapsed={collapsed}
-            onClick={onMobileClose}
-          />
-        </div>
-
-        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
-          {!collapsed && (
-            <p
-              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
-              style={{ color: '#0069a0' }}
-            >
-              Kho quà tặng
-            </p>
-          )}
-          <NavLink href="/kho" label="Tổng quan" icon={Package} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/kho/cai-dat" label="Cài đặt kho" icon={UserCog} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-        </div>
-
-        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
-          {!collapsed && <SectionLink href="/ve-may-bay" label="Kế toán vé máy bay" pathname={pathname} onClick={onMobileClose} />}
-          <NavLink href="/ve-may-bay/cong-no-khach-hang" label="Công nợ KH" icon={Users} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/tong-hop-cong-no-ncc" label="Tổng hợp công nợ NCC" icon={Table2} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/cong-no-ncc" label="Đầu vào công nợ NCC" icon={FileSpreadsheet} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/cong-no-ncc-v2" label="Đầu vào công nợ NCC v2" icon={FileStack} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/cong-no-ncc-v3" label="Đầu vào công nợ NCC v3" icon={ListFilter} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/thong-tin-xuat-ve" label="Thông tin xuất vé" icon={Plane} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/sao-ke-tk" label="Sao kê TC" icon={Receipt} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/khach-hang-vmb" label="Khách hàng VMB" icon={UserSearch} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          <NavLink href="/ve-may-bay/danh-muc-khach-hang" label="Danh mục KH" icon={BookUser} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          {(user?.is_super_admin || user?.is_boss) && (
-            <NavLink href="/ve-may-bay/sao-ke" label="Đầu vào sao kê" icon={Landmark} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-          )}
-          {user?.is_super_admin && (
-            <>
-              <NavLink href="/ve-may-bay/parse-logs" label="Nhật ký bot vé" icon={ScrollText} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-              <NavLink href="/ve-may-bay/nhom" label="Nhóm Telegram" icon={Send} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-              <NavLink href="/ve-may-bay/tkt" label="TKT" icon={UserCog} pathname={pathname} collapsed={collapsed} onClick={onMobileClose} />
-            </>
-          )}
-        </div>
-
-        <div className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
-          {!collapsed && (
-            <p
-              className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
-              style={{ color: '#0069a0' }}
-            >
-              Cài đặt
-            </p>
-          )}
-          <NavLink
-            href="/cai-dat/bieu-mau-hop-dong"
-            label="Biểu mẫu hợp đồng"
-            icon={FileStack}
-            pathname={pathname}
-            collapsed={collapsed}
-            onClick={onMobileClose}
-          />
-        </div>
+        {SECTIONS.map((section) => {
+          const items = section.items.filter((item) => itemVisible(item))
+          const hubAllowed = !!section.hub && canScreen(user, section.hub.screen)
+          // Ẩn cả nhóm (kể cả tiêu đề) khi không còn mục nào được dùng
+          if (items.length === 0 && !(hubAllowed && !collapsed)) return null
+          return (
+            <div key={section.label} className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+              {!collapsed &&
+                (section.hub && hubAllowed ? (
+                  <SectionLink href={section.hub.href} label={section.label} pathname={pathname} onClick={onMobileClose} />
+                ) : (
+                  <SectionTitle label={section.label} />
+                ))}
+              {items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon}
+                  pathname={pathname}
+                  collapsed={collapsed}
+                  onClick={onMobileClose}
+                />
+              ))}
+            </div>
+          )
+        })}
       </nav>
 
       <div className={clsx('py-4 md:py-4', collapsed ? 'px-1.5' : 'px-4 md:px-4')} style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>

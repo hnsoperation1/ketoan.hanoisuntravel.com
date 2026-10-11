@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser, requireSuperAdminUser } from '@/lib/auth'
+import { requireSuperAdminUser, requireScreen } from '@/lib/auth'
 
-// GET — danh sách TKT (tài khoản xuất vé). Mở cho cả nhóm ke_toan_allowlist
-// (không chỉ super_admin) — dùng làm gợi ý autocomplete ở trang "Đầu vào
-// công nợ". Sửa/tạo TKT (POST) vẫn chỉ super_admin như cũ.
+// GET — danh sách TKT (tài khoản xuất vé). Mở cho người được màn "Đầu vào
+// công nợ NCC" hoặc "Tổng hợp công nợ NCC" (không chỉ super_admin) — dùng
+// làm gợi ý autocomplete ở 2 màn đó. Sửa/tạo TKT (POST) vẫn chỉ super_admin.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc', 'kt-th-cn-ncc')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

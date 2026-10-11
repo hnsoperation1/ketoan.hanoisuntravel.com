@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -28,7 +28,7 @@ async function setMauHopDongLinks(supabase: SupabaseClient, loaiNhanSuId: string
 // trong doan/[id]/page.tsx). mau_hop_dong_ids khi có mặt trong body sẽ THAY
 // THẾ TOÀN BỘ danh sách mẫu HĐ đang gán (không phải thêm/bớt từng cái).
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-nhan-su')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params

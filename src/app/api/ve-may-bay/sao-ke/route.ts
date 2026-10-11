@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireSuperAdminOrBossUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 
-// GET — toàn bộ dòng sao kê đã đồng bộ. Trước đây chỉ super_admin xem
-// được; mở thêm cho boss theo yêu cầu 2026-08-13, khớp đúng route tương
-// ứng bên hns-crm — vẫn KHÔNG mở cho ke_toan_allowlist thường vì đây là sổ
-// quỹ/ngân hàng tổng công ty, nhạy cảm hơn dữ liệu vé máy bay thông
-// thường (xem migration_sao_ke_giao_dich.sql, repo hns-crm). Lọc/tìm kiếm
+// GET — toàn bộ dòng sao kê đã đồng bộ. Sổ quỹ/ngân hàng tổng công ty, nhạy
+// cảm hơn dữ liệu vé máy bay thông thường (xem migration_sao_ke_giao_dich.sql,
+// repo hns-crm) — từ 2026-10-11 chỉ người được Super Admin tick màn
+// kt-sao-ke (hoặc Super Admin), boss KHÔNG còn tự động được; chưa chạy
+// migration screen_access thì theo luật cũ = Super Admin hoặc Boss. Lọc/tìm kiếm
 // xử lý phía client vì tổng dữ liệu (~4.7k dòng) vẫn nhẹ để tải 1 lần —
 // nhưng PHẢI lấy hết bằng .range() phân trang, .limit(N) đơn lẻ trước đây
 // từng âm thầm cắt mất dòng mới nhất khi bảng vượt trần mặc định của
 // PostgREST (xem @/lib/supabase/fetch-all).
 export async function GET() {
-  const { unauthorized } = await requireSuperAdminOrBossUser()
+  const { unauthorized } = await requireScreen('kt-sao-ke')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

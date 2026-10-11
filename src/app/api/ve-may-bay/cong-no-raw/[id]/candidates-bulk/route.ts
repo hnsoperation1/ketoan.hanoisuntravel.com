@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import { buildCandidateMessagesBulk, type CandidateMessage, type KhachInfo } from '@/lib/ve-may-bay/candidate-messages'
 
@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ id: string }> }
 // điều kiện khớp với route candidates đơn dòng, chỉ gộp các câu .in() lại
 // làm 1 lượt cho cả lô (xem buildCandidateMessagesBulk).
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params

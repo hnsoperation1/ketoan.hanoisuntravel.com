@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 
 // Trang này đối chiếu TOÀN BỘ lịch sử (không lọc theo tháng, khác
@@ -31,7 +31,7 @@ type Entry = {
 }
 
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-kh-vmb', 'kt-xuat-ve')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

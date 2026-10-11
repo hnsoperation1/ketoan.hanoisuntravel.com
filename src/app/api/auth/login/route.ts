@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { loadUserScreens } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json()
@@ -21,9 +22,10 @@ export async function POST(req: NextRequest) {
     await supabase.auth.signOut()
     return NextResponse.json({ error: 'Tài khoản này không có quyền truy cập hệ thống kế toán' }, { status: 403 })
   }
-  const [{ data: isSuperAdmin }, { data: profile }] = await Promise.all([
+  const [{ data: isSuperAdmin }, { data: profile }, screens] = await Promise.all([
     supabase.rpc('is_super_admin'),
     supabase.from('users').select('role, full_name, avatar_url').eq('id', data.user.id).single(),
+    loadUserScreens(data.user.id),
   ])
 
   return NextResponse.json({
@@ -34,6 +36,8 @@ export async function POST(req: NextRequest) {
       avatar_url: profile?.avatar_url ?? null,
       is_super_admin: isSuperAdmin ?? false,
       is_boss: profile?.role === 'boss',
+      // Cùng hình dạng với /api/auth/me — đăng nhập xong client không gọi lại me
+      screens,
     },
   })
 }

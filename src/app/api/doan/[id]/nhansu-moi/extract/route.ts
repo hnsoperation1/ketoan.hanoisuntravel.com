@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { extractProfileFromImages } from '@/lib/ai-extract'
 import { uploadHoSoImage } from '@/lib/storage'
 import { getErrorMessage } from '@/lib/errors'
@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ id: string }> }
  * soát trước khi lưu (chưa ghi gì vào DB ở bước này).
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
 

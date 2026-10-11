@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { createHoSo } from '@/lib/ho-so'
 import { getErrorMessage } from '@/lib/errors'
 
 /** Thêm 1 người vào đoàn thủ công từ dashboard (không qua bot) — cần nhansu_id đã tồn tại. */
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
 
   const body = await req.json()

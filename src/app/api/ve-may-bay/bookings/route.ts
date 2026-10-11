@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser, requireSuperAdminUser } from '@/lib/auth'
+import { requireSuperAdminUser, requireScreen } from '@/lib/auth'
 
 // GET — trả toàn bộ ve_bookings (kèm tên TKT), sắp mới nhất trước. Lọc
 // theo TKT/hãng/ngày làm ở client (giống pattern /kiem-tra-ram) vì
@@ -8,7 +8,7 @@ import { requireUser, requireSuperAdminUser } from '@/lib/auth'
 // gốc từ hns-ticket-parser), không phải cột DATE thật nên lọc theo
 // khoảng ngày ở SQL dễ sai — để UI tự lọc chuỗi đã parse.
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-xuat-ve')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()

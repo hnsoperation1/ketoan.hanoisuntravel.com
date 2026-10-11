@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { RefreshCw, Search, Download, X } from 'lucide-react'
+import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
+import { canScreen } from '@/lib/screens'
+import { NoScreenAccess } from '@/components/NoScreenAccess'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
@@ -60,6 +63,7 @@ function toIsoDate(dateStr: string | null): string | null {
 }
 
 export default function SaoKePage() {
+  const { user } = useAuth()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<SaoKeRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -172,6 +176,12 @@ export default function SaoKePage() {
     }
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([, g]) => g)
   }, [filtered])
+
+  // Sổ quỹ/ngân hàng toàn công ty — chỉ người được tick màn kt-sao-ke (hoặc
+  // Super Admin); chưa chạy migration screen_access thì theo luật cũ =
+  // Super Admin hoặc Boss. AppShell đã chặn theo đường dẫn, chặn lại ở đây
+  // cho chắc (phải đặt sau mọi hook — Rules of Hooks).
+  if (!canScreen(user, 'kt-sao-ke')) return <NoScreenAccess />
 
   return (
     <div className="px-5 pt-2 pb-5 space-y-2">

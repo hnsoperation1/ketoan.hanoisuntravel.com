@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { uploadTemplateFile } from '@/lib/storage'
 import { slugifyFileName } from '@/lib/format'
 import { getErrorMessage } from '@/lib/errors'
 
 export async function GET() {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-bieu-mau-hd', 'kt-doan')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-bieu-mau-hd')
   if (unauthorized) return unauthorized
 
   const formData = await req.formData()

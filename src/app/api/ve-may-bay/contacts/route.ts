@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 // POST { name, phone?, email?, company?, tax_code?, dia_chi?, note? } — tạo
 // 1 liên hệ CRM mới (bảng contacts, cùng Supabase project) để gán làm
@@ -21,7 +21,7 @@ import { requireUser } from '@/lib/auth'
 // liệu CRM không bị lệch với ketoan — giống hệt cách hns-crm/lien-he tự làm
 // khi tạo liên hệ mới.
 export async function POST(req: NextRequest) {
-  const { user, unauthorized } = await requireUser()
+  const { user, unauthorized } = await requireScreen('kt-dm-kh')
   if (unauthorized) return unauthorized
 
   const { name, phone, email, company, tax_code, dia_chi, note } = await req.json().catch(() => ({}))

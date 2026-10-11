@@ -9,6 +9,8 @@ interface AuthUser {
   avatar_url: string | null
   is_super_admin: boolean
   is_boss: boolean
+  /** Màn Super Admin đã tick (lib/screens.ts) — null = đọc screen_access lỗi → theo luật cũ */
+  screens: string[] | null
 }
 
 interface AuthContextValue {
@@ -21,11 +23,18 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 const CACHE_KEY = 'ketoan_user_v1'
 
+// Chuẩn hoá screens: cache cũ (trước khi có phân quyền theo màn) hoặc API
+// trả thiếu trường → null = luật cũ, không bao giờ để undefined lọt vào UI.
+function normalizeUser(user: AuthUser | null): AuthUser | null {
+  if (!user) return null
+  return { ...user, screens: Array.isArray(user.screens) ? user.screens : null }
+}
+
 function readCache(): AuthUser | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = sessionStorage.getItem(CACHE_KEY)
-    return raw ? (JSON.parse(raw) as AuthUser) : null
+    return raw ? normalizeUser(JSON.parse(raw) as AuthUser) : null
   } catch {
     return null
   }
@@ -53,7 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/me')
       if (res.ok) {
-        const { user } = await res.json()
+        const { user: raw } = await res.json()
+        const user = normalizeUser(raw)
         setUser(user)
         writeCache(user)
       } else {
@@ -85,8 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     const data = await res.json()
     if (!res.ok) return data.error ?? 'Đăng nhập thất bại'
-    setUser(data.user)
-    writeCache(data.user)
+    const user = normalizeUser(data.user)
+    setUser(user)
+    writeCache(user)
     return null
   }
 

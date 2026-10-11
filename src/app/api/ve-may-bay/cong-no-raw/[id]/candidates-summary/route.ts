@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { findIdColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -21,7 +21,7 @@ const IN_CHUNK = 300
 // trả mảng rỗng khi không có parse_log_id nào, nên điều kiện phải khớp y
 // hệt, tránh cảnh bảng báo "có" mà bấm vào panel lại rỗng.
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params

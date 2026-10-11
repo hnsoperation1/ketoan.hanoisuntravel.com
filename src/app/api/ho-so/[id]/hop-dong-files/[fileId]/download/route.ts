@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string; fileId: string }> }
 
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string; fileId: string }> }
  *  cross-origin thẳng tới Supabase Storage (trình duyệt bỏ qua thuộc tính
  *  download với URL khác origin). */
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { fileId } = await ctx.params
 

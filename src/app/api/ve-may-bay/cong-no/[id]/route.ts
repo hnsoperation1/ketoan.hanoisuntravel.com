@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireUser, requireSuperAdminUser } from '@/lib/auth'
+import { requireSuperAdminUser, requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -11,7 +11,7 @@ const NUMBER_FIELDS = ['gia_mua', 'cktm', 'gia_ban', 'com_khach'] as const
 // chiếu, hoặc sửa lại số gốc (giá mua/CKTM/giá bán/COM khách) nếu nhập
 // nhầm lúc import.
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-th-cn-ncc')
   if (unauthorized) return unauthorized
 
   const { id } = await ctx.params
@@ -44,8 +44,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 // DELETE — xoá 1 dòng nhập nhầm. CHỈ super admin (2026-08-26): xoá dòng
 // công nợ là mất dữ liệu tài chính, không khôi phục được. Ẩn nút ở giao
 // diện thôi thì chưa đủ — ai biết đường vẫn gọi thẳng API xoá được, nên
-// phải chặn ngay tại đây. PATCH bên trên GIỮ NGUYÊN requireUser() vì kế
-// toán vẫn cần sửa mã khách/giá/ghi chú bình thường.
+// phải chặn ngay tại đây. PATCH bên trên chỉ cần được màn Tổng hợp công nợ
+// NCC (requireScreen) vì kế toán vẫn cần sửa mã khách/giá/ghi chú bình thường.
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   const { unauthorized } = await requireSuperAdminUser()
   if (unauthorized) return unauthorized

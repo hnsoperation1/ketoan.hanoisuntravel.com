@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { buildMergeData, mergeDocxTemplate, buildContractFileName } from '@/lib/docx-merge'
 import { uploadGeneratedContract } from '@/lib/storage'
 import { getErrorMessage } from '@/lib/errors'
@@ -15,7 +15,7 @@ type Ctx = { params: Promise<{ id: string }> }
 const HO_SO_SELECT = '*, nhansu:nhansu_id(*, loai_nhan_su:loai_nhan_su_id(*, mau_hop_dong_links:loai_nhan_su_mau_hop_dong(mau_hop_dong_id)))'
 
 export async function POST(req: NextRequest, ctx: Ctx) {
-  const { unauthorized } = await requireUser()
+  const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
   const supabase = await createClient()
