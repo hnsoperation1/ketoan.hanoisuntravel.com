@@ -8,6 +8,6 @@ export const IHNS_APPS: IhnsApp[] = [
   { id: 'chamcong', label: 'Chấm công', description: 'Bảng công, bảng lương và đơn từ cá nhân', href: 'https://chamcong.ihns.vn', Icon: Fingerprint, gradient: 'from-orange-400 to-orange-600' },
   { id: 'hrm', label: 'HRM', description: 'Sổ quản lý lao động và quản trị chấm công', href: 'https://ihns.vn/hrm', Icon: Users2, gradient: 'from-sky-500 to-blue-600' },
   { id: 'congviec', label: 'Công việc', description: 'Quản lý công việc', href: 'https://ihns.vn/cong-viec', Icon: ClipboardList, gradient: 'from-rose-400 to-red-600' },
-  { id: 'khoquatang', label: 'Kho quà tặng', description: 'Quản lý kho, nhập xuất chuyển', href: 'https://ihns.vn/kho-qua-tang', Icon: PackageSearch, gradient: 'from-orange-500 to-amber-600' },
+  { id: 'khoquatang', label: 'Kho', description: 'Quản lý kho, nhập xuất chuyển', href: 'https://ihns.vn/kho-qua-tang', Icon: PackageSearch, gradient: 'from-orange-500 to-amber-600' },
   { id: 'phongve', label: 'Phòng vé', description: 'Bot vé máy bay, nhóm Telegram, booking', href: 'https://ihns.vn/phong-ve', Icon: Plane, gradient: 'from-cyan-500 to-teal-700' },
 ]

@@ -14,6 +14,7 @@ import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
+import { UserPickerModal, type PickerUser } from '@/components/UserPicker'
 
 export type DebtRow = {
   id: string
@@ -390,6 +391,54 @@ function EditableCell({ value, onSave, placeholder, align, suggestions, fillCell
   return fillCell ? <div className="absolute inset-0">{body}</div> : body
 }
 
+// Ô "Sale chính" — quy tắc chọn nhân viên (2026-10-12): danh sách nhân viên mở bằng MODAL có ô tìm, chỉ
+// hiện họ tên. Ô này vẫn giữ là ô nhập TỰ DO (không ép thành ô chọn thuần): cột sale_chinh là chữ (lưu họ
+// tên, không lưu id), sale chính có thể là CTV/đối tác/BOD không có tài khoản (bên CRM bảng sale_chinh có
+// đủ các loại đó), và nhiều dòng cũ đã gõ tên ngoài danh sách nhân viên. Nên chỉ thay dropdown gợi ý xổ
+// xuống bằng nút "Chọn" mở modal. `options` = nhân viên đang active + tên đã từng gắn trong bảng.
+// Modal dùng z-[200] để nổi trên khung "Phóng to" (z-[100]) của BangExcelView.
+function SaleChinhCell({ value, onSave, options, fillCell }: {
+  value: string | null; onSave: (v: string) => void; options: PickerUser[]
+  // Như EditableCell: chỉ bật khi nằm trong <td> "relative" của BangExcelView.
+  fillCell?: boolean
+}) {
+  const [v, setV] = useState(value ?? '')
+  const [open, setOpen] = useState(false)
+  // Giá trị từ ngoài đổi (lưu xong / tải lại) → đồng bộ lại ô nhập ngay trong lúc render (không dùng effect).
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setV(value ?? '')
+  }
+
+  function pick(name: string) {
+    setOpen(false)
+    setV(name)
+    if (name !== (value ?? '')) onSave(name)
+  }
+
+  const body = (
+    <div className={`flex items-stretch ${fillCell ? 'h-full' : ''}`}>
+      <input value={v} placeholder="Sale chính..."
+        onChange={e => setV(e.target.value)}
+        onBlur={() => { if (v !== (value ?? '')) onSave(v) }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        className={`${CELL_INPUT} min-w-0 flex-1`} />
+      <button type="button" onClick={() => setOpen(true)}
+        className="shrink-0 px-1.5 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">
+        Chọn
+      </button>
+      {open && (
+        <UserPickerModal title="Chọn sale chính" users={options} zClass="z-[200]"
+          isSelected={u => u.full_name === (value ?? '')}
+          onPick={u => pick(u.full_name)}
+          onClose={() => setOpen(false)} />
+      )}
+    </div>
+  )
+  return fillCell ? <div className="absolute inset-0">{body}</div> : body
+}
+
 // Ô "Ghi chú" riêng — ô trong bảng chỉ rộng 160px, gõ ghi chú dài thì chữ
 // chạy tuột sang trái, không xem lại được toàn bộ. Bấm vào ô mở MODAL có
 // vùng nhập nhiều dòng để xem/sửa thoải mái. Trong bảng vẫn hiện 1 dòng
@@ -730,8 +779,8 @@ const BANG_COLS: ColDef[] = [
 ]
 const BANG_COL_DEFAULTS = Object.fromEntries(BANG_COLS.map(c => [c.key, c.width]))
 
-function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions, bottomBar }: {
-  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[]
+function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhOptions, bottomBar }: {
+  rows: DebtRow[]; onSaveField: FieldSaver; onSaveNumberField: NumberFieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhOptions: PickerUser[]
   // Thanh tab tháng — CHỈ vẽ khi phóng to (xem cuối hàm).
   bottomBar?: React.ReactNode
 }) {
@@ -831,7 +880,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                     </div>
                   </td>
                   <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions}  fillCell /></td>
-                  <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions}  fillCell /></td>
+                  <td className={`${TD} p-0 relative`}><SaleChinhCell value={r.sale_chinh} onSave={v => onSaveField(r.id, 'sale_chinh', v)} options={saleChinhOptions} fillCell /></td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                   <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                   <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -885,7 +934,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
                       </div>
                     </td>
                     <td className={`${TD} p-0 relative`}><EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions}  fillCell /></td>
-                    <td className={`${TD} p-0 relative`}><EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions}  fillCell /></td>
+                    <td className={`${TD} p-0 relative`}><SaleChinhCell value={r.sale_chinh} onSave={v => onSaveField(r.id, 'sale_chinh', v)} options={saleChinhOptions} fillCell /></td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_truoc_com)}</td>
                     <td className={`${TD} text-right`}>{formatGiaVe(d.ln_tinh_thue)}</td>
                     <td className={`${TD} text-right`}>{formatPercent(d.ty_le_thue_tndn)}</td>
@@ -932,7 +981,7 @@ function BangExcelView({ rows, onSaveField, onSaveNumberField, onSaveMaKhach, on
   return content
 }
 
-function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhSuggestions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhSuggestions: string[] }) {
+function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tktSuggestions, khSuggestions, saleChinhOptions }: { rows: DebtRow[]; onSaveField: FieldSaver; onSaveMaKhach: MaKhachSaver; onOpenMatch: (row: DebtRow) => void; onDelete?: (id: string) => void; tktSuggestions: string[]; khSuggestions: KhachOpt[]; saleChinhOptions: PickerUser[] }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
       {rows.map(r => {
@@ -985,7 +1034,7 @@ function ListView({ rows, onSaveField, onSaveMaKhach, onOpenMatch, onDelete, tkt
               <EditableCell value={r.tkt_tag} placeholder="Tìm TKT..." onSave={v => onSaveField(r.id, 'tkt_tag', v)} suggestions={tktSuggestions} />
             </div>
             <div className="w-28 shrink-0">
-              <EditableCell value={r.sale_chinh} placeholder="Tìm sale chính..." onSave={v => onSaveField(r.id, 'sale_chinh', v)} suggestions={saleChinhSuggestions} />
+              <SaleChinhCell value={r.sale_chinh} onSave={v => onSaveField(r.id, 'sale_chinh', v)} options={saleChinhOptions} />
             </div>
             {onDelete && (
               <button onClick={() => onDelete(r.id)} title="Xoá dòng này" className="flex items-center gap-1 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
@@ -1139,15 +1188,15 @@ export default function TongHopCongNoNccPage() {
     }
   }, [setBreadcrumb, setOnRefresh, loadData])
 
-  // Danh mục để gợi ý autocomplete cho "Tìm mã khách/TKT/sale chính" — kéo
+  // Danh mục để gợi ý cho "Tìm mã khách/TKT" và modal chọn sale chính — kéo
   // từ nguồn CHUẨN thay vì chỉ suy ra từ các dòng đã gắn tay trong chính
   // bảng này (rows hầu hết còn trống 3 trường này nên tự suy ra gần như
   // rỗng): mã khách lấy từ /ve-may-bay/vmb-khach-hang, TKT lấy từ bảng
   // ve_tkt thật, sale chính lấy từ danh sách nhân viên (users,
-  // is_active=true).
+  // is_active=true) — hiện trong modal chọn của SaleChinhCell.
   const [dirMaKhach, setDirMaKhach] = useState<KhachOpt[]>([])
   const [dirTkt, setDirTkt] = useState<string[]>([])
-  const [dirSaleChinh, setDirSaleChinh] = useState<string[]>([])
+  const [dirSaleChinh, setDirSaleChinh] = useState<PickerUser[]>([])
 
   const loadDirectories = useCallback(async () => {
     try {
@@ -1165,7 +1214,7 @@ export default function TongHopCongNoNccPage() {
     try {
       const res = await fetch('/api/ve-may-bay/users')
       const { data } = await res.json()
-      if (Array.isArray(data)) setDirSaleChinh(data.map((u: { full_name: string }) => u.full_name).filter(Boolean))
+      if (Array.isArray(data)) setDirSaleChinh(data.filter((u: PickerUser) => u.full_name).map((u: PickerUser) => ({ id: u.id, full_name: u.full_name })))
     } catch { /* im lặng */ }
   }, [])
 
@@ -1364,7 +1413,7 @@ export default function TongHopCongNoNccPage() {
 
   const filtered = filteredExceptMonth.filter(r => !monthFilter || monthKeyOf(r.issued_date) === monthFilter)
 
-  // Gợi ý autocomplete cho ô "Tìm TKT"/"Tìm mã khách"/"Tìm sale chính" —
+  // Gợi ý cho ô "Tìm TKT"/"Tìm mã khách" và danh sách modal "Chọn sale chính" —
   // hợp cả danh mục CHUẨN (dirTkt/dirMaKhach/dirSaleChinh, xem loadDirectories)
   // VÀ giá trị đã từng gắn tay trong chính bảng này (rows), phòng khi có
   // tag cũ không khớp danh mục chuẩn (gõ tự do trước khi có autocomplete).
@@ -1377,7 +1426,17 @@ export default function TongHopCongNoNccPage() {
     }
     return Array.from(map.values()).sort((a, b) => a.ma_khach.localeCompare(b.ma_khach))
   })()
-  const allSaleChinh = Array.from(new Set([...dirSaleChinh, ...rows.map(r => r.sale_chinh).filter(Boolean) as string[]]))
+  // Sale chính: nhân viên (id thật) + tên đã gõ tay trong bảng mà không trùng
+  // họ tên nhân viên nào (id giả "ten:<tên>", chỉ để làm key) — gộp theo tên
+  // vì cột sale_chinh lưu họ tên, xếp theo ABC tiếng Việt cho dễ tìm.
+  const saleChinhOptions: PickerUser[] = (() => {
+    const map = new Map<string, PickerUser>()
+    for (const u of dirSaleChinh) if (!map.has(u.full_name)) map.set(u.full_name, u)
+    for (const r of rows) {
+      if (r.sale_chinh && !map.has(r.sale_chinh)) map.set(r.sale_chinh, { id: `ten:${r.sale_chinh}`, full_name: r.sale_chinh })
+    }
+    return Array.from(map.values()).sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'))
+  })()
 
   return (
     <>
@@ -1618,10 +1677,10 @@ export default function TongHopCongNoNccPage() {
               : 'Không có dòng nào khớp bộ lọc/tháng đang chọn.'}
           </div>
         ) : viewMode === 'bang' ? (
-          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh}
+          <BangExcelView rows={filtered} onSaveField={saveField} onSaveNumberField={saveNumberField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhOptions={saleChinhOptions}
             bottomBar={<MonthTabBar tabs={monthTabs} value={monthFilter} onChange={setMonthFilter} totalCount={filteredExceptMonth.length} />} />
         ) : viewMode === 'list' ? (
-          <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhSuggestions={allSaleChinh} />
+          <ListView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} saleChinhOptions={saleChinhOptions} />
         ) : (
           <CardView rows={filtered} onSaveField={saveField} onSaveMaKhach={saveMaKhachManual} onOpenMatch={setViewingMatchRow} onDelete={canDelete ? deleteRow : undefined} tktSuggestions={allTktTags} khSuggestions={allMaKhach} />
         )}
