@@ -15,7 +15,6 @@
 export const SCREEN_IDS = [
   'kt-doan',
   'kt-nhan-su',
-  'kt-kho',
   'kt-vmb',
   'kt-cn-kh',
   'kt-th-cn-ncc',
@@ -39,7 +38,6 @@ export type ScreenId = (typeof SCREEN_IDS)[number]
 const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
   { path: '/doan', screen: 'kt-doan' },
   { path: '/nhan-su', screen: 'kt-nhan-su' },
-  { path: '/kho', screen: 'kt-kho' },
   { path: '/ve-may-bay', screen: 'kt-vmb', exact: true },
   { path: '/ve-may-bay/cong-no-khach-hang', screen: 'kt-cn-kh' },
   { path: '/ve-may-bay/tong-hop-cong-no-ncc', screen: 'kt-th-cn-ncc' },
@@ -57,9 +55,9 @@ const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
 
 // Trang thuộc nhóm "Cài đặt" cuối Sidebar (quyết định 2026-10-11): CHỈ Super
 // Admin, ở cả chế độ mới lẫn luật cũ — KHÔNG phải màn tick được (trước là
-// kt-bieu-mau-hd / kt-kho-cai-dat). AppShell chặn theo danh sách này; nằm
-// riêng để /kho/cai-dat không bị khớp nhầm vào màn kt-kho (/kho).
-const SUPER_ADMIN_ROUTES = ['/cai-dat/bieu-mau-hop-dong', '/kho/cai-dat']
+// kt-bieu-mau-hd). AppShell chặn theo danh sách này. (Kho quà tặng + Cài đặt
+// kho đã gỡ khỏi app Kế toán 2026-10-12 — kho chỉ còn ở ihns.vn/kho.)
+const SUPER_ADMIN_ROUTES = ['/cai-dat/bieu-mau-hop-dong']
 
 /** Trang chỉ Super Admin (gồm cả trang con). */
 export function isSuperAdminPath(pathname: string): boolean {

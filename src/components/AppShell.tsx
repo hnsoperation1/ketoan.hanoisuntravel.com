@@ -51,8 +51,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Cổng phân quyền theo MÀN — 1 chỗ duy nhất cho mọi trang (bảng đường dẫn →
   // màn nằm ở lib/screens.ts). Trang không thuộc màn nào (/, /docs, /cai-dat,
-  // nhom/tkt) → không chặn ở đây. Trang nhóm "Cài đặt" (Biểu mẫu hợp đồng,
-  // Cài đặt kho) → chỉ Super Admin, ở mọi chế độ.
+  // nhom/tkt) → không chặn ở đây. Trang nhóm "Cài đặt" (Biểu mẫu hợp đồng)
+  // → chỉ Super Admin, ở mọi chế độ.
   const superAdminOnly = isSuperAdminPath(pathname)
   const screen = screenForPath(pathname)
   const blocked = superAdminOnly ? !user?.is_super_admin : screen !== null && !canScreen(user, screen)

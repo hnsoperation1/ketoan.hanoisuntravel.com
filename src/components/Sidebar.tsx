@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, Package, KeyRound } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -109,13 +109,6 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: 'Kho quà tặng',
-    items: [
-      // exact: Cài đặt kho (/kho/cai-dat) đã chuyển xuống nhóm "Cài đặt"
-      { href: '/kho', label: 'Tổng quan', icon: Package, exact: true, screen: 'kt-kho' },
-    ],
-  },
-  {
     // Tiêu đề nhóm cũng là link sang trang hub /ve-may-bay (nếu được màn kt-vmb)
     label: 'Kế toán vé máy bay',
     hub: { href: '/ve-may-bay', screen: 'kt-vmb' },
@@ -143,7 +136,6 @@ const SECTIONS: NavSection[] = [
     superAdminOnly: true,
     items: [
       { href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, superAdminOnly: true },
-      { href: '/kho/cai-dat', label: 'Cài đặt kho', icon: UserCog, superAdminOnly: true },
       { href: 'https://ihns.vn/cai-dat/ketoan', label: 'Phân quyền app', icon: KeyRound, superAdminOnly: true, external: true },
     ],
   },
