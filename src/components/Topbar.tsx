@@ -10,14 +10,17 @@ import NotificationBell from '@/components/NotificationBell'
 import { AppSwitcher } from '@/components/AppSwitcher'
 
 export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggle?: () => void }) {
-  const { breadcrumb, onRefresh } = useTopbar()
+  const { breadcrumb, refresh } = useTopbar()
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [spinning, setSpinning] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
+  // Làm mới = refresh() dùng chung (contexts/topbar): chỉ tải lại vùng nội dung, không tải lại cả trang
   function handleRefresh() {
-    if (onRefresh) onRefresh()
-    else window.location.reload()
+    setSpinning(true)
+    setTimeout(() => setSpinning(false), 600)
+    refresh()
   }
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function Topbar({ onMobileSidebarToggle }: { onMobileSidebarToggl
         title="Làm mới"
         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
       >
-        <RotateCw size={15} />
+        <RotateCw size={15} className={spinning ? 'animate-spin' : undefined} />
       </button>
       <NotificationBell />
       <AppSwitcher current="ketoan" />

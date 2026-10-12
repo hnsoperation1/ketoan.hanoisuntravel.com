@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
-import { TopbarProvider } from '@/contexts/topbar'
+import { ContentReload, TopbarProvider } from '@/contexts/topbar'
 import { canScreen, isSuperAdminPath, screenForPath } from '@/lib/screens'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Topbar onMobileSidebarToggle={() => setMobileOpen((o) => !o)} />
-          <main className="flex-1 overflow-y-auto relative">{blocked ? <NoScreenAccess superAdminOnly={superAdminOnly} /> : children}</main>
+          <main className="flex-1 overflow-y-auto relative">{blocked ? <NoScreenAccess superAdminOnly={superAdminOnly} /> : <ContentReload>{children}</ContentReload>}</main>
         </div>
       </div>
     </TopbarProvider>
