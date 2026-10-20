@@ -14,6 +14,7 @@ import { MatchSlideOver } from '../cong-no-ncc/MatchSlideOver'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
+import { SelectMenu } from '@/components/SelectMenu'
 import { UserPickerModal, type PickerUser } from '@/components/UserPicker'
 
 export type DebtRow = {
@@ -306,8 +307,6 @@ async function parseXlsFile(file: File): Promise<SheetData[]> {
     grid: XLSX.utils.sheet_to_json<string[]>(wb.Sheets[name], { header: 1, raw: false, defval: '' }),
   }))
 }
-
-const SELECT ='border border-gray-200 rounded-lg px-2.5 py-2.5 text-xs font-semibold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400'
 
 // Viền xanh lá đậm, góc vuông khi focus — giống ô đang nhập trong Excel
 // thật (không phải nhẫn xanh dương bo tròn kiểu form web thông thường).
@@ -1613,18 +1612,15 @@ export default function TongHopCongNoNccPage() {
             </button>
           )}
         </div>
-        <select value={rowNccFilter} onChange={e => { setRowNccFilter(e.target.value); setTktFilter(''); setKhFilter('') }} className={SELECT}>
-          <option value="">Tất cả NCC</option>
-          {nccOptions.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <select value={tktFilter} onChange={e => { setTktFilter(e.target.value); setKhFilter('') }} className={SELECT}>
-          <option value="">Tất cả TKT</option>
-          {tkts.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={khFilter} onChange={e => setKhFilter(e.target.value)} className={SELECT}>
-          <option value="">Tất cả khách hàng</option>
-          {khs.map(k => <option key={k} value={k}>{k}</option>)}
-        </select>
+        {/* Chọn lại đúng giá trị đang lọc thì bỏ qua — không xoá các bộ lọc con phía sau. */}
+        <SelectMenu size="sm" className="w-44" value={rowNccFilter}
+          onChange={v => { if (v === rowNccFilter) return; setRowNccFilter(v); setTktFilter(''); setKhFilter('') }}
+          options={[{ value: '', label: 'Tất cả NCC' }, ...nccOptions.map(n => ({ value: n, label: n }))]} />
+        <SelectMenu size="sm" className="w-40" value={tktFilter}
+          onChange={v => { if (v === tktFilter) return; setTktFilter(v); setKhFilter('') }}
+          options={[{ value: '', label: 'Tất cả TKT' }, ...tkts.map(t => ({ value: t, label: t }))]} />
+        <SelectMenu size="sm" className="w-48" value={khFilter} onChange={setKhFilter}
+          options={[{ value: '', label: 'Tất cả khách hàng' }, ...khs.map(k => ({ value: k, label: k }))]} />
 
         {/* Nhập file + khớp mã khách + làm mới — trước đây nằm ở 1 thanh
             RIÊNG dính ngay dưới topbar, gộp xuống đây cho đỡ tốn 1 hàng

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { SaBadge } from '@/components/SaBadge'
+import { SelectMenu } from '@/components/SelectMenu'
 
 const NHOM_COLS = [
   { key: 'nhom', label: 'Nhóm', width: 220 },
@@ -226,14 +227,9 @@ export default function NhomTelegramPage() {
                       <div className="font-semibold text-gray-800">{g.telegram_chat_title ?? `Chat ${g.telegram_chat_id}`}</div>
                       <div className="text-xs text-gray-400">chat_id: {g.telegram_chat_id}</div>
                     </div>
-                    <select disabled={saving === g.id} defaultValue=""
-                      onChange={e => ganTkt(g.id, e.target.value)}
-                      className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white">
-                      <option value="" disabled>Chọn TKT...</option>
-                      {tkts.map(t => (
-                        <option key={t.id} value={t.id}>{t.tkt_code}{t.ten_nhan_vien ? ` — ${t.ten_nhan_vien}` : ''}</option>
-                      ))}
-                    </select>
+                    <SelectMenu size="sm" className="w-56 shrink-0" disabled={saving === g.id} value="" placeholder="Chọn TKT..."
+                      onChange={v => ganTkt(g.id, v)}
+                      options={tkts.map(t => ({ value: t.id, label: `${t.tkt_code}${t.ten_nhan_vien ? ` — ${t.ten_nhan_vien}` : ''}` }))} />
                   </div>
                 ))}
               </div>
@@ -285,14 +281,9 @@ export default function NhomTelegramPage() {
                           </span>
                         </td>
                         <td className="px-3 py-2.5">
-                          <select disabled={saving === g.id} value={g.tkt_id ?? ''}
-                            onChange={e => ganTkt(g.id, e.target.value)}
-                            className="border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white">
-                            <option value="">— Bỏ gán —</option>
-                            {tkts.map(t => (
-                              <option key={t.id} value={t.id}>{t.tkt_code}</option>
-                            ))}
-                          </select>
+                          <SelectMenu size="sm" className="w-full" disabled={saving === g.id} value={g.tkt_id ?? ''}
+                            onChange={v => { if (v !== (g.tkt_id ?? '')) ganTkt(g.id, v) }}
+                            options={[{ value: '', label: '— Bỏ gán —' }, ...tkts.map(t => ({ value: t.id, label: t.tkt_code }))]} />
                         </td>
                       </tr>
                     ))}

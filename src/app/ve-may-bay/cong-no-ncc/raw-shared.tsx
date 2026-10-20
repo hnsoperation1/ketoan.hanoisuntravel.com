@@ -17,6 +17,7 @@ import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useResizableRows } from '@/hooks/useResizableRows'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useUserPreference } from '@/hooks/useUserPreference'
+import { SelectMenu } from '@/components/SelectMenu'
 import { type MatchStatus, MatchStatusBadge } from '@/lib/ve-may-bay/match-status'
 import { findIdColumnIndex, findPaxColumnIndex } from '@/lib/ve-may-bay/raw-column-roles'
 import type { RawCandidateMessage, RawKhachInfo } from './RawMatchPanel'
@@ -692,19 +693,20 @@ export function RawBatchesView({ batches, onDelete, onRename, ncc, onOpenMatch, 
 
 export type RawTableMatch = Pick<RawMatchInfo, 'ma_khach' | 'match_status' | 'matched_booking_id' | 'gia_mua' | 'gia_ban' | 'gia_source' | 'tkt_tag'>
 
-// Ô TKT — picker THUẦN (select gốc trình duyệt), KHÔNG cho gõ tự do: chỉ
-// chọn được đúng mã có trong danh mục ve_tkt (qua tktSuggestions, xem
-// RawBatchesView). Nếu giá trị đang lưu không còn nằm trong danh mục hiện
-// tại (đổi tên/xoá TKT sau khi đã gán) vẫn chèn thêm vào đầu danh sách để
-// không "biến mất" khỏi ô, tránh hiểu nhầm là bị xoá dữ liệu.
+// Ô TKT — picker THUẦN (SelectMenu, không dùng select gốc trình duyệt),
+// KHÔNG cho gõ tự do: chỉ chọn được đúng mã có trong danh mục ve_tkt (qua
+// tktSuggestions, xem RawBatchesView). Nếu giá trị đang lưu không còn nằm
+// trong danh mục hiện tại (đổi tên/xoá TKT sau khi đã gán) vẫn chèn thêm vào
+// đầu danh sách để không "biến mất" khỏi ô, tránh hiểu nhầm là bị xoá dữ liệu.
+// Các lớp [&>button]:… bỏ viền/bo góc/nền của nút SelectMenu để ô trông như
+// ô lưới bình thường (lấp kín ô, chữ nhỏ như CELL_INPUT).
 function TktPickerCell({ value, onSave, suggestions }: { value: string | null; onSave: (v: string | null) => void; suggestions: string[] }) {
   const options = value && !suggestions.includes(value) ? [value, ...suggestions] : suggestions
   return (
-    <select value={value ?? ''} onChange={e => onSave(e.target.value || null)}
-      className={`${CELL_INPUT} cursor-pointer`}>
-      <option value="">Chưa có</option>
-      {options.map(s => <option key={s} value={s}>{s}</option>)}
-    </select>
+    <SelectMenu size="sm" value={value ?? ''} placeholder="Chưa có"
+      onChange={v => { if (v !== (value ?? '')) onSave(v || null) }}
+      options={[{ value: '', label: 'Chưa có' }, ...options.map(s => ({ value: s, label: s }))]}
+      className="h-full w-full [&>button]:h-full [&>button]:rounded-none [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-1 [&>button]:py-0.5 [&>button]:ring-inset [&>button]:ring-[#107C41]" />
   )
 }
 

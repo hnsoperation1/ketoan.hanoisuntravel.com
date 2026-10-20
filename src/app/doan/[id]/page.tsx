@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
+import { SelectMenu } from '@/components/SelectMenu'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
@@ -70,7 +71,7 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
 
 type Tab = 'info' | 'hdv' | 'files'
 
-const LOAI_THE_HDV_OPTIONS = ['Nội địa', 'Quốc tế']
+const LOAI_THE_HDV_SELECT = [{ value: '', label: '- Chọn -' }, ...['Nội địa', 'Quốc tế'].map((o) => ({ value: o, label: o }))]
 
 // Các mức CTP/ngày hay dùng, 800k để đầu (vị trí dễ bấm nhất) + tô nổi bật
 const CTP_NGAY_CHIPS = [800000, 500000, 700000, 900000, 1000000, 2000000, 3000000, 4000000, 5000000, 10000000]
@@ -1073,20 +1074,16 @@ function InlineImageViewer({
     <div className="rounded-xl border border-gray-200 bg-gray-900 overflow-hidden select-none">
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-800">
         {onKindChange ? (
-          <select
+          <SelectMenu
+            size="sm"
+            className="w-32"
             value={kind ?? ''}
-            onChange={(e) => onKindChange(e.target.value as ImageKind)}
-            className="text-[11px] bg-transparent text-white/90 border border-white/20 rounded-md px-1 py-0.5"
-          >
-            <option value="" className="text-gray-900">
-              Không rõ
-            </option>
-            {(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => (
-              <option key={k} value={k} className="text-gray-900">
-                {IMAGE_KIND_LABELS[k]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onKindChange(v as ImageKind)}
+            options={[
+              { value: '', label: 'Không rõ' },
+              ...(Object.keys(IMAGE_KIND_LABELS) as ImageKind[]).map((k) => ({ value: k, label: IMAGE_KIND_LABELS[k] })),
+            ]}
+          />
         ) : (
           <span className="text-[11px] text-white/70 truncate px-0.5">{label}</span>
         )}
@@ -1463,13 +1460,12 @@ function AddNhanSuModal({
                   </div>
                   <Field label="Loại nhân sự">
                     <div className="flex gap-2">
-                      <select value={loaiNhanSuId} onChange={(e) => setLoaiNhanSuId(e.target.value)} className={`${inputCls} flex-1`}>
-                        {loaiNhanSu.list.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.ten}
-                          </option>
-                        ))}
-                      </select>
+                      <SelectMenu
+                        className="flex-1 min-w-0"
+                        value={loaiNhanSuId}
+                        onChange={setLoaiNhanSuId}
+                        options={loaiNhanSu.list.map((l) => ({ value: l.id, label: l.ten }))}
+                      />
                       <button
                         type="button"
                         onClick={() => setCreatingLoai(true)}
@@ -1505,18 +1501,11 @@ function AddNhanSuModal({
                         <input value={fields.so_the_hdv} onChange={(e) => setFields((f) => ({ ...f, so_the_hdv: e.target.value }))} className={inputCls} />
                       </Field>
                       <Field label="Loại thẻ">
-                        <select
+                        <SelectMenu
                           value={fields.loai_the_hdv}
-                          onChange={(e) => setFields((f) => ({ ...f, loai_the_hdv: e.target.value }))}
-                          className={inputCls}
-                        >
-                          <option value="">- Chọn -</option>
-                          {LOAI_THE_HDV_OPTIONS.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => setFields((f) => ({ ...f, loai_the_hdv: v }))}
+                          options={LOAI_THE_HDV_SELECT}
+                        />
                       </Field>
                       <Field label="Hạn thẻ">
                         <DateInput value={fields.han_the_hdv} onChange={(v) => setFields((f) => ({ ...f, han_the_hdv: v }))} className="w-full" />
@@ -2326,17 +2315,12 @@ function HoSoDetailModal({
                     value={loaiNhanSu.list.find((l) => l.id === n.loai_nhan_su_id)?.ten ?? null}
                     input={
                       <div className="flex gap-2">
-                        <select
+                        <SelectMenu
+                          className="flex-1 min-w-0"
                           value={nhansu.loai_nhan_su_id}
-                          onChange={(e) => setNhansu((f) => ({ ...f, loai_nhan_su_id: e.target.value }))}
-                          className={`${inputCls} flex-1`}
-                        >
-                          {loaiNhanSu.list.map((l) => (
-                            <option key={l.id} value={l.id}>
-                              {l.ten}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => setNhansu((f) => ({ ...f, loai_nhan_su_id: v }))}
+                          options={loaiNhanSu.list.map((l) => ({ value: l.id, label: l.ten }))}
+                        />
                         <button
                           type="button"
                           onClick={() => setCreatingLoai(true)}
@@ -2410,18 +2394,11 @@ function HoSoDetailModal({
                         label="Loại thẻ"
                         value={n.loai_the_hdv}
                         input={
-                          <select
+                          <SelectMenu
                             value={nhansu.loai_the_hdv}
-                            onChange={(e) => setNhansu((f) => ({ ...f, loai_the_hdv: e.target.value }))}
-                            className={inputCls}
-                          >
-                            <option value="">- Chọn -</option>
-                            {LOAI_THE_HDV_OPTIONS.map((o) => (
-                              <option key={o} value={o}>
-                                {o}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(v) => setNhansu((f) => ({ ...f, loai_the_hdv: v }))}
+                            options={LOAI_THE_HDV_SELECT}
+                          />
                         }
                       />
                       <InfoField
@@ -2621,22 +2598,15 @@ function HoSoDetailModal({
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">File hợp đồng</p>
                   <div className="flex items-center gap-2">
-                    <select
+                    <SelectMenu
+                      size="sm"
+                      className="w-56"
                       value={templateId}
-                      onChange={(e) => setTemplateId(e.target.value)}
+                      onChange={setTemplateId}
                       disabled={templates.length === 0}
-                      className="text-xs border border-gray-200 rounded-xl px-2.5 py-2 bg-white text-gray-700 disabled:opacity-60"
-                    >
-                      {templates.length === 0 ? (
-                        <option value="">Chưa có biểu mẫu</option>
-                      ) : (
-                        templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.ten}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      placeholder="Chưa có biểu mẫu"
+                      options={templates.map((t) => ({ value: t.id, label: t.ten }))}
+                    />
                     <button
                       type="button"
                       onClick={handleExport}

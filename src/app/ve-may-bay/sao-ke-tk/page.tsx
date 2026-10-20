@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { RefreshCw, Search, Download, CheckCircle2, XCircle, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
+import { SelectMenu } from '@/components/SelectMenu'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 
@@ -207,18 +208,16 @@ export default function SaoKeTkPage() {
   return (
     <div className="px-5 pt-2 pb-5 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <select value={`${selected.year}-${selected.month}`}
-          onChange={e => {
-            const [y, m] = e.target.value.split('-').map(Number)
-            setSelected({ year: y, month: m })
+        <SelectMenu className="w-56" value={`${selected.year}-${selected.month}`}
+          onChange={v => {
+            const [y, m] = v.split('-').map(Number)
+            // Chọn lại đúng tháng đang xem → giữ nguyên object, không tải lại.
+            setSelected(prev => (prev.year === y && prev.month === m ? prev : { year: y, month: m }))
           }}
-          className="px-3 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400">
-          {MONTH_OPTIONS.map(o => (
-            <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>
-              Tháng {o.month}/{o.year}{o.year === currentYear && o.month === currentMonth ? ' (hiện tại)' : ''}
-            </option>
-          ))}
-        </select>
+          options={MONTH_OPTIONS.map(o => ({
+            value: `${o.year}-${o.month}`,
+            label: `Tháng ${o.month}/${o.year}${o.year === currentYear && o.month === currentMonth ? ' (hiện tại)' : ''}`,
+          }))} />
         {TAI_KHOAN_OPTIONS.map(tk => (
           <button key={tk} onClick={() => setTaiKhoan(tk)}
             className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${

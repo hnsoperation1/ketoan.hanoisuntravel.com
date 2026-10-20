@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { RefreshCw, Plus, Loader2, Search, X, User, Maximize2, Minimize2, Eye, Pencil } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
@@ -9,6 +9,8 @@ import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { SelectMenu } from '@/components/SelectMenu'
 import { useNhomKhachVe } from '@/lib/danhMuc'
+
+const subscribeNoop = () => () => {}
 
 const DM_KH_COLS = [
   { key: 'nguon', label: 'Nguồn', width: 110 },
@@ -88,10 +90,15 @@ function ContactPicker({
   onSelect: (c: Contact | null) => void
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Contact[]>([])
+  // Kết quả gắn với đúng chuỗi đã tìm: "đang tìm" = chuỗi hiện tại (≥ 2 ký tự) chưa có kết quả, nên
+  // không cần setState đồng bộ trong effect (lint react-hooks/set-state-in-effect); kết quả về muộn
+  // của chuỗi cũ cũng không đè lên chuỗi mới.
+  const [found, setFound] = useState<{ q: string; data: Contact[] }>({ q: '', data: [] })
   const [open, setOpen] = useState(false)
-  const [searching, setSearching] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const q = query.trim()
+  const results = found.q === q ? found.data : []
+  const searching = q.length >= 2 && found.q !== q
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -102,24 +109,22 @@ function ContactPicker({
   }, [])
 
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([])
-      return
-    }
-    setSearching(true)
+    if (q.length < 2) return
     const t = setTimeout(async () => {
+      let data: Contact[] = []
       try {
-        const res = await fetch(`/api/ve-may-bay/contacts-search?q=${encodeURIComponent(query.trim())}`)
+        const res = await fetch(`/api/ve-may-bay/contacts-search?q=${encodeURIComponent(q)}`)
         if (res.ok) {
-          const { data } = await res.json()
-          setResults(Array.isArray(data) ? data : [])
+          const json = await res.json()
+          if (Array.isArray(json?.data)) data = json.data
         }
-      } finally {
-        setSearching(false)
+      } catch {
+        // lỗi mạng → coi như không có kết quả (hết "Đang tìm...")
       }
+      setFound({ q, data })
     }, 300)
     return () => clearTimeout(t)
-  }, [query])
+  }, [q])
 
   if (selected) {
     return (
@@ -573,10 +578,11 @@ export default function DanhMucKhachHangPage() {
   const [formContact, setFormContact] = useState<Contact | null>(null)
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  // Đã ở trình duyệt chưa (portal "Phóng to" cần document.body) — server/hydrate trả false, sau đó true;
+  // thay cho cặp useState + useEffect(setMounted) bị lint react-hooks/set-state-in-effect chặn.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false)
   const [viewingKhach, setViewingKhach] = useState<Khach | null>(null)
   const [assigningContactFor, setAssigningContactFor] = useState<Khach | null>(null)
-  useEffect(() => setMounted(true), [])
 
   const loadData = useCallback(async () => {
     setLoading(true)

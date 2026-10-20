@@ -8,6 +8,7 @@ import { TRANG_THAI_LABELS } from '@/types'
 import type { LoaiNhanSu, TrangThaiHoSo } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import DateInput from '@/components/DateInput'
+import { SelectMenu } from '@/components/SelectMenu'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { useNganHang } from '@/lib/danhMuc'
@@ -295,9 +296,17 @@ function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) 
   )
 }
 
-const SELECT = 'px-3 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400'
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
+const YEAR_SELECT = YEAR_OPTIONS.map(y => ({ value: String(y), label: String(y) }))
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Tháng ${i + 1}` }))
+const QUARTER_OPTIONS = [1, 2, 3, 4].map(q => ({ value: String(q), label: `Quý ${q}` }))
+const DATE_MODE_OPTIONS: { value: DateFilterMode; label: string }[] = [
+  { value: 'all', label: 'Tất cả thời gian' },
+  { value: 'thang', label: 'Theo tháng' },
+  { value: 'quy', label: 'Theo quý' },
+  { value: 'tuy_chon', label: 'Tuỳ chọn khoảng ngày' },
+]
 
 export default function NhanSuPage() {
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -548,30 +557,17 @@ export default function NhanSuPage() {
 
         {tab === 'tong_hop' && (
           <>
-            <select value={dateMode} onChange={e => setDateMode(e.target.value as DateFilterMode)} className={SELECT}>
-              <option value="all">Tất cả thời gian</option>
-              <option value="thang">Theo tháng</option>
-              <option value="quy">Theo quý</option>
-              <option value="tuy_chon">Tuỳ chọn khoảng ngày</option>
-            </select>
+            <SelectMenu className="w-52" value={dateMode} onChange={v => setDateMode(v as DateFilterMode)} options={DATE_MODE_OPTIONS} />
             {dateMode === 'thang' && (
               <>
-                <select value={month} onChange={e => setMonth(Number(e.target.value))} className={SELECT}>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Tháng {m}</option>)}
-                </select>
-                <select value={year} onChange={e => setYear(Number(e.target.value))} className={SELECT}>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <SelectMenu className="w-32" value={String(month)} onChange={v => setMonth(Number(v))} options={MONTH_OPTIONS} />
+                <SelectMenu className="w-28" value={String(year)} onChange={v => setYear(Number(v))} options={YEAR_SELECT} />
               </>
             )}
             {dateMode === 'quy' && (
               <>
-                <select value={quarter} onChange={e => setQuarter(Number(e.target.value))} className={SELECT}>
-                  {[1, 2, 3, 4].map(q => <option key={q} value={q}>Quý {q}</option>)}
-                </select>
-                <select value={year} onChange={e => setYear(Number(e.target.value))} className={SELECT}>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <SelectMenu className="w-28" value={String(quarter)} onChange={v => setQuarter(Number(v))} options={QUARTER_OPTIONS} />
+                <SelectMenu className="w-28" value={String(year)} onChange={v => setYear(Number(v))} options={YEAR_SELECT} />
               </>
             )}
             {dateMode === 'tuy_chon' && (
