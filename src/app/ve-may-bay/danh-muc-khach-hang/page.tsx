@@ -7,6 +7,8 @@ import { useTopbar } from '@/contexts/topbar'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { ModalOverlay } from '@/components/ModalOverlay'
+import { SelectMenu } from '@/components/SelectMenu'
+import { useNhomKhachVe } from '@/lib/danhMuc'
 
 const DM_KH_COLS = [
   { key: 'nguon', label: 'Nguồn', width: 110 },
@@ -47,32 +49,7 @@ type Khach = {
   loi_nhuan: number
 }
 
-const NHOM_LABELS: Record<string, string> = {
-  nhan_su: 'Nhân sự HNS',
-  dai_ly: 'Đại lý',
-  doanh_nghiep: 'Khách hàng DN',
-  ag_series: 'AG - mua vé series',
-  khach_le: 'Khách lẻ',
-  doan_tour: 'Đoàn đi tour',
-  series_vj: 'Vé Seri Vietjet',
-  series_sao_do: 'Vé Seri Sao Đỏ',
-}
-const NHOM_OPTIONS = Object.keys(NHOM_LABELS)
-
-// Mã viết tắt cột "Phân loại" ở chế độ Đầy đủ — đọc từ đúng file gốc "Link
-// nhập _ Phòng vé HNS (Năm 2026).xlsx" sheet "MÃ KHÁCH VÉ" cột A: chỉ 4 nhóm
-// dai_ly/doanh_nghiep/ag_series/khach_le có mã thật (DLY/DN/AG/KLE), 4 nhóm
-// còn lại file để trống nên tự đặt mã ngắn hợp lý.
-const NHOM_SHORT_LABELS: Record<string, string> = {
-  nhan_su: 'NS',
-  dai_ly: 'DLY',
-  doanh_nghiep: 'DN',
-  ag_series: 'AG',
-  khach_le: 'KLE',
-  doan_tour: 'ĐOÀN',
-  series_vj: 'SERI VJ',
-  series_sao_do: 'SERI SĐ',
-}
+// Nhóm khách (tên, mã ngắn cột "Phân loại", thứ tự) đọc từ danh mục chung 'nhom_khach_ve' — useNhomKhachVe() ở lib/danhMuc.ts
 
 // Khớp đúng SOURCE_LABELS bên CRM (bảng contacts.source) — copy vì 2 repo
 // riêng, không import chéo được.
@@ -89,6 +66,12 @@ const SOURCE_LABELS: Record<string, string> = {
 const INPUT = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white placeholder:text-gray-300'
 
 const emptyForm = { nhom: 'khach_le', ma_khach: '', ten_khach: '', doi_tuong_quy_tac: '', hinh_thuc_cong_no: '', phi_xuat_ve: '', contact_id: '' as string | null }
+
+// Lựa chọn ô Nhóm — nhóm đang lưu mà đã ẩn khỏi danh mục vẫn hiện để không mất giá trị cũ
+function nhomSelectOptions(options: string[], labels: Record<string, string>, current: string) {
+  const ds = current && !options.includes(current) ? [...options, current] : options
+  return ds.map(n => ({ value: n, label: labels[n] ?? n }))
+}
 
 function formatVND(n: number): string {
   return n === 0 ? '—' : `${n.toLocaleString('vi-VN')} đ`
@@ -349,6 +332,7 @@ function CustomerDetailPanel({
   onSave: (id: string, patch: Partial<Khach>) => Promise<boolean>
   onOpenAssignContact: () => void
 }) {
+  const { labels: nhomLabels, options: nhomOptions } = useNhomKhachVe()
   const [visible, setVisible] = useState(false)
   const [tab, setTab] = useState<'info' | 'policy'>('info')
   const [editing, setEditing] = useState(false)
@@ -424,7 +408,7 @@ function CustomerDetailPanel({
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Thông tin khách hàng</p>
             <p className="font-bold text-gray-900 truncate">{khach.ma_khach}</p>
-            <p className="text-xs text-gray-400 truncate">{NHOM_LABELS[khach.nhom] ?? khach.nhom}</p>
+            <p className="text-xs text-gray-400 truncate">{nhomLabels[khach.nhom] ?? khach.nhom}</p>
           </div>
           <button onClick={close} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 shrink-0">
             <X size={18} />
@@ -452,11 +436,9 @@ function CustomerDetailPanel({
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Nhóm</p>
                   {editing ? (
-                    <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
-                      {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
-                    </select>
+                    <SelectMenu value={form.nhom} onChange={v => setForm(f => ({ ...f, nhom: v }))} options={nhomSelectOptions(nhomOptions, nhomLabels, form.nhom)} />
                   ) : (
-                    <p className="text-sm text-gray-800">{NHOM_LABELS[khach.nhom] ?? khach.nhom}</p>
+                    <p className="text-sm text-gray-800">{nhomLabels[khach.nhom] ?? khach.nhom}</p>
                   )}
                 </div>
                 <div>
@@ -579,6 +561,7 @@ function CustomerDetailPanel({
 // Dùng để tra cứu/đối chiếu mã khách gõ tay ở "Đầu vào công nợ"/"Đầu vào
 // sao kê"/tin nhắn Telegram — CHƯA nối tự động, chỉ là danh mục xem/quản lý.
 export default function DanhMucKhachHangPage() {
+  const { labels: nhomLabels, shortLabels: nhomShort, options: nhomOptions } = useNhomKhachVe()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const [rows, setRows] = useState<Khach[]>([])
   const [loading, setLoading] = useState(true)
@@ -646,7 +629,7 @@ export default function DanhMucKhachHangPage() {
     if (!k) return ''
     switch (c) {
       case 0: return k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : ''
-      case 1: return NHOM_SHORT_LABELS[k.nhom] ?? k.nhom
+      case 1: return nhomShort[k.nhom] ?? k.nhom
       case 3: return k.ten_khach ?? ''
       case 5: return formatVND(k.doanh_thu)
       case 6: return formatVND(k.loi_nhuan)
@@ -751,7 +734,7 @@ export default function DanhMucKhachHangPage() {
             ) : filtered.map((k, i) => (
               <tr key={k.id} className="hover:bg-gray-50/70 transition-colors">
                 <td {...cellProps(i, 0)} className={cellClassName(i, 0, 'px-4 py-2.5 whitespace-nowrap text-gray-500 cursor-cell')}>{k.contact?.source ? (SOURCE_LABELS[k.contact.source] ?? k.contact.source) : '—'}</td>
-                <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2.5 whitespace-nowrap text-gray-500 cursor-cell')} title={NHOM_LABELS[k.nhom] ?? k.nhom}>{NHOM_SHORT_LABELS[k.nhom] ?? k.nhom}</td>
+                <td {...cellProps(i, 1)} className={cellClassName(i, 1, 'px-4 py-2.5 whitespace-nowrap text-gray-500 cursor-cell')} title={nhomLabels[k.nhom] ?? k.nhom}>{nhomShort[k.nhom] ?? k.nhom}</td>
                 <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-gray-800">
                   <span className="inline-flex items-center gap-1.5">
                     {k.ma_khach}
@@ -800,9 +783,7 @@ export default function DanhMucKhachHangPage() {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Nhóm *</label>
-            <select value={form.nhom} onChange={e => setForm(f => ({ ...f, nhom: e.target.value }))} className={INPUT}>
-              {NHOM_OPTIONS.map(n => <option key={n} value={n}>{NHOM_LABELS[n]}</option>)}
-            </select>
+            <SelectMenu value={form.nhom} onChange={v => setForm(f => ({ ...f, nhom: v }))} options={nhomSelectOptions(nhomOptions, nhomLabels, form.nhom)} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Mã khách *</label>
@@ -911,10 +892,10 @@ export default function DanhMucKhachHangPage() {
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterNhom ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
           Tất cả <span className="opacity-70">{rows.length}</span>
         </button>
-        {NHOM_OPTIONS.map(n => (
+        {nhomOptions.map(n => (
           <button key={n} onClick={() => setFilterNhom(filterNhom === n ? '' : n)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNhom === n ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-            {NHOM_LABELS[n]} <span className="opacity-70">{counts[n] ?? 0}</span>
+            {nhomLabels[n]} <span className="opacity-70">{counts[n] ?? 0}</span>
           </button>
         ))}
       </div>

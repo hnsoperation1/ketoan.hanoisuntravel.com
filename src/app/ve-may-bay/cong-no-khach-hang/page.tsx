@@ -5,6 +5,7 @@ import { RefreshCw, Search, X } from 'lucide-react'
 import { useTopbar } from '@/contexts/topbar'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { ModalOverlay } from '@/components/ModalOverlay'
+import { useNhomKhachVe } from '@/lib/danhMuc'
 
 const PHAT_SINH_COLS = [
   { key: 'ngay_xuat', label: 'Ngày xuất', width: 110 },
@@ -38,21 +39,11 @@ type KhRow = {
   da_thu_rows: DaThuRow[]
 }
 
-// Khớp đúng NHOM_LABELS ở /ve-may-bay/danh-muc-khach-hang — copy vì mỗi
-// trang tự đứng riêng, không import chéo giữa 2 page.
-const NHOM_LABELS: Record<string, string> = {
-  nhan_su: 'Nhân sự HNS',
-  dai_ly: 'Đại lý',
-  doanh_nghiep: 'Khách hàng DN',
-  ag_series: 'AG - mua vé series',
-  khach_le: 'Khách lẻ',
-  doan_tour: 'Đoàn đi tour',
-  series_vj: 'Vé Seri Vietjet',
-  series_sao_do: 'Vé Seri Sao Đỏ',
-}
+// Tên nhóm khách đọc từ danh mục chung 'nhom_khach_ve' (useNhomKhachVe() ở lib/danhMuc.ts) — dùng chung với
+// /ve-may-bay/danh-muc-khach-hang.
 const CHUA_PHAN_LOAI = 'Chưa phân loại'
-function nhomLabel(nhom: string | null): string {
-  return nhom ? (NHOM_LABELS[nhom] ?? nhom) : CHUA_PHAN_LOAI
+function nhomLabel(labels: Record<string, string>, nhom: string | null): string {
+  return nhom ? (labels[nhom] ?? nhom) : CHUA_PHAN_LOAI
 }
 
 function formatTien(n: number): string {
@@ -65,6 +56,7 @@ function formatTien(n: number): string {
 // phân nhóm — đổi hẳn sang slide over 2026-08-13, khớp cách "xem chi tiết"
 // đã dùng ở các trang khác trong app).
 function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => void }) {
+  const { labels: nhomLabels } = useNhomKhachVe()
   const [visible, setVisible] = useState(false)
   const [tab, setTab] = useState<'bookings' | 'sao_ke'>('bookings')
   const { widths: psWidths, startResize: startPsResize } = useResizableColumns('cn-kh-phat-sinh', Object.fromEntries(PHAT_SINH_COLS.map(c => [c.key, c.width])))
@@ -94,7 +86,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Chi tiết công nợ</p>
             <p className="font-bold text-gray-900 text-lg truncate">{row.ma_khach}</p>
-            <p className="text-xs text-gray-400 truncate">{nhomLabel(row.nhom)}</p>
+            <p className="text-xs text-gray-400 truncate">{nhomLabel(nhomLabels, row.nhom)}</p>
           </div>
           <button onClick={close} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 shrink-0">
             <X size={18} />
@@ -208,6 +200,7 @@ function KhachDetailSlideOver({ row, onClose }: { row: KhRow; onClose: () => voi
 // Chỉ hiện khách CÒN công nợ (cong_no != 0) — khách đã tất toán đúng 0đ
 // trong tháng đó bị ẩn khỏi bảng, đỡ rác mắt (xem filtered bên dưới).
 export default function CongNoKhachHangPage() {
+  const { labels: nhomLabels } = useNhomKhachVe()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
   const now = new Date()
   const currentYear = now.getFullYear()
@@ -285,11 +278,11 @@ export default function CongNoKhachHangPage() {
         return true
       })
       .sort((a, b) => {
-        const la = nhomLabel(a.nhom)
-        const lb = nhomLabel(b.nhom)
+        const la = nhomLabel(nhomLabels, a.nhom)
+        const lb = nhomLabel(nhomLabels, b.nhom)
         return la !== lb ? la.localeCompare(lb) : b.cong_no - a.cong_no
       })
-  }, [withDebt, filterNhom, search])
+  }, [withDebt, filterNhom, search, nhomLabels])
 
   const tongPhatSinh = useMemo(() => filtered.reduce((s, r) => s + r.tong_phat_sinh, 0), [filtered])
   const tongDaThu = useMemo(() => filtered.reduce((s, r) => s + r.tong_da_thu, 0), [filtered])
@@ -334,10 +327,10 @@ export default function CongNoKhachHangPage() {
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterNhom ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
           Tất cả <span className="opacity-70">{withDebt.length}</span>
         </button>
-        {[...Object.keys(NHOM_LABELS), ''].filter(n => nhomCounts[n]).map(n => (
+        {[...Object.keys(nhomLabels), ''].filter(n => nhomCounts[n]).map(n => (
           <button key={n || 'chua-phan-loai'} onClick={() => setFilterNhom(filterNhom === n ? '' : n)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNhom === n ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-            {nhomLabel(n || null)} <span className="opacity-70">{nhomCounts[n] ?? 0}</span>
+            {nhomLabel(nhomLabels, n || null)} <span className="opacity-70">{nhomCounts[n] ?? 0}</span>
           </button>
         ))}
       </div>
@@ -374,8 +367,8 @@ export default function CongNoKhachHangPage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={4} className="px-5 py-14 text-center text-gray-400">Không có dòng nào khớp bộ lọc.</td></tr>
               ) : filtered.map((r, i) => {
-                const groupLabel = nhomLabel(r.nhom)
-                const showGroupHeader = i === 0 || groupLabel !== nhomLabel(filtered[i - 1].nhom)
+                const groupLabel = nhomLabel(nhomLabels, r.nhom)
+                const showGroupHeader = i === 0 || groupLabel !== nhomLabel(nhomLabels, filtered[i - 1].nhom)
                 return (
                   <Fragment key={r.ma_khach}>
                     {showGroupHeader && (

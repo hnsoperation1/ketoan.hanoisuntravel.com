@@ -38,6 +38,7 @@ import { formatDateVN, deriveTinhTp } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 import DateInput from '@/components/DateInput'
+import NganHangInput from '@/components/NganHangInput'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { compressImage, MAX_UPLOAD_BYTES } from '@/lib/compressImage'
 
@@ -1538,7 +1539,7 @@ function AddNhanSuModal({
                       <input value={fields.stk} onChange={(e) => setFields((f) => ({ ...f, stk: e.target.value }))} className={inputCls} />
                     </Field>
                     <Field label="Ngân hàng">
-                      <input value={fields.ten_ngan_hang} onChange={(e) => setFields((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />
+                      <NganHangInput value={fields.ten_ngan_hang} onChange={(v) => setFields((f) => ({ ...f, ten_ngan_hang: v }))} className={inputCls} />
                     </Field>
                   </div>
 
@@ -2463,7 +2464,7 @@ function HoSoDetailModal({
                         editing={editingInfo}
                         label="Ngân hàng"
                         value={n.ten_ngan_hang}
-                        input={<input value={nhansu.ten_ngan_hang} onChange={(e) => setNhansu((f) => ({ ...f, ten_ngan_hang: e.target.value }))} className={inputCls} />}
+                        input={<NganHangInput value={nhansu.ten_ngan_hang} onChange={(v) => setNhansu((f) => ({ ...f, ten_ngan_hang: v }))} className={inputCls} />}
                       />
                     </div>
                     <InfoField

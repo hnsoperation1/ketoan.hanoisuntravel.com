@@ -10,6 +10,7 @@ import { formatDateVN } from '@/lib/format'
 import DateInput from '@/components/DateInput'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { useNganHang } from '@/lib/danhMuc'
 
 const TONG_HOP_COLS = [
   { key: 'nhan_su', label: 'Nhân sự', width: 220 },
@@ -104,42 +105,6 @@ function formatTien(n: number | null): string {
 }
 
 const COMBINING_MARKS_RE = new RegExp('[\\u0300-\\u036f]', 'g')
-
-// Mã BIN NAPAS (VietQR) — CHỈ liệt kê các ngân hàng đã thực tế thấy trong
-// dữ liệu nhân sự thuê ngoài (đỡ rủi ro gõ nhầm mã của ngân hàng ít gặp) +
-// vài ngân hàng phổ biến khác. Ngân hàng nào không có trong danh sách này
-// thì KHÔNG tạo QR (báo rõ cho kế toán, không đoán bừa mã sai).
-const BANK_BIN_MAP: Record<string, string> = {
-  VIETCOMBANK: '970436', VCB: '970436',
-  VIETINBANK: '970415', CTG: '970415', VIETTINBANK: '970415',
-  BIDV: '970418',
-  TECHCOMBANK: '970407', TCB: '970407',
-  MBBANK: '970422', MB: '970422', MILITARYBANK: '970422',
-  VPBANK: '970432', VPB: '970432',
-  ACB: '970416',
-  TPBANK: '970423', TPB: '970423',
-  SACOMBANK: '970403', STB: '970403',
-  AGRIBANK: '970405',
-  SHB: '970443',
-  HDBANK: '970437', HDB: '970437',
-  VIB: '970441',
-  EXIMBANK: '970431', EIB: '970431',
-  MSB: '970426',
-}
-
-// Chuẩn hoá "ten_ngan_hang" (text tự do, hay kèm chi nhánh vd "Vietcombank
-// - CN Gò Vấp") về đúng key trong BANK_BIN_MAP — cắt bỏ phần sau dấu "-"
-// (chi nhánh), bỏ dấu/khoảng trắng, viết hoa.
-function resolveBankBin(tenNganHang: string | null | undefined): string | null {
-  if (!tenNganHang) return null
-  const key = tenNganHang
-    .split('-')[0]
-    .normalize('NFD')
-    .replace(COMBINING_MARKS_RE, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-  return BANK_BIN_MAP[key] ?? null
-}
 
 function buildVietQrUrl(bin: string, stk: string, amount: number | null, content: string): string {
   const params = new URLSearchParams()
@@ -296,10 +261,11 @@ function NhanSuDetailPanel({ id, onClose }: { id: string; onClose: () => void })
 
 // Modal QR chuyển khoản công tác phí (VietQR/NAPAS) — quét bằng app ngân
 // hàng bất kỳ là điền sẵn STK/số tiền/nội dung, khỏi gõ tay. Chỉ tạo được
-// khi ngân hàng nằm trong BANK_BIN_MAP và có đủ STK — thiếu 1 trong 2 thì
-// báo rõ thay vì hiện QR hỏng.
+// khi ngân hàng khớp danh mục Ngân hàng (có mã BIN) và có đủ STK — thiếu 1
+// trong 2 thì báo rõ thay vì hiện QR hỏng.
 function QrThanhToanModal({ h, onClose }: { h: HoSoFlat; onClose: () => void }) {
-  const bin = resolveBankBin(h.nhansu?.ten_ngan_hang)
+  const { resolveBin } = useNganHang()
+  const bin = resolveBin(h.nhansu?.ten_ngan_hang)
   const content = `CTP ${h.nhansu?.ho_ten ?? ''} ${h.doan?.ten_doan ?? ''}`.trim()
   const qrUrl = bin && h.nhansu?.stk ? buildVietQrUrl(bin, h.nhansu.stk, h.chi_tra, content) : null
 
