@@ -39,6 +39,7 @@ import { useTopbar } from '@/contexts/topbar'
 import { useAuth } from '@/contexts/auth'
 import DateInput from '@/components/DateInput'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import { compressImage, MAX_UPLOAD_BYTES } from '@/lib/compressImage'
 
 const HO_SO_COLS = [
   { key: 'expand', label: '', width: 40 },
@@ -1241,16 +1242,32 @@ function AddNhanSuModal({
     if (files.length === 0 || extracting) return
     setExtracting(true)
     setError('')
-    const formData = new FormData()
-    files.forEach((f) => formData.append('files', f))
-    const res = await fetch(`/api/doan/${doanId}/nhansu-moi/extract`, { method: 'POST', body: formData })
-    const data = await res.json()
-    setExtracting(false)
-    if (!res.ok) {
-      setError(data.error ?? 'Có lỗi khi đọc ảnh')
+    // Nén ảnh trước khi gửi — Vercel chặn body > ~4,5MB (lỗi 413 FUNCTION_PAYLOAD_TOO_LARGE)
+    const small = await Promise.all(files.map((f) => compressImage(f)))
+    const total = small.reduce((s, f) => s + f.size, 0)
+    if (total > MAX_UPLOAD_BYTES) {
+      setExtracting(false)
+      setError(`Ảnh quá nặng (${(total / 1024 / 1024).toFixed(1)}MB sau khi nén) — bớt số ảnh mỗi lần đọc rồi thử lại.`)
       return
     }
-    setImages(data.images)
+    const formData = new FormData()
+    small.forEach((f) => formData.append('files', f))
+    let res: Response
+    let data: { error?: string; images?: typeof images; fields?: AiExtractedFields } = {}
+    try {
+      res = await fetch(`/api/doan/${doanId}/nhansu-moi/extract`, { method: 'POST', body: formData })
+      data = await res.json().catch(() => ({}))
+    } catch {
+      setExtracting(false)
+      setError('Không gửi được ảnh, kiểm tra kết nối mạng rồi thử lại.')
+      return
+    }
+    setExtracting(false)
+    if (!res.ok) {
+      setError(data.error ?? (res.status === 413 ? 'Ảnh quá nặng — bớt số ảnh mỗi lần đọc rồi thử lại.' : `Có lỗi khi đọc ảnh (mã ${res.status})`))
+      return
+    }
+    setImages(data.images ?? [])
     const f: AiExtractedFields = data.fields ?? {}
     setFields({
       ho_ten: f.ho_ten ?? '',
