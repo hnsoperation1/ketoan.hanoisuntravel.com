@@ -106,3 +106,18 @@ export function slugifyFileName(name: string): string {
     .replace(/Đ/g, 'D') // Đ
   return noDiacritics.replace(/[^a-zA-Z0-9._-]/g, '_')
 }
+
+/** Số tiền VND có dấu chấm hàng nghìn (vd 1234567 -> "1.234.567"). null/NaN → "" ; `zero` = chữ hiện khi bằng 0. */
+export function formatTien(n: number | null | undefined, zero = '0'): string {
+  if (n == null || !Number.isFinite(Number(n))) return ''
+  const v = Math.round(Number(n))
+  if (v === 0) return zero
+  return v.toLocaleString('vi-VN')
+}
+
+/** dd/mm/yyyy (sao kê, Excel) -> yyyy-mm-dd; sai định dạng → null. */
+export function parseDateVN(value: string | null | undefined): string | null {
+  const m = /^\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*$/.exec(value ?? '')
+  if (!m) return null
+  return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+}

@@ -4,6 +4,21 @@ import { requireScreen } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
 
+const PATCHABLE_COLUMNS = [
+  'ten_doan',
+  'hanh_trinh',
+  'ngay_di',
+  'ngay_ve',
+  'sl_khach',
+  'loai_doan',
+  'ten_chuong_trinh',
+  'thoi_gian_chuong_trinh',
+  'dia_diem_chuong_trinh',
+  'diem_don_tra',
+  'dieu_hanh_phu_trach',
+  'dieu_hanh_dien_thoai',
+] as const
+
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
@@ -28,12 +43,24 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { unauthorized } = await requireScreen('kt-doan')
   if (unauthorized) return unauthorized
   const { id } = await ctx.params
-  const body = await req.json()
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Dữ liệu không hợp lệ' }, { status: 400 })
+
+  // Chỉ ghi các cột kế toán được sửa ở tab Thông tin đoàn — không ghi thẳng body
+  // (chặn đổi opportunity_id / deleted_at / created_by… qua API này).
+  const patch: Record<string, unknown> = {}
+  for (const k of PATCHABLE_COLUMNS) if (k in body) patch[k] = body[k]
+  if ('loai_doan' in patch) patch.loai_doan = patch.loai_doan === 'su_kien' ? 'su_kien' : 'tour'
+  if ('ten_doan' in patch && !String(patch.ten_doan ?? '').trim()) {
+    return NextResponse.json({ error: 'Thiếu tên đoàn' }, { status: 400 })
+  }
+  if ('ngay_di' in patch && !patch.ngay_di) return NextResponse.json({ error: 'Thiếu ngày đi' }, { status: 400 })
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'Không có trường nào để cập nhật' }, { status: 400 })
 
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('doan')
-    .update(body)
+    .update(patch)
     .eq('id', id)
     .select('*')
     .single()

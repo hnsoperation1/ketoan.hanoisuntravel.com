@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { useTopbar } from '@/contexts/topbar'
 import { SaBadge } from '@/components/SaBadge'
+import { QuyetToanCaiDat } from './QuyetToanCaiDat'
 
 const THEME_OPTIONS: { key: 'default' | 'dense'; label: string; desc: string }[] = [
   { key: 'dense', label: 'Dày đặc (mặc định)', desc: 'Bảng kẻ ô, gọn hàng — thử nghiệm theo kiểu Translead CRM' },
@@ -60,6 +61,8 @@ export default function CaiDatPage() {
           </div>
         </div>
       )}
+
+      {user?.is_super_admin && <QuyetToanCaiDat />}
     </div>
   )
 }

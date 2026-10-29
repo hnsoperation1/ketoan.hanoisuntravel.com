@@ -14,6 +14,7 @@
 
 export const SCREEN_IDS = [
   'kt-doan',
+  'kt-quyet-toan',
   'kt-nhan-su',
   'kt-vmb',
   'kt-cn-kh',
@@ -37,6 +38,8 @@ export type ScreenId = (typeof SCREEN_IDS)[number]
 // chặn trong trang), và các trang SUPER_ADMIN_ROUTES bên dưới.
 const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
   { path: '/doan', screen: 'kt-doan' },
+  // Bảng tổng hợp quyết toán (LIST TỔNG); tab Quyết toán trong /doan/[id] kiểm tra màn này ở API
+  { path: '/quyet-toan', screen: 'kt-quyet-toan' },
   { path: '/nhan-su', screen: 'kt-nhan-su' },
   { path: '/ve-may-bay', screen: 'kt-vmb', exact: true },
   { path: '/ve-may-bay/cong-no-khach-hang', screen: 'kt-cn-kh' },

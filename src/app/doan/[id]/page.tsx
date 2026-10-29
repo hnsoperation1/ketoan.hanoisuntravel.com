@@ -42,6 +42,8 @@ import DateInput from '@/components/DateInput'
 import NganHangInput from '@/components/NganHangInput'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { compressImage, MAX_UPLOAD_BYTES } from '@/lib/compressImage'
+import { canScreen } from '@/lib/screens'
+import QuyetToanTab from './quyet-toan/QuyetToanTab'
 
 const HO_SO_COLS = [
   { key: 'expand', label: '', width: 40 },
@@ -69,7 +71,7 @@ const STATUS_COLORS: Record<TrangThaiHoSo, string> = {
   da_ky_xong: 'bg-emerald-50 text-emerald-700',
 }
 
-type Tab = 'info' | 'hdv' | 'files'
+type Tab = 'info' | 'hdv' | 'files' | 'quyet-toan'
 
 const LOAI_THE_HDV_SELECT = [{ value: '', label: '- Chọn -' }, ...['Nội địa', 'Quốc tế'].map((o) => ({ value: o, label: o }))]
 
@@ -508,10 +510,17 @@ export default function DoanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [viewing, setViewing] = useState<HoSoWithNhanSu | null>(null)
   const [tab, setTab] = useState<Tab>('info')
-  // Mở từ tab Hợp đồng ở Danh sách đoàn (?tab=files) → vào thẳng tab File hợp đồng
+  const { user: authUser } = useAuth()
+  const coQuyetToan = canScreen(authUser, 'kt-quyet-toan')
+  // Làm mới (topbar) khi đang ở tab Quyết toán → tab tự tải lại theo tín hiệu này
+  const [qtReload, setQtReload] = useState(0)
+  // Mở từ tab Hợp đồng ở Danh sách đoàn (?tab=files) → vào thẳng tab File hợp đồng;
+  // từ Bảng tổng hợp quyết toán (?tab=quyet-toan) → tab Quyết toán
   useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- đọc URL sau khi mount, tránh lệch với HTML server render
-    if (new URLSearchParams(window.location.search).get('tab') === 'files') setTab('files')
+    if (t === 'files') setTab('files')
+    else if (t === 'quyet-toan') setTab('quyet-toan')
   }, [])
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -562,7 +571,10 @@ export default function DoanDetailPage() {
         <span className="text-gray-300 mx-1">/</span> {doan?.ten_doan ?? '...'}
       </span>,
     )
-    setOnRefresh(load)
+    setOnRefresh(() => {
+      void load()
+      setQtReload((k) => k + 1)
+    })
     return () => {
       setBreadcrumb(null)
       setOnRefresh(null)
@@ -626,9 +638,20 @@ export default function DoanDetailPage() {
           <TabButton active={tab === 'files'} onClick={() => setTab('files')}>
             File hợp đồng
           </TabButton>
+          {coQuyetToan && (
+            <TabButton active={tab === 'quyet-toan'} onClick={() => setTab('quyet-toan')}>
+              Quyết toán
+            </TabButton>
+          )}
         </div>
 
-        <div className="p-6">
+        {tab === 'quyet-toan' && coQuyetToan && (
+          <div className="h-[calc(100%-2.75rem)] md:h-[calc(100%-2.25rem)]">
+            <QuyetToanTab opportunityId={doan.opportunity_id} reloadSignal={qtReload} />
+          </div>
+        )}
+
+        <div className={tab === 'quyet-toan' ? 'hidden' : 'p-6'}>
           {tab === 'info' && <DoanInfoTab doan={doan} onSaved={load} />}
 
           {tab === 'hdv' && (

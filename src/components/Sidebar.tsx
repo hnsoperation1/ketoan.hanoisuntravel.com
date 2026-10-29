@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound, Calculator } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -105,6 +105,7 @@ const SECTIONS: NavSection[] = [
     label: 'Kế toán tour',
     items: [
       { href: '/doan', label: 'Danh sách đoàn', icon: FileSpreadsheet, screen: 'kt-doan' },
+      { href: '/quyet-toan', label: 'Quyết toán', icon: Calculator, screen: 'kt-quyet-toan' },
       { href: '/nhan-su', label: 'Nhân sự thuê ngoài', icon: Contact, screen: 'kt-nhan-su' },
     ],
   },
