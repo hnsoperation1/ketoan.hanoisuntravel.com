@@ -309,7 +309,7 @@ export function nhanLichSu(h: string): string {
 
 /** 1 dòng Bảng tổng hợp đoàn (LIST TỔNG, §10.5). Đơn đã khoá: số LN / hoa hồng / thuế lấy theo qt_chot. */
 export type QtListRow = {
-  doan_id: string
+  doan_id: string | null // null = đơn có phiếu quyết toán nhưng chưa có đoàn
   opportunity_id: string
   ngay_di: string | null
   ngay_ve: string | null

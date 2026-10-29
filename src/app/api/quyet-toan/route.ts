@@ -12,7 +12,7 @@ import {
 } from '@/lib/quyetToanBundle'
 import { QtError, adminClient, chk, chunk, docCauHinh, loiResponse, tenKhachTheoDon, type Admin } from '@/lib/quyetToanServer'
 
-type DoanRow = { id: string; ten_doan: string; hanh_trinh: string | null; ngay_di: string | null; ngay_ve: string | null; opportunity_id: string }
+type DoanRow = { id: string | null; ten_doan: string; hanh_trinh: string | null; ngay_di: string | null; ngay_ve: string | null; opportunity_id: string }
 type OppRow = {
   id: string; title: string | null; tour_date: string | null; tour_end_date: string | null; department_id: string | null
   assigned_to: string | null; operator_id: string | null; sale_chinh_id: string | null; ticketing_ids: string[] | null
@@ -56,9 +56,23 @@ export async function GET() {
       admin.from('doan').select('id, ten_doan, hanh_trinh, ngay_di, ngay_ve, opportunity_id')
         .is('deleted_at', null).not('opportunity_id', 'is', null).order('ngay_di', { ascending: false }).order('id').range(from, to),
     )
+    // Đơn đã có phiếu quyết toán nhưng chưa có đoàn (vd chưa nhập ngày tour) vẫn phải hiện để kế toán mở được
+    const coDoan = new Set(doans.map((d) => d.opportunity_id))
+    const qtIds = await fetchAllRows<{ opportunity_id: string }>((from, to) =>
+      admin.from('qt_quyet_toan').select('opportunity_id').order('opportunity_id').range(from, to),
+    )
+    const thieuDoan = qtIds.map((q) => q.opportunity_id).filter((id) => !coDoan.has(id))
+    if (thieuDoan.length) {
+      const oppThieu = await theoIds<{ id: string; title: string | null; tour_date: string | null; tour_end_date: string | null; deleted_at: string | null }>(
+        admin, 'opportunities', 'id, title, tour_date, tour_end_date, deleted_at', 'id', thieuDoan)
+      for (const o of oppThieu) {
+        if (o.deleted_at) continue
+        doans.push({ id: null, ten_doan: o.title ?? '', hanh_trinh: null, ngay_di: o.tour_date, ngay_ve: o.tour_end_date, opportunity_id: o.id })
+      }
+    }
     if (!doans.length) return NextResponse.json({ rows: [] })
     const oppIds = [...new Set(doans.map((d) => d.opportunity_id))]
-    const doanIds = doans.map((d) => d.id)
+    const doanIds = doans.map((d) => d.id).filter((x): x is string => !!x)
 
     const [opps, qts, duChi, chiPhi, khach, hoaDon, thanhToan, thuKhach, tamUng, chots, hoSo, cauHinh, phanLoai, saleChinh, depts] = await Promise.all([
       theoIds<OppRow>(admin, 'opportunities', 'id, title, tour_date, tour_end_date, department_id, assigned_to, operator_id, sale_chinh_id, ticketing_ids, contact_id, organization_id', 'id', oppIds),
@@ -113,7 +127,7 @@ export async function GET() {
         qt,
         duChiMoiNhat: (duChiMoi.get(d.opportunity_id) ?? null) as never,
         chiPhi: ds(gCp), khach: ds(gKh), hoaDon: ds(gHd), thanhToan: ds(gTt), thuKhach: ds(gThu), tamUng: ds(gTu),
-        tncn: tncnDoan.get(d.id) ?? 0,
+        tncn: d.id ? tncnDoan.get(d.id) ?? 0 : 0,
         cauHinh,
         vaiTro: { saleChinhId: o?.sale_chinh_id ?? null, salePhuId: o?.assigned_to ?? null, dieuHanhId: o?.operator_id ?? null, keToanId: qt?.ke_toan_id ?? null },
       })

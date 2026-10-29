@@ -86,6 +86,9 @@ const cellText = (c: Col, r: QtListRow, i: number) => {
 type Loc = { vp: string; tt: string; thang: string; pl: string; sc: string; sp: string; dh: string; kt: string }
 const LOC_RONG: Loc = { vp: '', tt: '', thang: '', pl: '', sc: '', sp: '', dh: '', kt: '' }
 
+/** Đơn có đoàn → tab Quyết toán của đoàn; chưa có đoàn → màn quyết toán theo đơn. */
+const lienKetQt = (r: QtListRow) => (r.doan_id ? `/doan/${r.doan_id}?tab=quyet-toan` : `/quyet-toan/don/${r.opportunity_id}`)
+
 export default function QuyetToanListPage() {
   const router = useRouter()
   const { setBreadcrumb, setOnRefresh } = useTopbar()
@@ -331,8 +334,8 @@ export default function QuyetToanListPage() {
                   </td></tr>
                 )}
                 {shown.map((r, ri) => (
-                  <tr key={r.doan_id} className={clsx(sel.selectedRow === ri && '[&>td]:bg-brand-50/60')}
-                    onDoubleClick={() => router.push(`/doan/${r.doan_id}?tab=quyet-toan`)}>
+                  <tr key={r.doan_id ?? r.opportunity_id} className={clsx(sel.selectedRow === ri && '[&>td]:bg-brand-50/60')}
+                    onDoubleClick={() => router.push(lienKetQt(r))}>
                     <td className="sticky left-0 z-10 border-b border-r border-[#e0e0e0] bg-[#f8f9fa] text-center font-medium text-[#5f6368]">{ri + 1}</td>
                     {cols.map((c, ci) => {
                       const v = c.get(r, ri)
@@ -341,7 +344,7 @@ export default function QuyetToanListPage() {
                           className={sel.cellClassName(ri, ci, clsx('truncate border-b border-r border-[#e0e0e0] bg-white px-1.5 py-1 text-[#3c4043]', c.num && 'text-right tabular-nums'))}
                           title={c.num ? undefined : cellText(c, r, ri)}>
                           {c.key === 'ten_doan' ? (
-                            <Link href={`/doan/${r.doan_id}?tab=quyet-toan`} className="font-semibold text-brand-700 hover:underline" onMouseDown={(e) => e.stopPropagation()}>
+                            <Link href={lienKetQt(r)} className="font-semibold text-brand-700 hover:underline" onMouseDown={(e) => e.stopPropagation()}>
                               {r.da_khoa && <Lock size={10} className="mr-1 inline text-violet-500" />}{r.ten_doan}
                             </Link>
                           ) : c.num ? (
