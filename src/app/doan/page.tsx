@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid, Search } from 'lucide-react'
+import { Plus, Loader2, X, MapPin, Users, CalendarDays, Table2, LayoutGrid, Search, FileText } from 'lucide-react'
 import type { Doan } from '@/types'
 import { formatDateVN, formatDateTimeVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
@@ -18,6 +18,29 @@ const DOAN_COLS = [
   { key: 'so_khach', label: 'Số khách dự kiến', align: 'right' as const, width: 140 },
   { key: 'created_at', label: 'Ngày tạo', width: 220 },
 ]
+
+// Tab Hợp đồng (2026-10-29): mọi hợp đồng nhân sự thuê ngoài đã xuất của tất cả đoàn, mới nhất lên đầu
+const HOP_DONG_COLS = [
+  { key: 'ngay_xuat', label: 'Ngày xuất', width: 150 },
+  { key: 'nguoi', label: 'Người', width: 220 },
+  { key: 'doan', label: 'Đoàn', width: 260 },
+  { key: 'so_hop_dong', label: 'Số hợp đồng', width: 150 },
+  { key: 'ngay_ky', label: 'Ngày ký', width: 110 },
+  { key: 'file', label: 'File hợp đồng', width: 360 },
+]
+
+type HopDongRow = {
+  ho_so_id: string
+  ho_ten: string
+  loai_nhan_su: string | null
+  so_hop_dong: string | null
+  ngay_ky: string | null
+  doan: { id: string; ten_doan: string; loai_doan: string | null; opportunity_id: string | null }
+  file_id: string | null
+  file_name: string | null
+  so_ban: number
+  ngay_xuat: string
+}
 
 const EMPTY_FORM = {
   ten_doan: '',
@@ -36,6 +59,8 @@ export default function QuyetToanTourPage() {
   const [doanList, setDoanList] = useState<Doan[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'card' | 'table'>('table')
+  const [tab, setTab] = useState<'doan' | 'hop_dong'>('doan')
+  const [hopDongList, setHopDongList] = useState<HopDongRow[]>([])
   const [search, setSearch] = useState('')
   const [filterLoai, setFilterLoai] = useState<'' | 'tour' | 'su_kien'>('')
   const [filterNguon, setFilterNguon] = useState<'' | 'crm' | 'tay'>('')
@@ -45,10 +70,14 @@ export default function QuyetToanTourPage() {
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/doan')
+    const [res, hdRes] = await Promise.all([fetch('/api/doan'), fetch('/api/hop-dong')])
     if (res.ok) {
       const { doan } = await res.json()
       setDoanList(doan)
+    }
+    if (hdRes.ok) {
+      const { hop_dong } = await hdRes.json()
+      setHopDongList(hop_dong)
     }
     setLoading(false)
   }, [])
@@ -108,13 +137,21 @@ export default function QuyetToanTourPage() {
   })
   const { widths: doanWidths, startResize: startDoanResize } = useResizableColumns('doan-list', Object.fromEntries(DOAN_COLS.map(c => [c.key, c.width])))
   const doanTotalWidth = DOAN_COLS.reduce((sum, c) => sum + (doanWidths[c.key] ?? c.width), 0)
+  const hdFiltered = hopDongList.filter(h => {
+    const q = search.trim().toLowerCase()
+    return !q || `${h.ho_ten} ${h.so_hop_dong ?? ''} ${h.doan.ten_doan} ${h.file_name ?? ''}`.toLowerCase().includes(q)
+  })
+  const { widths: hdWidths, startResize: startHdResize } = useResizableColumns('hop-dong-list', Object.fromEntries(HOP_DONG_COLS.map(c => [c.key, c.width])))
+  const hdTotalWidth = HOP_DONG_COLS.reduce((sum, c) => sum + (hdWidths[c.key] ?? c.width), 0)
+  const chip = (on: boolean) => `px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`
+  const isDoan = tab === 'doan'
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-gray-900">Danh sách đoàn tour</h1>
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+          {isDoan && <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
             {([
               { key: 'card', icon: LayoutGrid, title: 'Thẻ' },
               { key: 'table', icon: Table2, title: 'Bảng (giống Excel)' },
@@ -124,7 +161,7 @@ export default function QuyetToanTourPage() {
                 <v.icon size={14} />
               </button>
             ))}
-          </div>
+          </div>}
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -137,7 +174,7 @@ export default function QuyetToanTourPage() {
       <div className="flex items-center gap-2 flex-wrap mb-3">
         <div className="relative w-64">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên đoàn, tuyến du lịch..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isDoan ? 'Tìm tên đoàn, tuyến du lịch...' : 'Tìm người, số hợp đồng, đoàn...'}
             className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400" />
           {search && (
             <button onClick={() => setSearch('')} title="Bỏ tìm kiếm"
@@ -149,35 +186,89 @@ export default function QuyetToanTourPage() {
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap mb-4">
-        <button onClick={() => setFilterLoai('')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${!filterLoai ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+        <button onClick={() => { setTab('doan'); setFilterLoai('') }} className={chip(isDoan && !filterLoai)}>
           Tất cả <span className="opacity-70">{doanList.length}</span>
         </button>
-        <button onClick={() => setFilterLoai(filterLoai === 'tour' ? '' : 'tour')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterLoai === 'tour' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+        <button onClick={() => { setTab('doan'); setFilterLoai(isDoan && filterLoai === 'tour' ? '' : 'tour') }} className={chip(isDoan && filterLoai === 'tour')}>
           Tour <span className="opacity-70">{doanList.filter(d => d.loai_doan === 'tour').length}</span>
         </button>
-        <button onClick={() => setFilterLoai(filterLoai === 'su_kien' ? '' : 'su_kien')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterLoai === 'su_kien' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+        <button onClick={() => { setTab('doan'); setFilterLoai(isDoan && filterLoai === 'su_kien' ? '' : 'su_kien') }} className={chip(isDoan && filterLoai === 'su_kien')}>
           Sự kiện <span className="opacity-70">{doanList.filter(d => d.loai_doan === 'su_kien').length}</span>
         </button>
         <span className="w-px h-4 bg-gray-200 mx-1" />
-        <button onClick={() => setFilterNguon(filterNguon === 'crm' ? '' : 'crm')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNguon === 'crm' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+        <button onClick={() => { setTab('doan'); setFilterNguon(isDoan && filterNguon === 'crm' ? '' : 'crm') }} className={chip(isDoan && filterNguon === 'crm')}>
           Từ CRM <span className="opacity-70">{doanList.filter(d => d.opportunity_id).length}</span>
         </button>
-        <button onClick={() => setFilterNguon(filterNguon === 'tay' ? '' : 'tay')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${filterNguon === 'tay' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+        <button onClick={() => { setTab('doan'); setFilterNguon(isDoan && filterNguon === 'tay' ? '' : 'tay') }} className={chip(isDoan && filterNguon === 'tay')}>
           Tạo tay <span className="opacity-70">{doanList.filter(d => !d.opportunity_id).length}</span>
+        </button>
+        <span className="w-px h-4 bg-gray-200 mx-1" />
+        <button onClick={() => setTab('hop_dong')} className={`flex items-center gap-1 ${chip(!isDoan)}`}>
+          <FileText size={12} /> Hợp đồng <span className="opacity-70">{hopDongList.length}</span>
         </button>
       </div>
 
-      <p className="text-sm text-gray-400 mb-3">{filtered.length.toLocaleString('vi-VN')} đoàn</p>
+      <p className="text-sm text-gray-400 mb-3">{isDoan ? `${filtered.length.toLocaleString('vi-VN')} đoàn` : `${hdFiltered.length.toLocaleString('vi-VN')} hợp đồng`}</p>
 
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-gray-300" size={28} />
         </div>
+      ) : !isDoan ? (
+        hdFiltered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">
+            {hopDongList.length === 0 ? 'Chưa có hợp đồng nào được xuất.' : 'Không có hợp đồng nào khớp tìm kiếm.'}
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
+            <div className="overflow-x-auto">
+              <table className="tour-accounting-grid text-sm list-table fixed-cols-table border-collapse" style={{ tableLayout: 'fixed', width: hdTotalWidth }}>
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {HOP_DONG_COLS.map(c => (
+                      <th key={c.key} style={{ width: hdWidths[c.key] ?? c.width }}
+                        className="relative px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap overflow-hidden select-none">
+                        {c.label}
+                        <div className="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500/60 z-10" onMouseDown={e => startHdResize(c.key, e)} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {hdFiltered.map(h => (
+                    <tr key={h.ho_so_id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{h.ngay_xuat.includes('T') ? formatDateTimeVN(h.ngay_xuat) : formatDateVN(h.ngay_xuat)}</td>
+                      <td className="px-4 py-2.5 leading-tight">
+                        <div className="font-semibold text-gray-900 truncate" title={h.ho_ten}>{h.ho_ten}</div>
+                        {h.loai_nhan_su && <div className="text-xs text-gray-400 truncate">{h.loai_nhan_su}</div>}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link href={`/doan/${h.doan.id}?tab=files`} title={h.doan.ten_doan}
+                          className="flex items-center gap-2 text-gray-700 hover:text-brand-600 hover:underline decoration-gray-300 transition-colors">
+                          <span className="truncate">{h.doan.ten_doan}</span>
+                          {h.doan.loai_doan === 'su_kien' && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent-50 text-accent-600 shrink-0">Sự kiện</span>
+                          )}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600 truncate">{h.so_hop_dong || '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{h.ngay_ky ? formatDateVN(h.ngay_ky) : '—'}</td>
+                      <td className="px-4 py-2.5">
+                        {h.file_id ? (
+                          <a href={`/api/ho-so/${h.ho_so_id}/hop-dong-files/${h.file_id}/download`} title={h.file_name ?? ''}
+                            className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline">
+                            <FileText size={13} className="shrink-0" /> <span className="truncate">{h.file_name || 'Hợp đồng.docx'}</span>
+                            {h.so_ban > 1 && <span className="shrink-0 font-normal text-gray-400">· {h.so_ban} lần xuất</span>}
+                          </a>
+                        ) : <span className="text-xs text-gray-400">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400 text-sm">
           {doanList.length === 0 ? <>Chưa có đoàn nào. Nhấn &quot;Thêm đoàn&quot; để bắt đầu.</> : 'Không có đoàn nào khớp bộ lọc.'}

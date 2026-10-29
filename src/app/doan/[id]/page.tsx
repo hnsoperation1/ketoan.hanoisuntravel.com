@@ -508,6 +508,11 @@ export default function DoanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [viewing, setViewing] = useState<HoSoWithNhanSu | null>(null)
   const [tab, setTab] = useState<Tab>('info')
+  // Mở từ tab Hợp đồng ở Danh sách đoàn (?tab=files) → vào thẳng tab File hợp đồng
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- đọc URL sau khi mount, tránh lệch với HTML server render
+    if (new URLSearchParams(window.location.search).get('tab') === 'files') setTab('files')
+  }, [])
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [addingNhanSu, setAddingNhanSu] = useState(false)
