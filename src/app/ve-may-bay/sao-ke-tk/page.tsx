@@ -35,7 +35,6 @@ type SaoKeRow = {
   ma_3: string | null
 }
 
-const TAI_KHOAN_OPTIONS = ['Tất cả', 'Tiền mặt', 'TCB VA 866', 'TCB P889', 'TCB017', 'TCB012']
 
 function formatTien(n: number | null): string {
   if (n == null) return '—'
@@ -162,11 +161,12 @@ export default function SaoKeTkPage() {
     try {
       const res = await fetch('/api/ve-may-bay/sao-ke/sync', { method: 'POST' })
       const json = await res.json()
-      const breakdownText = Array.isArray(json.breakdown)
-        ? ' — ' + json.breakdown.map((b: { tai_khoan: string; parsed: number }) => `${b.tai_khoan}: ${b.parsed}`).join(', ')
-        : ''
-      if (!res.ok) throw new Error((json.error ?? 'Đồng bộ thất bại') + breakdownText)
-      setSyncMsg({ ok: true, text: `Đã đồng bộ${breakdownText}.` })
+      if (!res.ok) throw new Error(json.error ?? 'Đồng bộ thất bại')
+      const tomTat: { ten: string; them: number; sua: number; xoa: number; loi?: string }[] = json.tom_tat ?? []
+      const tong = (k: 'them' | 'sua' | 'xoa') => tomTat.reduce((s, t) => s + t[k], 0).toLocaleString('vi-VN')
+      const loi = tomTat.filter(t => t.loi).map(t => `${t.ten}: ${t.loi}`).join('; ')
+      setSyncMsg({ ok: !loi, text: `Đã đồng bộ: thêm ${tong('them')} · sửa ${tong('sua')} · xoá ${tong('xoa')} dòng.${loi ? ' ' + loi : ''}` })
+      cacheRef.current.clear()
       await loadMonth(selected.year, selected.month, true)
     } catch (err) {
       setSyncMsg({ ok: false, text: err instanceof Error ? err.message : 'Đồng bộ thất bại' })
@@ -174,6 +174,9 @@ export default function SaoKeTkPage() {
       setSyncing(false)
     }
   }, [loadMonth, selected])
+
+  // Tài khoản có dòng vé (TC) trong tháng đang xem — sao kê nay đồng bộ 13 tài khoản, không cố định 5 như trước
+  const taiKhoanOptions = useMemo(() => ['Tất cả', ...Array.from(new Set(rows.map(r => r.tai_khoan)))], [rows])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -218,7 +221,7 @@ export default function SaoKeTkPage() {
             value: `${o.year}-${o.month}`,
             label: `Tháng ${o.month}/${o.year}${o.year === currentYear && o.month === currentMonth ? ' (hiện tại)' : ''}`,
           }))} />
-        {TAI_KHOAN_OPTIONS.map(tk => (
+        {taiKhoanOptions.map(tk => (
           <button key={tk} onClick={() => setTaiKhoan(tk)}
             className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
               taiKhoan === tk ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'

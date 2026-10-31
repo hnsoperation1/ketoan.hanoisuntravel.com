@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     // /api/ve-may-bay/sao-ke-tk. Thiếu điều kiện này trước đó khiến "Đã
     // thu" cộng luôn mọi khoản thu trong tháng (không riêng gì vé), ra số
     // lớn bất thường so với "Sao kê TK" cùng tháng.
-    admin.from('sao_ke_giao_dich').select('ten_du_an, thu, ngay, dien_giai, tai_khoan').eq('ma_2', 'TC').like('ngay', suffix).limit(20000),
+    admin.from('sao_ke_giao_dich').select('ten_du_an, thu, ngay, dien_giai, tai_khoan').eq('ma_2', 'TC').is('xoa_luc', null).like('ngay', suffix).limit(20000),
     // Chỉ để tra "nhóm" (phân loại) theo mã khách cho UI group/filter —
     // KHÔNG dùng để lọc/loại bỏ mã khách nào (mã chưa có trong danh mục
     // chuẩn vẫn hiện bình thường, chỉ là nhom = null → "Chưa phân loại").

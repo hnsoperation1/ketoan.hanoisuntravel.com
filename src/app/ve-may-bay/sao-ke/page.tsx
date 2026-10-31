@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { RefreshCw, Search, Download, X } from 'lucide-react'
+import { RefreshCw, Search, Download, X, AlertTriangle } from 'lucide-react'
+import { ModalOverlay } from '@/components/ModalOverlay'
 import { useAuth } from '@/contexts/auth'
 import { useTopbar } from '@/contexts/topbar'
 import { canScreen } from '@/lib/screens'
@@ -40,9 +41,14 @@ type SaoKeRow = {
   ma_1: string | null
   ma_2: string | null
   ma_3: string | null
+  xoa_luc: string | null
+  canh_bao: string | null
 }
 
-const TAI_KHOAN_OPTIONS = ['Tất cả', 'Tiền mặt', 'TCB VA 866', 'TCB P889', 'TCB017', 'TCB012']
+type TaiKhoan = { ma: string; ten: string; so_tai_khoan: string | null; ngan_hang: string | null; chu_so_huu: string; chu_tai_khoan: string | null; loai_tien: string }
+
+type TomTat = { tai_khoan: string; ten: string; tren_sheet: number; them: number; sua: number; xoa: number; giu_nguyen: number; loi?: string }
+type KetQuaDongBo = { tom_tat: TomTat[]; canh_bao: { id: string; tai_khoan: string; ngay: string | null; dien_giai: string | null; canh_bao: string }[] }
 
 function formatTien(n: number | null): string {
   if (n == null) return '—'
@@ -68,8 +74,11 @@ export default function SaoKePage() {
   const [rows, setRows] = useState<SaoKeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [taiKhoans, setTaiKhoans] = useState<TaiKhoan[]>([])
   const [taiKhoan, setTaiKhoan] = useState('Tất cả')
   const [chiVmb, setChiVmb] = useState(false)
+  const [chiCanhBao, setChiCanhBao] = useState(false)
+  const [ketQua, setKetQua] = useState<KetQuaDongBo | null>(null)
   const [search, setSearch] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -80,8 +89,9 @@ export default function SaoKePage() {
     try {
       const res = await fetch('/api/ve-may-bay/sao-ke')
       if (!res.ok) throw new Error('load failed')
-      const { data } = await res.json()
+      const { data, tai_khoan } = await res.json()
       setRows(Array.isArray(data) ? data : [])
+      setTaiKhoans(Array.isArray(tai_khoan) ? tai_khoan : [])
     } catch {
       setLoadError(true)
     } finally {
@@ -109,14 +119,11 @@ export default function SaoKePage() {
     try {
       const res = await fetch('/api/ve-may-bay/sao-ke/sync', { method: 'POST' })
       const json = await res.json()
-      const breakdownText = Array.isArray(json.breakdown)
-        ? ' — ' + json.breakdown.map((b: any) => `${b.tai_khoan}: ${b.parsed}`).join(', ')
-        : ''
-      if (!res.ok) throw new Error((json.error ?? 'Đồng bộ thất bại') + breakdownText)
-      setSyncMsg({ ok: true, text: `Đã đồng bộ ${Number(json.synced).toLocaleString('vi-VN')} dòng từ Google Sheet${breakdownText}.` })
+      if (!res.ok) throw new Error(json.error ?? 'Đồng bộ thất bại')
+      setKetQua({ tom_tat: json.tom_tat ?? [], canh_bao: json.canh_bao ?? [] })
       await loadData()
-    } catch (err: any) {
-      setSyncMsg({ ok: false, text: err?.message ?? 'Đồng bộ thất bại' })
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err instanceof Error ? err.message : 'Đồng bộ thất bại' })
     } finally {
       setSyncing(false)
     }
@@ -127,13 +134,28 @@ export default function SaoKePage() {
     return rows.filter(r => {
       if (taiKhoan !== 'Tất cả' && r.tai_khoan !== taiKhoan) return false
       if (chiVmb && (r.tag ?? '').toUpperCase() !== 'VMB') return false
+      if (chiCanhBao && !r.canh_bao) return false
       if (q) {
         const hay = `${r.ma ?? ''} ${r.don_vi ?? ''} ${r.dien_giai ?? ''} ${r.ten_du_an ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
     })
-  }, [rows, taiKhoan, chiVmb, search])
+  }, [rows, taiKhoan, chiVmb, chiCanhBao, search])
+
+  const soCanhBao = useMemo(() => rows.filter(r => r.canh_bao).length, [rows])
+  const tenTk = useMemo(() => new Map(taiKhoans.map(t => [t.ma, t.ten])), [taiKhoans])
+  // Tài khoản theo danh mục (sao_ke_tai_khoan), thêm tài khoản có dữ liệu mà danh mục không có
+  const tkOptions = useMemo(() => {
+    const ds = taiKhoans.map(t => t.ma)
+    for (const r of rows) if (!ds.includes(r.tai_khoan)) ds.push(r.tai_khoan)
+    return ds
+  }, [taiKhoans, rows])
+
+  const daXem = useCallback(async (id: string) => {
+    const res = await fetch(`/api/ve-may-bay/sao-ke/${id}`, { method: 'PATCH' })
+    if (res.ok) setRows(prev => prev.flatMap(r => r.id !== id ? [r] : r.xoa_luc ? [] : [{ ...r, canh_bao: null }]))
+  }, [])
 
   const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
   const tongChi = useMemo(() => filtered.reduce((s, r) => s + (r.chi ?? 0), 0), [filtered])
@@ -206,18 +228,24 @@ export default function SaoKePage() {
       )}
 
       <div className="flex items-center gap-2 flex-wrap">
-        {TAI_KHOAN_OPTIONS.map(tk => (
+        {['Tất cả', ...tkOptions].map(tk => (
           <button key={tk} onClick={() => setTaiKhoan(tk)}
             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
               taiKhoan === tk ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}>
-            {tk}
+            {tk === 'Tất cả' ? tk : tenTk.get(tk) ?? tk}
           </button>
         ))}
         <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 cursor-pointer select-none">
           <input type="checkbox" checked={chiVmb} onChange={e => setChiVmb(e.target.checked)} />
           Chỉ dòng VMB
         </label>
+        {soCanhBao > 0 && (
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-amber-700 bg-amber-50 cursor-pointer select-none">
+            <input type="checkbox" checked={chiCanhBao} onChange={e => setChiCanhBao(e.target.checked)} />
+            Cảnh báo ({soCanhBao})
+          </label>
+        )}
         <div className="relative ml-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm đơn vị, diễn giải, mã..."
@@ -271,9 +299,13 @@ export default function SaoKePage() {
                 {g.rows.map(r => {
                   const ri = rowIndexById.get(r.id) ?? 0
                   return (
-                  <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td {...cellProps(ri, 0)} className={cellClassName(ri, 0, 'px-4 py-2 text-gray-600 whitespace-nowrap cursor-cell')}>{r.ngay ?? '—'}</td>
-                    <td {...cellProps(ri, 1)} className={cellClassName(ri, 1, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.tai_khoan}</td>
+                  <Fragment key={r.id}>
+                  <tr className={`transition-colors ${r.canh_bao ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-gray-50/70'} ${r.xoa_luc ? 'line-through' : ''}`}>
+                    <td {...cellProps(ri, 0)} className={cellClassName(ri, 0, 'px-4 py-2 text-gray-600 whitespace-nowrap cursor-cell')}>
+                      {r.canh_bao && <AlertTriangle size={13} className="inline mr-1 -mt-0.5 text-amber-500" />}
+                      {r.ngay ?? '—'}
+                    </td>
+                    <td {...cellProps(ri, 1)} className={cellClassName(ri, 1, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{tenTk.get(r.tai_khoan) ?? r.tai_khoan}</td>
                     <td {...cellProps(ri, 2)} className={cellClassName(ri, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.ma ?? '—'}</td>
                     <td {...cellProps(ri, 3)} className={cellClassName(ri, 3, 'px-4 py-2 whitespace-nowrap cursor-cell')}>
                       {r.tag && (
@@ -289,6 +321,16 @@ export default function SaoKePage() {
                     <td {...cellProps(ri, 8)} className={cellClassName(ri, 8, 'px-4 py-2 text-gray-500 whitespace-nowrap text-right cursor-cell')}>{formatTien(r.so_du_cuoi_ky)}</td>
                     <td {...cellProps(ri, 9)} className={cellClassName(ri, 9, 'px-4 py-2 text-gray-500 max-w-[180px] truncate cursor-cell')} title={r.ten_du_an ?? ''}>{r.ten_du_an ?? '—'}</td>
                   </tr>
+                  {r.canh_bao && (
+                    <tr className="bg-amber-50/70">
+                      <td colSpan={10} className="px-4 pb-2 pt-0 text-xs text-amber-800">
+                        {r.xoa_luc && <span className="font-semibold">Đã xoá trên sheet · </span>}
+                        {r.canh_bao}
+                        <button onClick={() => daXem(r.id)} className="ml-2 font-semibold text-amber-700 underline hover:text-amber-900">Đã xem</button>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                   )
                 })}
                 </Fragment>
@@ -298,6 +340,68 @@ export default function SaoKePage() {
         </div>
       </div>
       {menu}
+      {ketQua && <KetQuaModal kq={ketQua} onClose={() => setKetQua(null)} />}
     </div>
+  )
+}
+
+// Tóm tắt sau mỗi lần bấm đồng bộ: số dòng thêm / sửa / đánh dấu xoá theo tài khoản + dòng cần xem lại.
+function KetQuaModal({ kq, onClose }: { kq: KetQuaDongBo; onClose: () => void }) {
+  const tong = kq.tom_tat.reduce((a, t) => ({ them: a.them + t.them, sua: a.sua + t.sua, xoa: a.xoa + t.xoa }), { them: 0, sua: 0, xoa: 0 })
+  const n = (v: number) => (v ? v.toLocaleString('vi-VN') : '—')
+  return (
+    <ModalOverlay>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <div>
+            <h2 className="font-bold text-gray-900">Đã đồng bộ từ Google Sheet</h2>
+            <p className="text-xs text-gray-400">Thêm {n(tong.them)} · Sửa {n(tong.sua)} · Xoá {n(tong.xoa)}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><X size={16} /></button>
+        </div>
+        <div className="overflow-y-auto px-5 pb-3 space-y-3">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-gray-200">
+                <th className="text-left py-2 font-semibold">Tài khoản</th>
+                <th className="text-right py-2 font-semibold">Trên sheet</th>
+                <th className="text-right py-2 font-semibold">Thêm</th>
+                <th className="text-right py-2 font-semibold">Sửa</th>
+                <th className="text-right py-2 font-semibold">Xoá</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {kq.tom_tat.map(t => (
+                <tr key={t.tai_khoan}>
+                  <td className="py-1.5 text-gray-700">
+                    {t.ten}
+                    {t.loi && <p className="text-xs text-red-500">{t.loi}</p>}
+                  </td>
+                  <td className="py-1.5 text-right text-gray-500">{n(t.tren_sheet)}</td>
+                  <td className="py-1.5 text-right text-emerald-600">{n(t.them)}</td>
+                  <td className="py-1.5 text-right text-brand-600">{n(t.sua)}</td>
+                  <td className="py-1.5 text-right text-red-500">{n(t.xoa)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {kq.canh_bao.length > 0 && (
+            <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 space-y-1.5">
+              <p className="text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+                <AlertTriangle size={14} /> {kq.canh_bao.length} dòng đang gắn quyết toán cần xem lại
+              </p>
+              {kq.canh_bao.map(c => (
+                <p key={c.id} className="text-xs text-amber-800">
+                  <span className="font-semibold">{c.tai_khoan}</span> · {c.dien_giai ?? '—'} — {c.canh_bao}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-gray-100 flex justify-center">
+          <button onClick={onClose} className="flex-1 md:flex-none md:px-12 py-3 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors">Đóng</button>
+        </div>
+      </div>
+    </ModalOverlay>
   )
 }

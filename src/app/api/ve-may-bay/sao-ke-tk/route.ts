@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     .from('sao_ke_giao_dich')
     .select('*')
     .eq('ma_2', 'TC')
+    .is('xoa_luc', null)
     .like('ngay', suffix)
     .order('tai_khoan', { ascending: true })
     .order('row_index', { ascending: true })

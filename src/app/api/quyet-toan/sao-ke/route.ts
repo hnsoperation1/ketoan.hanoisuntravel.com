@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         .from('sao_ke_giao_dich')
         .select('id, tai_khoan, ngay, ma, don_vi, dien_giai, thu, chi, ten_du_an, row_index')
         .gt(loai, 0)
+        .is('xoa_luc', null)
       if (q) qb = qb.or(['dien_giai', 'don_vi', 'ma', 'ten_du_an'].map((c) => `${c}.ilike.%${q}%`).join(','))
       return qb.order('id').range(from, to)
     })

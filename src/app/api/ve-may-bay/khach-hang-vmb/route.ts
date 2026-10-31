@@ -44,7 +44,7 @@ export async function GET() {
     // có thể bỏ sót hoặc lặp dòng khi có ghi đồng thời.
     [debtData, saoKeData] = await Promise.all([
       fetchAllRows((from, to) => admin.from('ve_debt_records').select('ma_khach, gia_ban').order('id').range(from, to)),
-      fetchAllRows((from, to) => admin.from('sao_ke_giao_dich').select('ten_du_an, thu').order('id').range(from, to)),
+      fetchAllRows((from, to) => admin.from('sao_ke_giao_dich').select('ten_du_an, thu').is('xoa_luc', null).order('id').range(from, to)),
     ])
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Lỗi tải dữ liệu' }, { status: 400 })
