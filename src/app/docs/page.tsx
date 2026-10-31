@@ -25,7 +25,7 @@ const STEPS: { title: string; desc: string; image: string }[] = [
   {
     title: 'Thả/dán ảnh của 1 người',
     desc:
-      'Trong khung "Thêm nhân sự": kéo-thả, bấm "chọn ảnh", hoặc bấm vào ô rồi dán (Ctrl+V) đủ ảnh của MỘT người — CCCD mặt trước, CCCD mặt sau, thẻ HDV, ảnh xác nhận (nếu có). Mỗi lượt chỉ nên làm 1 người để AI không nhầm lẫn ảnh của người này với người khác.',
+      'Trong khung "Thêm nhân sự": kéo-thả, bấm "chọn ảnh", hoặc dán (bấm vào ô rồi Ctrl+V, hoặc chuột phải → Dán ảnh) đủ ảnh của MỘT người — CCCD mặt trước, CCCD mặt sau, thẻ HDV, ảnh xác nhận (nếu có). Mỗi lượt chỉ nên làm 1 người để AI không nhầm lẫn ảnh của người này với người khác.',
     image: `${DOCS_IMG_DIR}/step-4.png`,
   },
   {

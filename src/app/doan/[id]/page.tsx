@@ -31,6 +31,7 @@ import { SelectMenu } from '@/components/SelectMenu'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { SaBadge } from '@/components/SaBadge'
+import { useMenuDanAnh } from '@/components/MenuDanAnh'
 import type { Doan, HoSoWithNhanSu, TrangThaiHoSo, HoSoHopDongFile, AiExtractedFields, ImageKind, HopDongTemplate, LoaiNhanSu } from '@/types'
 import { TRANG_THAI_LABELS } from '@/types'
 import { buildDsHdvRows } from '@/lib/export-format'
@@ -1204,6 +1205,7 @@ function AddNhanSuModal({
   const loaiNhanSu = useLoaiNhanSuList()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const danAnh = useMenuDanAnh(setError)
   const [addedCount, setAddedCount] = useState(0)
 
   // Mặc định chọn loại "HDV" (giống default cũ của prefix) ngay khi danh mục tải xong,
@@ -1384,6 +1386,7 @@ function AddNhanSuModal({
                     e.preventDefault()
                     addFiles(Array.from(e.dataTransfer.files))
                   }}
+                  onContextMenu={(e) => danAnh.mo(e, addFiles)}
                   className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl py-8 px-4 text-center hover:border-brand-300 transition-colors"
                 >
                   <ImagePlus size={28} className="text-gray-300" />
@@ -1408,8 +1411,8 @@ function AddNhanSuModal({
                     type="text"
                     autoFocus
                     onPaste={handlePasteEvent}
-                    placeholder="Bấm vào đây rồi dán ảnh (Ctrl+V)"
-                    className="w-full max-w-xs text-sm text-center border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-gray-400"
+                    placeholder="Dán ảnh vào đây: Ctrl+V hoặc chuột phải → Dán"
+                    className="w-full max-w-sm text-sm text-center border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-gray-400"
                   />
                 </div>
 
@@ -1593,6 +1596,7 @@ function AddNhanSuModal({
             )}
         </div>
       </ModalOverlay>
+      {danAnh.menu}
       {creatingLoai && (
         <CreateLoaiNhanSuModal
           templates={loaiNhanSu.templates}
