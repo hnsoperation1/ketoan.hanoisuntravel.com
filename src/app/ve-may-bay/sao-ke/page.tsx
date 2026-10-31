@@ -9,6 +9,43 @@ import { canScreen } from '@/lib/screens'
 import { NoScreenAccess } from '@/components/NoScreenAccess'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+import DateInput from '@/components/DateInput'
+import { SoDuTab } from './SoDuTab'
+import { TheoMaTab } from './TheoMaTab'
+
+type Tab = 'giao_dich' | 'so_du' | 'theo_ma'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'giao_dich', label: 'Giao dịch' },
+  { id: 'so_du', label: 'Số dư tài khoản' },
+  { id: 'theo_ma', label: 'Theo tài khoản kế toán' },
+]
+
+// Lọc tài khoản: 'Tất cả', nhóm ('#cong_ty' / '#ca_nhan') hoặc mã 1 tài khoản
+const NHOM_TK = [
+  { id: '#cong_ty', label: 'Công ty' },
+  { id: '#ca_nhan', label: 'Cá nhân' },
+]
+
+const isoHomNay = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)
+function kyNhanh(loai: 'thang' | 'thang_truoc' | 'quy' | 'nam'): [string, string] {
+  const h = isoHomNay()
+  const y = Number(h.slice(0, 4)), m = Number(h.slice(5, 7))
+  const p = (n: number) => String(n).padStart(2, '0')
+  const cuoiThang = (yy: number, mm: number) => `${yy}-${p(mm)}-${p(new Date(yy, mm, 0).getDate())}`
+  if (loai === 'thang') return [`${y}-${p(m)}-01`, h]
+  if (loai === 'thang_truoc') {
+    const yy = m === 1 ? y - 1 : y, mm = m === 1 ? 12 : m - 1
+    return [`${yy}-${p(mm)}-01`, cuoiThang(yy, mm)]
+  }
+  if (loai === 'quy') return [`${y}-${p(Math.floor((m - 1) / 3) * 3 + 1)}-01`, h]
+  return [`${y}-01-01`, h]
+}
+const KY_NHANH: { id: 'thang' | 'thang_truoc' | 'quy' | 'nam'; label: string }[] = [
+  { id: 'thang', label: 'Tháng này' },
+  { id: 'thang_truoc', label: 'Tháng trước' },
+  { id: 'quy', label: 'Quý này' },
+  { id: 'nam', label: 'Năm nay' },
+]
 
 const SAO_KE_COLS = [
   { key: 'ngay', label: 'Ngày', width: 100 },
@@ -41,6 +78,7 @@ type SaoKeRow = {
   ma_1: string | null
   ma_2: string | null
   ma_3: string | null
+  row_index: number
   xoa_luc: string | null
   canh_bao: string | null
 }
@@ -80,6 +118,10 @@ export default function SaoKePage() {
   const [chiCanhBao, setChiCanhBao] = useState(false)
   const [ketQua, setKetQua] = useState<KetQuaDongBo | null>(null)
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<Tab>('giao_dich')
+  const [[tu, den], setKy] = useState<[string, string]>(() => kyNhanh('nam'))
+  const [maLoc, setMaLoc] = useState<string | null>(null)
+  const [tkKeToan, setTkKeToan] = useState<{ ma: string; ten: string }[]>([])
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -89,9 +131,10 @@ export default function SaoKePage() {
     try {
       const res = await fetch('/api/ve-may-bay/sao-ke')
       if (!res.ok) throw new Error('load failed')
-      const { data, tai_khoan } = await res.json()
+      const { data, tai_khoan, tai_khoan_ke_toan } = await res.json()
       setRows(Array.isArray(data) ? data : [])
       setTaiKhoans(Array.isArray(tai_khoan) ? tai_khoan : [])
+      setTkKeToan(Array.isArray(tai_khoan_ke_toan) ? tai_khoan_ke_toan : [])
     } catch {
       setLoadError(true)
     } finally {
@@ -129,10 +172,29 @@ export default function SaoKePage() {
     }
   }, [loadData])
 
+  const tkTheoMa = useMemo(() => new Map(taiKhoans.map(t => [t.ma, t])), [taiKhoans])
+  const hienTk = useCallback((ma: string) => {
+    if (taiKhoan === 'Tất cả') return true
+    if (taiKhoan === '#cong_ty') return tkTheoMa.get(ma)?.chu_so_huu !== 'ca_nhan'
+    if (taiKhoan === '#ca_nhan') return tkTheoMa.get(ma)?.chu_so_huu === 'ca_nhan'
+    return ma === taiKhoan
+  }, [taiKhoan, tkTheoMa])
+  const laUsd = useCallback((ma: string) => tkTheoMa.get(ma)?.loai_tien === 'USD', [tkTheoMa])
+  const tenMa = useMemo(() => new Map(tkKeToan.map(t => [t.ma, t.ten])), [tkKeToan])
+
+  // Tab Theo tài khoản kế toán: không cộng lẫn USD với VND — chỉ tính USD khi đang chọn riêng tài khoản USD
+  const rowsTheoMa = useMemo(
+    () => rows.filter(r => hienTk(r.tai_khoan) && (laUsd(r.tai_khoan) === laUsd(taiKhoan))),
+    [rows, hienTk, laUsd, taiKhoan],
+  )
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
-      if (taiKhoan !== 'Tất cả' && r.tai_khoan !== taiKhoan) return false
+      if (!hienTk(r.tai_khoan)) return false
+      const iso = toIsoDate(r.ngay)
+      if (iso && (iso < tu || iso > den)) return false
+      if (maLoc != null && (r.ma ?? '').trim() !== maLoc) return false
       if (chiVmb && (r.tag ?? '').toUpperCase() !== 'VMB') return false
       if (chiCanhBao && !r.canh_bao) return false
       if (q) {
@@ -141,7 +203,7 @@ export default function SaoKePage() {
       }
       return true
     })
-  }, [rows, taiKhoan, chiVmb, chiCanhBao, search])
+  }, [rows, hienTk, tu, den, maLoc, chiVmb, chiCanhBao, search])
 
   const soCanhBao = useMemo(() => rows.filter(r => r.canh_bao).length, [rows])
   const tenTk = useMemo(() => new Map(taiKhoans.map(t => [t.ma, t.ten])), [taiKhoans])
@@ -157,8 +219,17 @@ export default function SaoKePage() {
     if (res.ok) setRows(prev => prev.flatMap(r => r.id !== id ? [r] : r.xoa_luc ? [] : [{ ...r, canh_bao: null }]))
   }, [])
 
-  const tongThu = useMemo(() => filtered.reduce((s, r) => s + (r.thu ?? 0), 0), [filtered])
-  const tongChi = useMemo(() => filtered.reduce((s, r) => s + (r.chi ?? 0), 0), [filtered])
+  // Tổng thu/chi chỉ cộng tài khoản VND (USD cộng riêng nếu đang xem riêng tài khoản USD)
+  const coUsd = useMemo(() => filtered.some(r => laUsd(r.tai_khoan)), [filtered, laUsd])
+  const chiUsd = coUsd && filtered.every(r => laUsd(r.tai_khoan))
+  const dongTong = useMemo(() => filtered.filter(r => laUsd(r.tai_khoan) === chiUsd), [filtered, laUsd, chiUsd])
+  const tongThu = useMemo(() => dongTong.reduce((s, r) => s + (r.thu ?? 0), 0), [dongTong])
+  const tongChi = useMemo(() => dongTong.reduce((s, r) => s + (r.chi ?? 0), 0), [dongTong])
+
+  const chonMa = useCallback((ma: string) => {
+    setMaLoc(ma)
+    setTab('giao_dich')
+  }, [])
 
   const rowIndexById = useMemo(() => new Map(filtered.map((r, i) => [r.id, i])), [filtered])
   const { cellProps, cellClassName, wrapProps, menu } = useCellSelection((r, c) => {
@@ -207,7 +278,17 @@ export default function SaoKePage() {
 
   return (
     <div className="px-5 pt-2 pb-5 space-y-2">
-      <div className="flex items-center justify-end flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-1 border-b border-gray-200">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`px-3.5 py-2 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+                tab === t.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}
@@ -228,14 +309,46 @@ export default function SaoKePage() {
       )}
 
       <div className="flex items-center gap-2 flex-wrap">
-        {['Tất cả', ...tkOptions].map(tk => (
-          <button key={tk} onClick={() => setTaiKhoan(tk)}
+        {KY_NHANH.map(k => {
+          const [a, b] = kyNhanh(k.id)
+          return (
+            <button key={k.id} onClick={() => setKy([a, b])}
+              className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+                tu === a && den === b ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}>
+              {k.label}
+            </button>
+          )
+        })}
+        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+          <DateInput value={tu} onChange={v => v && setKy([v, den])} className="w-36" />
+          <span>–</span>
+          <DateInput value={den} onChange={v => v && setKy([tu, v])} className="w-36" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {[{ id: 'Tất cả', label: 'Tất cả' }, ...NHOM_TK, ...tkOptions.map(tk => ({ id: tk, label: tenTk.get(tk) ?? tk }))].map(tk => (
+          <button key={tk.id} onClick={() => setTaiKhoan(tk.id)}
             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
-              taiKhoan === tk ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              taiKhoan === tk.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}>
-            {tk === 'Tất cả' ? tk : tenTk.get(tk) ?? tk}
+            {tk.label}
           </button>
         ))}
+      </div>
+
+      {tab === 'so_du' && <SoDuTab rows={rows} taiKhoans={taiKhoans} hienTk={hienTk} tu={tu} den={den} />}
+      {tab === 'theo_ma' && <TheoMaTab rows={rowsTheoMa} tu={tu} den={den} tenMa={tenMa} onChonMa={chonMa} />}
+
+      {tab === 'giao_dich' && <>
+      <div className="flex items-center gap-2 flex-wrap">
+        {maLoc != null && (
+          <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-brand-50 text-brand-700">
+            Mã {maLoc || '(trống)'}{maLoc && tenMa.get(maLoc) ? ` · ${tenMa.get(maLoc)}` : ''}
+            <button onClick={() => setMaLoc(null)} title="Bỏ lọc mã" className="text-brand-400 hover:text-brand-700"><X size={14} /></button>
+          </span>
+        )}
         <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 cursor-pointer select-none">
           <input type="checkbox" checked={chiVmb} onChange={e => setChiVmb(e.target.checked)} />
           Chỉ dòng VMB
@@ -261,8 +374,9 @@ export default function SaoKePage() {
 
       <div className="flex items-center gap-4 text-sm">
         <span className="text-gray-400">{filtered.length.toLocaleString('vi-VN')} dòng</span>
-        <span className="text-emerald-600 font-semibold">Thu: {formatTien(tongThu)}</span>
-        <span className="text-red-500 font-semibold">Chi: {formatTien(tongChi)}</span>
+        <span className="text-emerald-600 font-semibold">Thu: {formatTien(tongThu)}{chiUsd && ' USD'}</span>
+        <span className="text-red-500 font-semibold">Chi: {formatTien(tongChi)}{chiUsd && ' USD'}</span>
+        {coUsd && !chiUsd && <span className="text-gray-400">Chưa gồm TCB USD</span>}
       </div>
 
       <div className="bg-white border border-gray-100 shadow-sm overflow-hidden list-table-container">
@@ -306,7 +420,7 @@ export default function SaoKePage() {
                       {r.ngay ?? '—'}
                     </td>
                     <td {...cellProps(ri, 1)} className={cellClassName(ri, 1, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{tenTk.get(r.tai_khoan) ?? r.tai_khoan}</td>
-                    <td {...cellProps(ri, 2)} className={cellClassName(ri, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')}>{r.ma ?? '—'}</td>
+                    <td {...cellProps(ri, 2)} className={cellClassName(ri, 2, 'px-4 py-2 text-gray-500 whitespace-nowrap cursor-cell')} title={r.ma ? tenMa.get(r.ma.trim()) ?? '' : ''}>{r.ma ?? '—'}</td>
                     <td {...cellProps(ri, 3)} className={cellClassName(ri, 3, 'px-4 py-2 whitespace-nowrap cursor-cell')}>
                       {r.tag && (
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${r.tag.toUpperCase() === 'VMB' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -339,6 +453,7 @@ export default function SaoKePage() {
           </table>
         </div>
       </div>
+      </>}
       {menu}
       {ketQua && <KetQuaModal kq={ketQua} onClose={() => setKetQua(null)} />}
     </div>

@@ -14,14 +14,15 @@ import { fetchAllRows } from '@/lib/supabase/fetch-all'
 // PostgREST (xem @/lib/supabase/fetch-all).
 //
 // Dòng đã xoá khỏi sheet (xoa_luc) không trả về, TRỪ dòng còn cảnh báo (đang gắn quyết toán) để kế toán xử lý.
-// Kèm danh mục tài khoản (sao_ke_tai_khoan) cho thanh lọc theo tài khoản.
+// Kèm danh mục tài khoản (sao_ke_tai_khoan) cho thanh lọc theo tài khoản và hệ thống tài khoản kế toán
+// (ke_toan_tai_khoan) để hiện tên cho cột Mã / bảng tổng hợp theo tài khoản đối ứng.
 export async function GET() {
   const { unauthorized } = await requireScreen('kt-sao-ke')
   if (unauthorized) return unauthorized
 
   const admin = createAdminClient()
   try {
-    const [data, tk] = await Promise.all([
+    const [data, tk, tkkt] = await Promise.all([
       fetchAllRows((from, to) =>
         admin
           .from('sao_ke_giao_dich')
@@ -33,9 +34,11 @@ export async function GET() {
           .range(from, to)
       ),
       admin.from('sao_ke_tai_khoan').select('ma, ten, so_tai_khoan, ngan_hang, chu_so_huu, chu_tai_khoan, loai_tien').order('thu_tu'),
+      // Hệ thống tài khoản kế toán (tên cho cột Mã) — chưa chạy migration 20261146 thì bỏ qua, chỉ thiếu tên
+      admin.from('ke_toan_tai_khoan').select('ma, ten').order('thu_tu'),
     ])
     if (tk.error) throw new Error(tk.error.message)
-    return NextResponse.json({ data, tai_khoan: tk.data ?? [] })
+    return NextResponse.json({ data, tai_khoan: tk.data ?? [], tai_khoan_ke_toan: tkkt.error ? [] : tkkt.data ?? [] })
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Lỗi tải dữ liệu' }, { status: 400 })
   }
