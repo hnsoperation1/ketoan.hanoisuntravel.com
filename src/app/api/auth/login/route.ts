@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { loadUserScreens } from '@/lib/auth'
+import { logAuthEvent } from '@/lib/auditAuth'
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json()
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data.user) {
+    await logAuthEvent(supabase, 'login_failed', { email, method: 'Mật khẩu' })
     return NextResponse.json({ error: 'Sai email hoặc mật khẩu' }, { status: 401 })
   }
 
@@ -19,9 +21,11 @@ export async function POST(req: NextRequest) {
   // session "lơ lửng" nếu không đúng quyền.
   const { data: isKeToan } = await supabase.rpc('is_ke_toan')
   if (!isKeToan) {
+    await logAuthEvent(supabase, 'login_failed', { email, method: 'Không có quyền kế toán' })
     await supabase.auth.signOut()
     return NextResponse.json({ error: 'Tài khoản này không có quyền truy cập hệ thống kế toán' }, { status: 403 })
   }
+  await logAuthEvent(supabase, 'login', { method: 'Mật khẩu' })
   const [{ data: isSuperAdmin }, { data: profile }, screens] = await Promise.all([
     supabase.rpc('is_super_admin'),
     supabase.from('users').select('role, full_name, avatar_url').eq('id', data.user.id).single(),

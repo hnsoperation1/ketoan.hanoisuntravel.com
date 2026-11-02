@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { auditFetch } from './audit'
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -7,6 +8,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Nhật ký hoạt động: kèm app + IP / thiết bị của người dùng — xem ./audit.ts
+      global: { fetch: auditFetch },
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
