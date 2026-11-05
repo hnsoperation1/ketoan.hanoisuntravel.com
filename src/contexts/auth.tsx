@@ -11,6 +11,8 @@ interface AuthUser {
   is_boss: boolean
   /** Màn Super Admin đã tick (lib/screens.ts) — null = đọc screen_access lỗi → theo luật cũ */
   screens: string[] | null
+  /** Theme sidebar chọn ở ihns.vn (user_preferences 'ihns_sidebar_theme') — null = chưa chọn (Tối) */
+  sidebar_theme?: string | null
 }
 
 interface AuthContextValue {

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
 import { SaBadge } from '@/components/SaBadge'
 import { canScreen, type ScreenId } from '@/lib/screens'
+import { sidebarThemeOf, type SidebarTheme } from '@/lib/sidebarTheme'
 
 type Props = { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }
 
@@ -24,13 +25,14 @@ type NavLinkProps = {
   sa?: boolean
   /** Link sang app khác (vd ihns.vn) → mở tab mới */
   external?: boolean
+  t: SidebarTheme
 }
 
 // Tiêu đề nhóm nhưng CŨNG LÀ link (vd "Kế toán vé máy bay" trỏ vào
 // /ve-may-bay) — khi đang đứng đúng trang đó thì tô nền xanh theme, dạng
 // thanh full-bleed sát mép giống hệt NavLink thường (không bo góc), chỉ
 // khác màu xanh vì đây là "trang chủ nhóm" chứ không phải 1 mục con.
-function SectionLink({ href, label, pathname, onClick }: { href: string; label: string; pathname: string; onClick?: () => void }) {
+function SectionLink({ href, label, pathname, onClick, t }: { href: string; label: string; pathname: string; onClick?: () => void; t: SidebarTheme }) {
   const active = pathname === href
   return (
     <Link
@@ -39,16 +41,15 @@ function SectionLink({ href, label, pathname, onClick }: { href: string; label: 
       className={clsx(
         'block text-[11px] md:text-[10px] font-bold uppercase tracking-widest py-1.5 mb-2 md:mb-1.5 transition-colors',
         'px-5 -mx-4 md:px-6 md:-mx-3',
-        !active && 'hover:opacity-70',
+        active ? t.hubActive : clsx(t.groupLabel, 'hover:opacity-70'),
       )}
-      style={active ? { background: '#127faf', color: 'white' } : { color: '#0069a0' }}
     >
       {label}
     </Link>
   )
 }
 
-function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick, sa, external }: NavLinkProps) {
+function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick, sa, external, t }: NavLinkProps) {
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
   return (
     <Link
@@ -62,9 +63,8 @@ function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick,
         'gap-4 px-5 py-3 -mx-4 text-base md:text-sm',
         'md:gap-3 md:px-3 md:py-1.5',
         collapsed ? 'md:justify-center md:px-0 md:mx-0' : 'md:-mx-3 md:px-6',
-        active ? 'font-semibold' : 'font-medium hover:bg-white/50',
+        active ? clsx(t.active, 'font-semibold') : clsx(t.row, 'font-medium'),
       )}
-      style={active ? { background: '#ef5e2f', color: 'white' } : { color: '#003d5c' }}
     >
       <Icon className="flex-shrink-0 w-[22px] h-[22px] md:w-[18px] md:h-[18px]" strokeWidth={active ? 2.5 : 2} />
       <span className="md:hidden">
@@ -82,12 +82,9 @@ function NavLink({ href, label, icon: Icon, exact, pathname, collapsed, onClick,
 }
 
 // sa = cả nhóm chỉ Super Admin → huy hiệu "SA" sau tiêu đề nhóm
-function SectionTitle({ label, sa }: { label: string; sa?: boolean }) {
+function SectionTitle({ label, sa, t }: { label: string; sa?: boolean; t: SidebarTheme }) {
   return (
-    <p
-      className="text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3"
-      style={{ color: '#0069a0' }}
-    >
+    <p className={clsx('text-[11px] md:text-[10px] font-bold uppercase tracking-widest px-1 mb-2 md:mb-1.5 md:px-3', t.groupLabel)}>
       {label}
       {sa && <SaBadge className="ml-1.5" />}
     </p>
@@ -145,6 +142,8 @@ const SECTIONS: NavSection[] = [
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Props) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  // Theme sidebar chọn ở ihns.vn → Tuỳ chỉnh sidebar (mặc định Tối), đi kèm /api/auth/me
+  const t = sidebarThemeOf(user?.sidebar_theme)
 
   function itemVisible(item: NavItem) {
     if (item.superAdminOnly) return !!user?.is_super_admin
@@ -159,16 +158,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         collapsed ? 'md:w-14' : 'md:w-52',
         'fixed inset-0 z-50 w-full',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        t.aside,
       )}
-      style={{ background: '#f0f9ff' }}
     >
-      <div
-        className="h-16 md:h-20 flex-shrink-0 flex items-center px-4 md:px-1.5 gap-3"
-        style={{ background: '#f0f9ff', borderBottom: '1px solid rgba(0,61,92,0.08)' }}
-      >
+      <div className={clsx('h-16 md:h-20 flex-shrink-0 flex items-center px-4 md:px-1.5 gap-3 border-b', t.headerBorder)}>
         <Link href="/" className={clsx('flex items-center', collapsed ? 'md:hidden' : 'flex-1')}>
           <Image
-            src="/hanoisuntravel_logo_transparent.png"
+            src={t.logo}
             alt="HNS"
             width={1009}
             height={409}
@@ -180,16 +176,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         <button
           onClick={onToggle}
           title={collapsed ? 'Mở sidebar' : 'Thu sidebar'}
-          className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-black/5 transition-colors flex-shrink-0"
-          style={{ color: '#003d5c' }}
+          className={clsx('hidden md:flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0', t.headerBtn)}
         >
           {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
 
         <button
           onClick={onMobileClose}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl hover:bg-black/5 transition-colors flex-shrink-0 ml-auto"
-          style={{ color: '#003d5c' }}
+          className={clsx('md:hidden flex items-center justify-center w-10 h-10 rounded-xl transition-colors flex-shrink-0 ml-auto', t.headerBtn)}
         >
           <X size={22} />
         </button>
@@ -204,6 +198,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           pathname={pathname}
           collapsed={collapsed}
           onClick={onMobileClose}
+          t={t}
         />
 
         {SECTIONS.map((section) => {
@@ -212,12 +207,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           // Ẩn cả nhóm (kể cả tiêu đề) khi không còn mục nào được dùng
           if (items.length === 0 && !(hubAllowed && !collapsed)) return null
           return (
-            <div key={section.label} className="pt-4 mt-2 md:pt-3" style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+            <div key={section.label} className={clsx('pt-4 mt-2 md:pt-3 border-t', t.divider)}>
               {!collapsed &&
                 (section.hub && hubAllowed ? (
-                  <SectionLink href={section.hub.href} label={section.label} pathname={pathname} onClick={onMobileClose} />
+                  <SectionLink href={section.hub.href} label={section.label} pathname={pathname} onClick={onMobileClose} t={t} />
                 ) : (
-                  <SectionTitle label={section.label} sa={section.superAdminOnly} />
+                  <SectionTitle label={section.label} sa={section.superAdminOnly} t={t} />
                 ))}
               {items.map((item) => (
                 <NavLink
@@ -231,6 +226,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   onClick={onMobileClose}
                   sa={item.superAdminOnly}
                   external={item.external}
+                  t={t}
                 />
               ))}
             </div>
@@ -238,16 +234,16 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         })}
       </nav>
 
-      <div className={clsx('py-4 md:py-4', collapsed ? 'px-1.5' : 'px-4 md:px-4')} style={{ borderTop: '1px solid rgba(0,61,92,0.12)' }}>
+      <div className={clsx('py-4 md:py-4 border-t', t.divider, collapsed ? 'px-1.5' : 'px-4 md:px-4')}>
         {user && (
           <div className={clsx('flex items-center gap-3 mb-3', collapsed ? 'md:justify-center' : 'px-1')}>
             <UserAvatar email={user.email} name={user.full_name} avatarUrl={user.avatar_url} className="w-10 h-10 md:w-8 md:h-8 text-sm md:text-xs" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <div className="text-sm md:text-xs font-semibold truncate" style={{ color: '#003d5c' }}>
+                <div className={clsx('text-sm md:text-xs font-semibold truncate', t.userName)}>
                   {user.full_name}
                 </div>
-                <div className="text-xs md:text-[11px] truncate" style={{ color: '#0069a0' }}>
+                <div className={clsx('text-xs md:text-[11px] truncate', t.muted)}>
                   Kế toán
                 </div>
               </div>
@@ -258,10 +254,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           onClick={logout}
           title={collapsed ? 'Đăng xuất' : undefined}
           className={clsx(
-            'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-base md:text-sm transition-colors hover:bg-[#0094cc]/10',
+            'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-base md:text-sm transition-colors',
+            t.footerBtn,
             collapsed && 'md:justify-center md:px-0',
           )}
-          style={{ color: '#003d5c' }}
         >
           <LogOut size={18} className="md:w-[14px] md:h-[14px]" />
           {!collapsed && 'Đăng xuất'}

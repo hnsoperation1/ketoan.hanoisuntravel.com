@@ -6,10 +6,12 @@ export async function GET() {
   const { user, unauthorized } = await requireUser()
   if (unauthorized) return unauthorized
   const supabase = await createClient()
-  const [{ data: isSuperAdmin }, { data: profile }, screens] = await Promise.all([
+  const [{ data: isSuperAdmin }, { data: profile }, screens, { data: themePref }] = await Promise.all([
     supabase.rpc('is_super_admin'),
     supabase.from('users').select('role, full_name, avatar_url').eq('id', user.id).single(),
     loadUserScreens(user.id),
+    // Theme sidebar chọn ở ihns.vn → Tuỳ chỉnh sidebar (src/lib/sidebarTheme.ts); chưa chọn → null = Tối
+    supabase.from('user_preferences').select('value').eq('user_id', user.id).eq('key', 'ihns_sidebar_theme').maybeSingle(),
   ])
   return NextResponse.json({
     user: {
@@ -21,6 +23,7 @@ export async function GET() {
       is_boss: profile?.role === 'boss',
       // Màn được tick (lib/screens.ts) — null = đọc lỗi, client theo luật cũ
       screens,
+      sidebar_theme: ((themePref?.value as { id?: unknown } | null)?.id as string | undefined) ?? null,
     },
   })
 }
