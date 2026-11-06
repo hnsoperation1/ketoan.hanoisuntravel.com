@@ -7,7 +7,7 @@ export type SidebarThemeId = 'sang' | 'toi'
 export type SidebarTheme = {
   id: SidebarThemeId
   label: string
-  logo: string // logo đầu sidebar (Tối: chữ TRAVEL tô trắng + viền trắng quanh HANOI SUN; file gốc chữ là lỗ trong suốt)
+  logo: string // logo đầu sidebar (Tối: chữ TRAVEL tô trắng, không viền; file gốc chữ là lỗ trong suốt)
   aside: string // nền sidebar
   headerBorder: string // viền dưới phần logo
   headerBtn: string // nút bánh răng / thu sidebar / đóng
@@ -53,7 +53,7 @@ export const SIDEBAR_THEMES: SidebarTheme[] = [
     // Theo mẫu sidebar tối anh gửi: nền xanh than, chữ trắng xám, mục đang mở xanh lá, nút viền mờ
     id: 'toi',
     label: 'Tối',
-    logo: '/hanoisuntravel_logo_dark.png',
+    logo: '/hanoisuntravel_logo_dark_v2.png',
     aside: 'bg-[#1f2633] [color-scheme:dark]',
     headerBorder: 'border-white/10',
     headerBtn: 'border border-white/15 bg-white/5 text-gray-200 hover:bg-white/10',
