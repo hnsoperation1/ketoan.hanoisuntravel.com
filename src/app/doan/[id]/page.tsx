@@ -25,6 +25,7 @@ import {
   Search,
   Download,
 } from 'lucide-react'
+import { GitMerge } from 'lucide-react'
 import { tinhGrossTuNet } from '@/lib/tax'
 import FilterPicker from '@/components/FilterPicker'
 import { SelectMenu } from '@/components/SelectMenu'
@@ -45,6 +46,7 @@ import { useResizableColumns } from '@/hooks/useResizableColumns'
 import { compressImage, MAX_UPLOAD_BYTES } from '@/lib/compressImage'
 import { canScreen } from '@/lib/screens'
 import QuyetToanTab from './quyet-toan/QuyetToanTab'
+import { GopDoanModal } from './GopDoanModal'
 
 const HO_SO_COLS = [
   { key: 'expand', label: '', width: 40 },
@@ -528,6 +530,7 @@ export default function DoanDetailPage() {
   const [addingNhanSu, setAddingNhanSu] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [gopOpen, setGopOpen] = useState(false)
   const [filterLoaiId, setFilterLoaiId] = useState('')
   const [managingLoai, setManagingLoai] = useState(false)
   const loaiNhanSu = useLoaiNhanSuList()
@@ -619,6 +622,15 @@ export default function DoanDetailPage() {
             <Pencil size={14} />
           </button>
         </h1>
+        {!doan.opportunity_id && (
+          <button
+            onClick={() => setGopOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:border-brand-400 hover:text-brand-600 transition-colors shrink-0"
+          >
+            <GitMerge size={14} />
+            Gộp vào đoàn CRM
+          </button>
+        )}
         <button
           onClick={() => setDeleteOpen(true)}
           className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors shrink-0"
@@ -787,6 +799,15 @@ export default function DoanDetailPage() {
         <div className="fixed bottom-6 right-6 z-[400] bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg">
           {toast}
         </div>
+      )}
+
+      {gopOpen && (
+        <GopDoanModal
+          doan={doan}
+          soHoSo={hoSo.length}
+          onClose={() => setGopOpen(false)}
+          onDone={(vaoId) => router.push(`/doan/${vaoId}`)}
+        />
       )}
 
       {deleteOpen && (
