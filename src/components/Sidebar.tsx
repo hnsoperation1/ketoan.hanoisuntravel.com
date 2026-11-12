@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound, Calculator } from 'lucide-react'
+import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Settings, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound, Calculator } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -162,6 +162,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       )}
     >
       <div className={clsx('h-16 md:h-20 flex-shrink-0 flex items-center px-4 md:px-1.5 gap-3 border-b', t.headerBorder)}>
+        {/* Bánh răng Tuỳ chỉnh sidebar — mọi tài khoản, mọi app (trang chung ở ihns.vn, theme áp cho mọi app) */}
+        <a href="https://ihns.vn/tuy-chinh-sidebar" title="Tuỳ chỉnh sidebar" aria-label="Tuỳ chỉnh sidebar"
+          className={clsx('flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0', collapsed && 'md:hidden', t.headerBtn)}>
+          <Settings size={16} />
+        </a>
         <Link href="/" className={clsx('flex items-center', collapsed ? 'md:hidden' : 'flex-1')}>
           <Image
             src={t.logo}
