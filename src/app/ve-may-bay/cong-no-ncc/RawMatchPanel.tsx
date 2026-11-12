@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X, Sparkles } from 'lucide-react'
 import type { MatchSlideOverTarget } from './MatchSlideOver'
-import { OverlayScrollArea } from '@/components/OverlayScrollArea'
 import { buildMatchTerms, HighlightedText } from '@/lib/ve-may-bay/highlight-match'
 import { MatchSuggestionModal } from './MatchSuggestionModal'
 
@@ -195,7 +194,7 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
           <X size={14} />
         </button>
       </div>
-      <OverlayScrollArea className="flex-1 min-h-0" contentClassName="p-3 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         <div>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
@@ -266,7 +265,7 @@ export function RawMatchPanel({ target, candidatesUrl, preloaded, onClose, onSel
             </div>
           )}
         </div>
-      </OverlayScrollArea>
+      </div>
       {openSuggestionMsgId && (
         <MatchSuggestionModal
           suggestions={pendingSuggestions?.filter(s => {

@@ -44,47 +44,8 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Thanh cuộn mảnh, tinh tế kiểu Telegram — thay cho thanh cuộn mặc định to
-   bản, xám đục của trình duyệt/hệ điều hành. Áp dụng toàn app qua `*` vì
-   scrollbar-width/::-webkit-scrollbar chỉ có tác dụng trên chính phần tử
-   đang cuộn, không kế thừa xuống con như các thuộc tính CSS thông thường —
-   không có cách nào "bật cho mọi nơi" khác ngoài áp trực tiếp lên `*`.
-   Không ảnh hưởng .cong-no-scroll (bảng "Bảng" ở công nợ NCC, cố tình để
-   thanh cuộn TO hơn cho dễ kéo trên dữ liệu dày đặc) — selector theo class
-   có độ đặc hiệu cao hơn `*` nên vẫn thắng, ghi đè đúng như cũ. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
-}
-*::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 9999px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.32);
-}
-
-/* Ẩn thanh cuộn nguyên bản của trình duyệt — dùng bởi
-   components/OverlayScrollArea.tsx (hiện chỉ áp cho khung tin nhắn Telegram
-   ở RawMatchPanel.tsx), nơi tự vẽ 1 thanh cuộn dọc riêng (đè lên nội dung,
-   không chiếm chỗ layout, ẩn/hiện theo hover/lúc đang cuộn) thay cho thanh
-   cuộn thật — Chrome/Windows không có "overflow: overlay" (đã bỏ từ Chrome
-   121) nên không cách nào làm thanh cuộn NGUYÊN BẢN hết chiếm chỗ, phải tự
-   vẽ lại bằng JS mới đạt đúng hiệu ứng đó. */
-.overlay-scroll-hide-native {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.overlay-scroll-hide-native::-webkit-scrollbar {
-  display: none;
-}
+/* Thanh cuộn: dùng thanh TO mặc định của trình duyệt ở mọi nơi (anh chốt 2026-11-12 — bỏ chuẩn thanh mảnh 5px
+   cũ vì khó kéo). Không thêm ::-webkit-scrollbar / scrollbar-width: thin cho toàn app hay từng vùng nữa. */
 
 /* Tailwind v4 reset để cursor của button về "default" (mũi tên) — ép lại thành
    "pointer" (bàn tay) cho mọi phần tử bấm được, đồng bộ toàn app. */
