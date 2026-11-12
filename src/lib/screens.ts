@@ -86,7 +86,7 @@ export function legacyScreenAllowed(id: ScreenId, isSuperAdmin: boolean, isBoss:
   return true
 }
 
-type ScreenUser = { is_super_admin: boolean; is_boss: boolean; screens?: string[] | null }
+export type ScreenUser = { is_super_admin: boolean; is_boss: boolean; screens?: string[] | null }
 
 /** Người này có được dùng màn `id` không (client: Sidebar, AppShell, trang hub). */
 export function canScreen(user: ScreenUser | null | undefined, id: ScreenId): boolean {

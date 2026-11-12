@@ -3,13 +3,15 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { FileSpreadsheet, FileStack, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Settings, X, Plane, Users, Receipt, UserSearch, BookUser, ScrollText, Send, UserCog, Landmark, Contact, Table2, ListFilter, KeyRound, Calculator } from 'lucide-react'
+import { useMemo } from 'react'
+import { LogOut, PanelLeftClose, PanelLeftOpen, Settings, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '@/contexts/auth'
 import { UserAvatar } from '@/components/UserAvatar'
 import { SaBadge } from '@/components/SaBadge'
-import { canScreen, type ScreenId } from '@/lib/screens'
-import { sidebarThemeOf, type SidebarTheme } from '@/lib/sidebarTheme'
+import { useSidebarTheme, type SidebarTheme } from '@/lib/sidebarTheme'
+import { buildKetoanNav } from '@/lib/ketoanNav'
+import { applyNavOrder, useNavOrder, visibleSections } from '@/lib/navOrder'
 
 type Props = { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }
 
@@ -91,64 +93,14 @@ function SectionTitle({ label, sa, t }: { label: string; sa?: boolean; t: Sideba
   )
 }
 
-// Mỗi mục gắn với 1 màn (lib/screens.ts) — chỉ hiện khi canScreen. Nhóm
-// Telegram / TKT và cả nhóm "Cài đặt" không thuộc phân quyền theo màn, chỉ
-// Super Admin. Nhóm superAdminOnly → huy hiệu SA sau tiêu đề nhóm.
-type NavItem = { href: string; label: string; icon: React.ElementType; exact?: true; screen?: ScreenId; superAdminOnly?: true; external?: true }
-type NavSection = { label: string; hub?: { href: string; screen: ScreenId }; items: NavItem[]; superAdminOnly?: true }
-
-const SECTIONS: NavSection[] = [
-  {
-    label: 'Kế toán tour',
-    items: [
-      { href: '/doan', label: 'Danh sách đoàn', icon: FileSpreadsheet, screen: 'kt-doan' },
-      { href: '/quyet-toan', label: 'Quyết toán', icon: Calculator, screen: 'kt-quyet-toan' },
-      { href: '/nhan-su', label: 'Nhân sự thuê ngoài', icon: Contact, screen: 'kt-nhan-su' },
-    ],
-  },
-  {
-    // Tiêu đề nhóm cũng là link sang trang hub /ve-may-bay (nếu được màn kt-vmb)
-    label: 'Kế toán vé máy bay',
-    hub: { href: '/ve-may-bay', screen: 'kt-vmb' },
-    items: [
-      { href: '/ve-may-bay/cong-no-khach-hang', label: 'Công nợ KH', icon: Users, screen: 'kt-cn-kh' },
-      { href: '/ve-may-bay/tong-hop-cong-no-ncc', label: 'Tổng hợp công nợ NCC', icon: Table2, screen: 'kt-th-cn-ncc' },
-      { href: '/ve-may-bay/cong-no-ncc', label: 'Đầu vào công nợ NCC', icon: FileSpreadsheet, screen: 'kt-cn-ncc' },
-      { href: '/ve-may-bay/cong-no-ncc-v2', label: 'Đầu vào công nợ NCC v2', icon: FileStack, screen: 'kt-cn-ncc' },
-      { href: '/ve-may-bay/cong-no-ncc-v3', label: 'Đầu vào công nợ NCC v3', icon: ListFilter, screen: 'kt-cn-ncc' },
-      { href: '/ve-may-bay/thong-tin-xuat-ve', label: 'Thông tin xuất vé', icon: Plane, screen: 'kt-xuat-ve' },
-      { href: '/ve-may-bay/sao-ke-tk', label: 'Sao kê TC', icon: Receipt, screen: 'kt-sao-ke-tc' },
-      { href: '/ve-may-bay/khach-hang-vmb', label: 'Khách hàng VMB', icon: UserSearch, screen: 'kt-kh-vmb' },
-      { href: '/ve-may-bay/danh-muc-khach-hang', label: 'Danh mục KH', icon: BookUser, screen: 'kt-dm-kh' },
-      { href: '/ve-may-bay/sao-ke', label: 'Đầu vào sao kê', icon: Landmark, screen: 'kt-sao-ke' },
-      { href: '/ve-may-bay/parse-logs', label: 'Nhật ký bot vé', icon: ScrollText, screen: 'kt-nhat-ky' },
-      { href: '/ve-may-bay/nhom', label: 'Nhóm Telegram', icon: Send, superAdminOnly: true },
-      { href: '/ve-may-bay/tkt', label: 'TKT', icon: UserCog, superAdminOnly: true },
-    ],
-  },
-  {
-    // Nhóm Cài đặt (luôn cuối menu) — CHỈ Super Admin ở mọi chế độ, không cấu
-    // hình theo màn (quyết định 2026-10-11): các màn cài đặt của app + link
-    // sang trang Phân quyền app của Kế toán trên ihns.vn.
-    label: 'Cài đặt',
-    superAdminOnly: true,
-    items: [
-      { href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, superAdminOnly: true },
-      { href: 'https://ihns.vn/cai-dat/ketoan', label: 'Phân quyền app', icon: KeyRound, superAdminOnly: true, external: true },
-    ],
-  },
-]
-
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Props) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  // Theme sidebar chọn ở ihns.vn → Tuỳ chỉnh sidebar (mặc định Tối), đi kèm /api/auth/me
-  const t = sidebarThemeOf(user?.sidebar_theme)
-
-  function itemVisible(item: NavItem) {
-    if (item.superAdminOnly) return !!user?.is_super_admin
-    return item.screen ? canScreen(user, item.screen) : true
-  }
+  // Theme sidebar (mặc định Tối, chung mọi app iHNS — giá trị đầu từ /api/auth/me) + thứ tự menu riêng Kế toán —
+  // chọn ở trang Tuỳ chỉnh sidebar của app (/tuy-chinh-sidebar, menu dựng ở lib/ketoanNav.ts)
+  const { theme: t } = useSidebarTheme(user?.sidebar_theme)
+  const { order } = useNavOrder(user?.id)
+  const sections = useMemo(() => applyNavOrder(visibleSections(buildKetoanNav(user)), order), [user, order])
 
   return (
     <aside
@@ -162,11 +114,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       )}
     >
       <div className={clsx('h-16 md:h-20 flex-shrink-0 flex items-center px-4 md:px-1.5 gap-3 border-b', t.headerBorder)}>
-        {/* Bánh răng Tuỳ chỉnh sidebar — mọi tài khoản, mọi app (trang chung ở ihns.vn, theme áp cho mọi app) */}
-        <a href="https://ihns.vn/tuy-chinh-sidebar" title="Tuỳ chỉnh sidebar" aria-label="Tuỳ chỉnh sidebar"
-          className={clsx('flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0', collapsed && 'md:hidden', t.headerBtn)}>
+        {/* Bánh răng Tuỳ chỉnh sidebar — mọi tài khoản; trang riêng của Kế toán (/tuy-chinh-sidebar) */}
+        <Link href="/tuy-chinh-sidebar" onClick={onMobileClose} title="Tuỳ chỉnh sidebar" aria-label="Tuỳ chỉnh sidebar"
+          className={clsx('flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0', collapsed && 'md:hidden', t.headerBtn, pathname === '/tuy-chinh-sidebar' && t.headerBtnOn)}>
           <Settings size={16} />
-        </a>
+        </Link>
         <Link href="/" className={clsx('flex items-center', collapsed ? 'md:hidden' : 'flex-1')}>
           <Image
             src={t.logo}
@@ -195,45 +147,34 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       </div>
 
       <nav className={clsx('flex-1 py-4 space-y-0.5 overflow-y-auto', collapsed ? 'px-1.5' : 'md:px-3 px-4')}>
-        <NavLink
-          href="/"
-          label="Tổng quan"
-          icon={LayoutDashboard}
-          exact
-          pathname={pathname}
-          collapsed={collapsed}
-          onClick={onMobileClose}
-          t={t}
-        />
-
-        {SECTIONS.map((section) => {
-          const items = section.items.filter((item) => itemVisible(item))
-          const hubAllowed = !!section.hub && canScreen(user, section.hub.screen)
-          // Ẩn cả nhóm (kể cả tiêu đề) khi không còn mục nào được dùng
-          if (items.length === 0 && !(hubAllowed && !collapsed)) return null
+        {sections.map((section) => {
+          const links = section.items.map((item) => (
+            <NavLink
+              key={item.id}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              exact={item.exact}
+              pathname={pathname}
+              collapsed={collapsed}
+              onClick={onMobileClose}
+              sa={section.sa || item.sa}
+              external={item.external}
+              t={t}
+            />
+          ))
+          if (!section.title) return <div key={section.id}>{links}</div>
+          // Nhóm chỉ còn tiêu đề-link (hub) mà sidebar đang thu → không còn gì để hiện
+          if (section.items.length === 0 && collapsed) return null
           return (
-            <div key={section.label} className={clsx('pt-4 mt-2 md:pt-3 border-t', t.divider)}>
+            <div key={section.id} className={clsx('pt-4 mt-2 md:pt-3 border-t', t.divider)}>
               {!collapsed &&
-                (section.hub && hubAllowed ? (
-                  <SectionLink href={section.hub.href} label={section.label} pathname={pathname} onClick={onMobileClose} t={t} />
+                (section.hub?.show ? (
+                  <SectionLink href={section.hub.href} label={section.title} pathname={pathname} onClick={onMobileClose} t={t} />
                 ) : (
-                  <SectionTitle label={section.label} sa={section.superAdminOnly} t={t} />
+                  <SectionTitle label={section.title} sa={section.sa} t={t} />
                 ))}
-              {items.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={item.icon}
-                  exact={item.exact}
-                  pathname={pathname}
-                  collapsed={collapsed}
-                  onClick={onMobileClose}
-                  sa={item.superAdminOnly}
-                  external={item.external}
-                  t={t}
-                />
-              ))}
+              {links}
             </div>
           )
         })}

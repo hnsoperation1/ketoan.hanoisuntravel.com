@@ -1,3 +1,7 @@
+'use client'
+
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
+
 // ─── THEME SIDEBAR (2026-11-05) ─── chọn ở ihns.vn → Tuỳ chỉnh sidebar, lưu user_preferences key 'ihns_sidebar_theme'
 // ({ id }) → áp cho sidebar mọi app iHNS (ihns.vn, CRM, Kế toán, Vận hành). Chưa chọn = Tối. Chỉ đổi màu nền, chữ,
 // nút; ô icon màu của từng app giữ nguyên. Phần này là BẢN SAO Y HỆT ở src/lib/sidebarTheme.ts của ihns.vn, crm.ihns.vn,
@@ -77,3 +81,36 @@ export function sidebarThemeOf(id: unknown): SidebarTheme {
   return SIDEBAR_THEMES.find((t) => t.id === (isSidebarThemeId(id) ? id : DEFAULT_SIDEBAR_THEME)) ?? SIDEBAR_THEMES[0]
 }
 // ─── hết phần bản sao ───
+
+// Kế toán: store dùng chung cho sidebar + trang Tuỳ chỉnh sidebar của app (chọn xong sidebar đổi ngay). Giá trị ban đầu
+// lấy từ /api/auth/me (user.sidebar_theme); lưu qua /api/user-preferences (app này không gọi Supabase ở trình duyệt).
+let current: SidebarThemeId | null = null
+const listeners = new Set<() => void>()
+function setCurrent(id: SidebarThemeId) {
+  current = id
+  listeners.forEach((l) => l())
+}
+function subscribe(l: () => void) {
+  listeners.add(l)
+  return () => { listeners.delete(l) }
+}
+
+export function useSidebarTheme(initial: string | null | undefined) {
+  const id = useSyncExternalStore(subscribe, () => current ?? (isSidebarThemeId(initial) ? initial : DEFAULT_SIDEBAR_THEME), () => DEFAULT_SIDEBAR_THEME)
+
+  // Lần đầu có giá trị từ /api/auth/me → nhận làm giá trị hiện tại (sau đó chỉ đổi khi bấm chọn)
+  useEffect(() => {
+    if (current === null && isSidebarThemeId(initial)) setCurrent(initial)
+  }, [initial])
+
+  const save = useCallback((next: SidebarThemeId) => {
+    setCurrent(next)
+    void fetch('/api/user-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: SIDEBAR_THEME_KEY, value: { id: next } }),
+    }).catch(() => {})
+  }, [])
+
+  return { theme: sidebarThemeOf(id), save }
+}
