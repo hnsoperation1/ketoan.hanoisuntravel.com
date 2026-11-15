@@ -26,6 +26,8 @@ export const SCREEN_IDS = [
   'kt-dm-kh',
   'kt-sao-ke',
   'kt-nhat-ky',
+  // Nhóm Cài đặt (tick được, khác Cài đặt SA) — 2026-11-15
+  'kt-bieu-mau-hd',
 ] as const
 
 export type ScreenId = (typeof SCREEN_IDS)[number]
@@ -54,13 +56,15 @@ const SCREEN_ROUTES: { path: string; screen: ScreenId; exact?: boolean }[] = [
   { path: '/ve-may-bay/danh-muc-khach-hang', screen: 'kt-dm-kh' },
   { path: '/ve-may-bay/sao-ke', screen: 'kt-sao-ke' },
   { path: '/ve-may-bay/parse-logs', screen: 'kt-nhat-ky' },
+  { path: '/cai-dat/bieu-mau-hop-dong', screen: 'kt-bieu-mau-hd' },
 ]
 
 // Trang thuộc nhóm "Cài đặt" cuối Sidebar (quyết định 2026-10-11): CHỈ Super
 // Admin, ở cả chế độ mới lẫn luật cũ — KHÔNG phải màn tick được (trước là
 // kt-bieu-mau-hd). AppShell chặn theo danh sách này. (Kho quà tặng + Cài đặt
 // kho đã gỡ khỏi app Kế toán 2026-10-12 — kho chỉ còn ở ihns.vn/kho.)
-const SUPER_ADMIN_ROUTES = ['/cai-dat/bieu-mau-hop-dong']
+// 2026-11-15: Biểu mẫu hợp đồng ra nhóm Cài đặt thường (màn kt-bieu-mau-hd) — hiện chưa còn trang nào ở đây.
+const SUPER_ADMIN_ROUTES: string[] = []
 
 /** Trang chỉ Super Admin (gồm cả trang con). */
 export function isSuperAdminPath(pathname: string): boolean {

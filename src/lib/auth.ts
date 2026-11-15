@@ -53,8 +53,8 @@ export async function requireSuperAdminUser() {
 
 /**
  * Như requireUser() (vẫn bắt buộc ke_toan_allowlist) + bắt buộc is_super_admin
- * — dùng cho các màn nhóm "Cài đặt" cuối Sidebar (Biểu mẫu hợp đồng: quyết
- * định 2026-10-11 CHỈ Super Admin, không còn là màn tick được).
+ * — dùng cho thao tác chỉ Super Admin trong màn (vd cấu hình quyết toán). Biểu mẫu
+ * hợp đồng từ 2026-11-15 là màn tick được kt-bieu-mau-hd, không dùng hàm này nữa.
  * Khác requireSuperAdminUser() ở chỗ vẫn bắt buộc allowlist y như
  * requireScreen() mà các API này dùng trước đây.
  */

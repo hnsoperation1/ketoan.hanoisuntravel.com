@@ -42,10 +42,15 @@ export function buildKetoanNav(user: (ScreenUser & { is_super_admin?: boolean })
         { id: 'tkt', href: '/ve-may-bay/tkt', label: 'TKT', icon: UserCog, show: isSA, sa: true },
       ],
     },
-    // Nhóm Cài đặt (luôn cuối menu) — CHỈ Super Admin ở mọi chế độ, không cấu hình theo màn (quyết định 2026-10-11)
+    // 2 nhóm cuối menu (2026-11-15, giống HRM): Cài đặt thường — màn tick được ở Phân quyền app; rồi Cài đặt SA —
+    // CHỈ Super Admin, không cấu hình theo màn (quyết định 2026-10-11)
     {
-      id: 'cai-dat', title: 'Cài đặt', sa: true, pin: 'bottom', items: [
-        { id: 'bieu-mau-hd', href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, show: isSA },
+      id: 'cai-dat', title: 'Cài đặt', pin: 'bottom', items: [
+        { id: 'bieu-mau-hd', href: '/cai-dat/bieu-mau-hop-dong', label: 'Biểu mẫu hợp đồng', icon: FileStack, show: can('kt-bieu-mau-hd') },
+      ],
+    },
+    {
+      id: 'cai-dat-sa', title: 'Cài đặt', sa: true, pin: 'bottom', items: [
         { id: 'phan-quyen', href: 'https://ihns.vn/cai-dat/ketoan', label: 'Phân quyền app', icon: KeyRound, external: true, show: isSA },
       ],
     },

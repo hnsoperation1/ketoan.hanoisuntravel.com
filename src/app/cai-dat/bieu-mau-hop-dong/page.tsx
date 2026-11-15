@@ -5,7 +5,6 @@ import { Check, Copy, FileText, Loader2, Plus, RefreshCw, Trash2, Upload, X } fr
 import type { HopDongTemplate } from '@/types'
 import { formatDateVN } from '@/lib/format'
 import { useTopbar } from '@/contexts/topbar'
-import { SaBadge } from '@/components/SaBadge'
 import { ModalOverlay } from '@/components/ModalOverlay'
 import { useCellSelection } from '@/hooks/useCellSelection'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
@@ -121,7 +120,7 @@ export default function BieuMauHopDongPage() {
 
   useEffect(() => {
     // Cả trang chỉ Super Admin → huy hiệu "SA" ngay sau tiêu đề trang
-    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Biểu mẫu hợp đồng<SaBadge className="ml-1.5" /></span>)
+    setBreadcrumb(<span className="text-sm font-semibold text-gray-700">Biểu mẫu hợp đồng</span>)
     setOnRefresh(load)
     return () => {
       setBreadcrumb(null)

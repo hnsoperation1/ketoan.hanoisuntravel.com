@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireScreen, requireSuperAdminKeToan } from '@/lib/auth'
+import { requireScreen } from '@/lib/auth'
 import { uploadTemplateFile } from '@/lib/storage'
 import { slugifyFileName } from '@/lib/format'
 import { getErrorMessage } from '@/lib/errors'
 
-// Dùng chung cho màn Đoàn (chọn biểu mẫu khi xuất hợp đồng) và trang Biểu mẫu hợp đồng (chỉ Super
-// Admin — luôn qua requireScreen)
+// Dùng chung cho màn Đoàn (chọn biểu mẫu khi xuất hợp đồng) và trang Biểu mẫu hợp đồng (màn kt-bieu-mau-hd,
+// nhóm Cài đặt thường từ 2026-11-15)
 export async function GET() {
-  const { unauthorized } = await requireScreen('kt-doan')
+  const { unauthorized } = await requireScreen('kt-doan', 'kt-bieu-mau-hd')
   if (unauthorized) return unauthorized
 
   const supabase = await createClient()
@@ -20,9 +20,9 @@ export async function GET() {
   return NextResponse.json({ templates: data })
 }
 
-// Thêm biểu mẫu — trang Biểu mẫu hợp đồng, chỉ Super Admin
+// Thêm biểu mẫu — trang Biểu mẫu hợp đồng
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireSuperAdminKeToan()
+  const { unauthorized } = await requireScreen('kt-bieu-mau-hd')
   if (unauthorized) return unauthorized
 
   const formData = await req.formData()
